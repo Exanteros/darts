@@ -1,0 +1,224 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: #ffffff;
+  --foreground: #000000;
+  --card: #ffffff;
+  --card-foreground: #000000;
+  --popover: #ffffff;
+  --popover-foreground: #000000;
+  --primary: #1a365d; /* Dunkles Blau als Akzentfarbe */
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #000000;
+  --muted: #f5f5f5;
+  --muted-foreground: #666666;
+  --accent: #f5f5f5;
+  --accent-foreground: #000000;
+  --destructive: #dc2626; /* Rotes Rot für Warnungen */
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #1a365d; /* Akzentfarbe für Fokus */
+  --chart-1: #1a365d; /* Dunkles Blau */
+  --chart-2: #2d3748; /* Dunkleres Grau */
+  --chart-3: #4a5568; /* Mittleres Grau */
+  --chart-4: #718096; /* Helleres Grau */
+  --chart-5: #a0aec0; /* Hellstes Grau */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #000000;
+  --sidebar-primary: #1a365d; /* Akzentfarbe */
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f5f5f5;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #e5e5e5;
+  --sidebar-ring: #1a365d; /* Akzentfarbe */
+}
+
+.dark {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #1a1a1a;
+  --card-foreground: #ffffff;
+  --popover: #1a1a1a;
+  --popover-foreground: #ffffff;
+  --primary: #3b82f6; /* Helleres Blau für Dark Mode */
+  --primary-foreground: #000000;
+  --secondary: #333333;
+  --secondary-foreground: #ffffff;
+  --muted: #333333;
+  --muted-foreground: #cccccc;
+  --accent: #333333;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444; /* Helleres Rot für Dark Mode */
+  --border: #404040;
+  --input: #404040;
+  --ring: #3b82f6; /* Akzentfarbe für Fokus */
+  --chart-1: #3b82f6; /* Blaue Akzentfarbe */
+  --chart-2: #60a5fa; /* Helleres Blau */
+  --chart-3: #93c5fd; /* Sehr helles Blau */
+  --chart-4: #bfdbfe; /* Fast weißes Blau */
+  --chart-5: #dbeafe; /* Sehr helles Blau */
+  --sidebar: #1a1a1a;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #3b82f6; /* Akzentfarbe */
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #333333;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #404040;
+  --sidebar-ring: #3b82f6; /* Akzentfarbe */
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+  html {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+}
+
+@layer utilities {
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.8s ease-out forwards;
+  }
+
+  .animate-fadeInUp {
+    animation: fadeInUp 0.8s ease-out forwards;
+  }
+
+  .delay-300 {
+    animation-delay: 0.3s;
+  }
+
+  .delay-500 {
+    animation-delay: 0.5s;
+  }
+
+  /* Smooth scrolling for bracket container */
+  #bracket-container {
+    scroll-behavior: smooth;
+  }
+
+  #bracket-container::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+
+  #bracket-container::-webkit-scrollbar-track {
+    @apply bg-muted/30 rounded;
+  }
+
+  #bracket-container::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded hover:bg-muted-foreground/50 transition-colors;
+  }
+
+  #bracket-container::-webkit-scrollbar-corner {
+    @apply bg-transparent;
+  }
+
+  /* Hide scrollbar for round headers */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Hide original round headers from the bracket library */
+  #bracket-container g[data-testid*="round-header"],
+  #bracket-container g[id*="round-header"],
+  #bracket-container text[y="25"],
+  #bracket-container text[y="0"],
+  #bracket-container text[text-anchor="middle"] {
+    display: none !important;
+  }
+
+  /* Hide round header rectangles */
+  #bracket-container rect[height="50"],
+  #bracket-container rect[y="0"][height="50"] {
+    display: none !important;
+  }
+
+  /* Force SVG to stay within container */
+  #bracket-container svg {
+    max-width: none !important;
+    display: block;
+  }
+  
+  #bracket-container > div {
+    display: inline-block;
+    min-width: min-content;
+  }
+}
