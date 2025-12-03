@@ -3,11 +3,12 @@ import Redis from 'ioredis';
 // Redis client for rate limiting
 let redis: Redis | null = null;
 
-function getRedisClient(): Redis {
+function getRedisClient(): Redis | null {
   if (!redis) {
     const redisUrl = process.env.REDIS_URL || process.env.UPSTASH_REDIS_REST_URL;
     if (!redisUrl) {
-      throw new Error('REDIS_URL or UPSTASH_REDIS_REST_URL must be set for rate limiting');
+      // Silent fail in dev/build if not configured
+      return null;
     }
     redis = new Redis(redisUrl);
   }
@@ -27,6 +28,12 @@ export async function checkRateLimit(
 ): Promise<RateLimitResult> {
   try {
     const redis = getRedisClient();
+    
+    if (!redis) {
+      // Fallback if no Redis configured
+      return { allowed: true };
+    }
+
     const now = Date.now();
     const windowKey = `ratelimit:${key}:${Math.floor(now / windowMs)}`;
 

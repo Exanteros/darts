@@ -37,7 +37,11 @@ if (
   });
 } else if (process.env.SMTP_HOST && process.env.SMTP_USER) {
   // Log a concise message in production or when using placeholder host without attempting network calls
-  console.log('ℹ️ SMTP configured but verification skipped (production or placeholder host)');
+  console.log('ℹ️ SMTP configured but verification skipped. Conditions:', {
+    hasHost: !!process.env.SMTP_HOST,
+    hasUser: !!process.env.SMTP_USER,
+    isNotExample: !String(process.env.SMTP_HOST).includes('example.com')
+  });
 }
 
 export async function sendMail({ to, subject, text, html }: { to: string, subject: string, text: string, html?: string }) {
