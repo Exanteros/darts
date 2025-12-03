@@ -76,7 +76,7 @@ log "🚀 Starte vollautomatisches Setup für Domain: $DOMAIN"
 # System aktualisieren
 step "1/12 - System aktualisieren..."
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y curl wget git htop ufw fail2ban software-properties-common apt-transport-https ca-certificates gnupg lsb-release
+sudo apt install -y curl wget git htop ufw fail2ban software-properties-common apt-transport-https ca-certificates gnupg lsb-release nano
 
 # Firewall konfigurieren
 step "2/12 - Firewall einrichten..."
@@ -210,6 +210,16 @@ SMTP_FROM="Darts Turnier <noreply@$DOMAIN>"
 BRAND_NAME="Darts Masters Puschendorf"
 SMTP_LOGO_URL="https://$DOMAIN/logo.png"
 EOF
+
+# Benutzer fragen, ob er die Config bearbeiten will
+step "Konfiguration anpassen..."
+echo -e "${YELLOW}Die Konfigurationsdatei .env.docker.local wurde erstellt.${NC}"
+echo -e "${YELLOW}Hier kannst du SMTP-Daten für den E-Mail-Versand eintragen.${NC}"
+printf "Möchtest du die Datei jetzt bearbeiten? (j/N) "
+read -r REPLY
+if echo "$REPLY" | grep -qE "^[JjYy]"; then
+    nano .env.docker.local
+fi
 
 # Datenbank und Redis starten
 step "11/12 - Services starten..."
