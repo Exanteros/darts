@@ -276,7 +276,7 @@ fi
 
 # Admin User erstellen (als root, damit ts-node Schreibrechte hat)
 info "Admin User erstellen..."
-docker-compose exec -T --user root app npx ts-node scripts/create-admin-user.ts || warn "Admin-Erstellung ggf. fehlgeschlagen - prüfe Logs"
+docker-compose exec -T --user root app node scripts/create-admin-user.js || warn "Admin-Erstellung ggf. fehlgeschlagen - prüfe Logs"
 
 # Falls noch weitere Dienste fehlen, starte alles
 info "Starte alle Dienste (falls nötig)..."
