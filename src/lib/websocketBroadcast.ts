@@ -35,8 +35,8 @@ function connectWebSocket() {
   }
 }
 
-// Initial connection
-connectWebSocket();
+// Initial connection removed to prevent connection during build
+// connectWebSocket();
 
 export function broadcastGameUpdate(gameData: any) {
   if (ws && ws.readyState === WebSocket.OPEN) {
