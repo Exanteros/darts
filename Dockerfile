@@ -57,6 +57,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Kopiere WebSocket Server und Start Script
 COPY --from=builder /app/websocket-game-server.js ./
 COPY --from=builder /app/start.sh ./
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/tsconfig.json ./
 RUN chmod +x start.sh
 
 # Installiere nur Production Dependencies (inkl. Prisma Client)
