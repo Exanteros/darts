@@ -26,7 +26,8 @@ function MagicLinkSuccessContent() {
         }
 
         // Decode session data
-        const decoded = JSON.parse(Buffer.from(sessionData, 'base64').toString());
+        // Use atob for browser compatibility instead of Buffer
+        const decoded = JSON.parse(decodeURIComponent(escape(window.atob(sessionData))));
         const { email, name, timestamp } = decoded;
 
         console.log('📧 Decoded session data:', { email, name, age: Date.now() - timestamp });

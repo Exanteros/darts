@@ -28,12 +28,16 @@ export async function GET(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
   
   try {
+    // Helper for consistent redirects
+    const getRedirectUrl = (path: string) => {
+      const baseUrl = process.env.NEXTAUTH_URL || request.nextUrl.origin;
+      return new URL(path, baseUrl);
+    };
+
     // Rate Limiting
     const rateLimit = checkVerifyRateLimit(ip);
     if (!rateLimit.allowed) {
-      return NextResponse.redirect(
-        new URL('/login?error=too_many_attempts', request.url)
-      );
+      return NextResponse.redirect(getRedirectUrl('/login?error=too_many_attempts'));
     }
 
     const { searchParams } = new URL(request.url);
@@ -48,13 +52,13 @@ export async function GET(request: NextRequest) {
     // Token Validierung
     if (!token || typeof token !== 'string') {
       console.warn(`Invalid token format from IP ${ip}`);
-      return NextResponse.redirect(new URL('/login?error=invalid_token', request.url));
+      return NextResponse.redirect(getRedirectUrl('/login?error=invalid_token'));
     }
 
     // Token Format Check (sollte 128 hex chars sein)
     if (!/^[a-f0-9]{128}$/i.test(token)) {
       console.warn(`Invalid token structure from IP ${ip}, length: ${token.length}`);
-      return NextResponse.redirect(new URL('/login?error=invalid_token', request.url));
+      return NextResponse.redirect(getRedirectUrl('/login?error=invalid_token'));
     }
 
     // Atomare Token-Prüfung und Update (Race Condition Prevention)
@@ -92,17 +96,17 @@ export async function GET(request: NextRequest) {
 
     if (!magicLink) {
       console.warn(`Token not found from IP ${ip}`);
-      return NextResponse.redirect(new URL('/login?error=invalid_token', request.url));
+      return NextResponse.redirect(getRedirectUrl('/login?error=invalid_token'));
     }
 
     if (magicLink === 'expired') {
       console.warn(`Expired token attempt from IP ${ip}`);
-      return NextResponse.redirect(new URL('/login?error=expired_token', request.url));
+      return NextResponse.redirect(getRedirectUrl('/login?error=expired_token'));
     }
 
     if (magicLink === 'used') {
       console.warn(`Token reuse attempt from IP ${ip}`);
-      return NextResponse.redirect(new URL('/login?error=token_already_used', request.url));
+      return NextResponse.redirect(getRedirectUrl('/login?error=token_already_used'));
     }
 
     // Finde User
@@ -112,7 +116,7 @@ export async function GET(request: NextRequest) {
 
     if (!user) {
       console.error(`User not found for token from IP ${ip}`);
-      return NextResponse.redirect(new URL('/login?error=user_not_found', request.url));
+      return NextResponse.redirect(getRedirectUrl('/login?error=user_not_found'));
     }
 
     // Lösche alle anderen Tokens dieser E-Mail (One-Time-Use für alle parallelen Anfragen)
@@ -137,13 +141,13 @@ export async function GET(request: NextRequest) {
     const encodedSession = Buffer.from(JSON.stringify(sessionData)).toString('base64');
 
     // Redirect zur Success-Seite mit Session-Daten
-    const successUrl = new URL('/auth/magic-link/success', request.url);
+    const successUrl = getRedirectUrl('/auth/magic-link/success');
     successUrl.searchParams.set('session', encodedSession);
 
     console.log('✅ Magic link verified, redirecting to success page:', {
       userId: user.id,
       role: user.role,
-      redirectTo: successUrl.pathname
+      redirectTo: successUrl.toString()
     });
 
     return NextResponse.redirect(successUrl);
@@ -151,6 +155,7 @@ export async function GET(request: NextRequest) {
     console.error('Magic Link Verify Error:', error);
     
     // Security: Keine detaillierten Fehler an Client
-    return NextResponse.redirect(new URL('/login?error=server_error', request.url));
+    const baseUrl = process.env.NEXTAUTH_URL || request.nextUrl.origin;
+    return NextResponse.redirect(new URL('/login?error=server_error', baseUrl));
   }
 }
