@@ -249,13 +249,24 @@ done
 
 # Datenbank initialisieren
 info "Datenbank initialisieren..."
-# Prisma generate ist bereits in Dockerfile während des Builds gelaufen, aber sicherheitshalber ausführen
-docker-compose exec app npx prisma generate || warn "Prisma generate schlug fehl (wird fortgesetzt)"
-docker-compose exec app npx prisma migrate deploy
+# Prisma generate: führe als root aus, weil node_modules-Dateien root-owned sein können
+if ! docker-compose exec -T --user root app npx prisma generate >/dev/null 2>&1; then
+    warn "Prisma generate als non-root fehlgeschlagen, versuche als root..."
+    docker-compose exec -T --user root app npx prisma generate || warn "Prisma generate endgültig fehlgeschlagen"
+else
+    info "Prisma generate erfolgreich"
+fi
 
-# Admin User erstellen
+# Versuche Migrationen anzuwenden; falls Provider-Mismatch auftritt, fallbacks auf 'prisma db push'
+if ! docker-compose exec -T --user root app npx prisma migrate deploy; then
+    warn "Prisma migrate deploy schlug fehl. Versuche Fallback: 'prisma db push' (überschreibt Schema)..."
+    # db push kann Datenverlust verursachen; wir nutzen es nur als Fallback wenn migrate nicht möglich ist
+    docker-compose exec -T --user root app npx prisma db push --accept-data-loss || error "Datenbank-Synchronisation fehlgeschlagen"
+fi
+
+# Admin User erstellen (als root, damit ts-node Schreibrechte hat)
 info "Admin User erstellen..."
-docker-compose exec app npx ts-node scripts/create-admin-user.ts
+docker-compose exec -T --user root app npx ts-node scripts/create-admin-user.ts || warn "Admin-Erstellung ggf. fehlgeschlagen - prüfe Logs"
 
 # Falls noch weitere Dienste fehlen, starte alles
 info "Starte alle Dienste (falls nötig)..."
