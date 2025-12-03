@@ -66,6 +66,8 @@ export async function POST(request: NextRequest) {
       where: { email: normalizedEmail }
     });
 
+    console.log(`🔍 Login attempt for ${normalizedEmail}. User found: ${!!user}`);
+
     if (!user) {
       // Timing-Attack Prevention: Gleiche Antwortzeit wie bei existierendem User
       await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 100));

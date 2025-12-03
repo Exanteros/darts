@@ -27,7 +27,7 @@ if (process.env.SMTP_HOST && process.env.SMTP_USER) {
 if (
   process.env.SMTP_HOST &&
   process.env.SMTP_USER &&
-  process.env.NODE_ENV !== 'production' &&
+  // process.env.NODE_ENV !== 'production' && // Debug: Verify in production too
   !String(process.env.SMTP_HOST).includes('example.com')
 ) {
   transporter.verify().then(() => {
