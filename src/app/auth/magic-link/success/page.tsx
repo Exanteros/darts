@@ -72,7 +72,7 @@ function MagicLinkSuccessContent() {
         console.log('✅ SignIn successful, fetching session...');
 
         // Hole Session um Rolle zu prüfen
-        const sessionResponse = await fetch('/api/auth/session');
+        const sessionResponse = await fetch('/api/auth/session', { cache: 'no-store' });
         
         if (!sessionResponse.ok) {
           console.error('❌ Session fetch failed:', sessionResponse.status);

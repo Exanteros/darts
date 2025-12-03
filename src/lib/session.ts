@@ -1,5 +1,7 @@
 import { cookies } from 'next/headers';
 import { jwtVerify, SignJWT } from 'jose';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 if (!process.env.NEXTAUTH_SECRET) {
   throw new Error('Missing NEXTAUTH_SECRET environment variable. Set NEXTAUTH_SECRET to a secure random value.');
@@ -41,23 +43,38 @@ export async function getSession(): Promise<SessionUser | null> {
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get('session')?.value;
 
-    if (!sessionToken) {
-      return null;
+    if (sessionToken) {
+      // Verifiziere und decode JWT
+      const { payload } = await jwtVerify(sessionToken, JWT_SECRET);
+
+      return {
+        userId: payload.userId as string,
+        email: payload.email as string,
+        name: payload.name as string | null,
+        role: payload.role as string
+      };
     }
-
-    // Verifiziere und decode JWT
-    const { payload } = await jwtVerify(sessionToken, JWT_SECRET);
-
-    return {
-      userId: payload.userId as string,
-      email: payload.email as string,
-      name: payload.name as string | null,
-      role: payload.role as string
-    };
   } catch (error) {
     console.error('Session verification error:', error);
-    return null;
+    // Fallthrough to NextAuth check
   }
+
+  // Fallback: Check NextAuth session
+  try {
+    const session = await getServerSession(authOptions);
+    if (session?.user) {
+      return {
+        userId: session.user.id,
+        email: session.user.email,
+        name: session.user.name || null,
+        role: session.user.role
+      };
+    }
+  } catch (error) {
+    console.error('NextAuth session check error:', error);
+  }
+
+  return null;
 }
 
 export async function requireAuth(): Promise<SessionUser> {
