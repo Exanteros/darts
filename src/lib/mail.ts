@@ -14,6 +14,16 @@ const transporter = nodemailer.createTransport({
 // If SMTP is configured, verify the transporter on startup and log status
 // Only attempt verification in non-production and when a real host is provided.
 // Avoid verifying against placeholder hosts (e.g. smtp.example.com) during build/prerender.
+if (process.env.SMTP_HOST && process.env.SMTP_USER) {
+  console.log('📧 SMTP Configuration:', {
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT,
+    secure: process.env.SMTP_SECURE,
+    user: process.env.SMTP_USER,
+    from: process.env.SMTP_FROM
+  });
+}
+
 if (
   process.env.SMTP_HOST &&
   process.env.SMTP_USER &&
@@ -21,16 +31,18 @@ if (
   !String(process.env.SMTP_HOST).includes('example.com')
 ) {
   transporter.verify().then(() => {
-    console.log('SMTP transporter verified');
+    console.log('✅ SMTP transporter verified');
   }).catch((err) => {
-    console.warn('SMTP transporter verification failed:', err);
+    console.warn('❌ SMTP transporter verification failed:', err);
   });
 } else if (process.env.SMTP_HOST && process.env.SMTP_USER) {
   // Log a concise message in production or when using placeholder host without attempting network calls
-  console.log('SMTP configured but verification skipped (production or placeholder host)');
+  console.log('ℹ️ SMTP configured but verification skipped (production or placeholder host)');
 }
 
 export async function sendMail({ to, subject, text, html }: { to: string, subject: string, text: string, html?: string }) {
+  console.log(`📧 Attempting to send email to: ${to}`);
+
   // If SMTP is not configured, fallback to simulation
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
     console.log(`\n--- [MAIL SIMULATION (No SMTP Config)] ---`);
@@ -52,10 +64,10 @@ export async function sendMail({ to, subject, text, html }: { to: string, subjec
       text,
       html,
     });
-    console.log(`Message sent: ${info.messageId}`);
+    console.log(`✅ Message sent: ${info.messageId}`);
     return true;
   } catch (error) {
-    console.error("Error sending email:", error);
+    console.error("❌ Error sending email:", error);
     return false;
   }
 }

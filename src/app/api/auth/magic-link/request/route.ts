@@ -160,12 +160,16 @@ Darts Masters Puschendorf`;
     const html = await renderHtml(content);
     
     try {
-      await sendMail({
+      const success = await sendMail({
         to: normalizedEmail,
         subject,
         text: content,
         html
       });
+
+      if (!success) {
+        throw new Error('sendMail returned false');
+      }
     } catch (emailError) {
       console.error('Email Send Error:', emailError);
       // Token löschen wenn Email fehlschlägt
@@ -175,7 +179,7 @@ Darts Masters Puschendorf`;
       
       return NextResponse.json({
         success: false,
-        message: 'Fehler beim Versenden der E-Mail. Bitte kontaktiere den Administrator.'
+        message: 'Fehler beim Versenden der E-Mail. Bitte prüfe die Server-Logs.'
       }, { status: 500 });
     }
 
