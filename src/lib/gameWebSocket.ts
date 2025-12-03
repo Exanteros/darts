@@ -9,7 +9,9 @@ class GameWebSocketManager {
     if (typeof window === 'undefined') return; // Nur im Browser
 
     // Dynamische URL basierend auf Hostname (wichtig für Zugriff von anderen Geräten)
-    this.url = `ws://${window.location.hostname}:3001`;
+    // Nutze WSS wenn HTTPS, sonst WS
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    this.url = `${protocol}//${window.location.hostname}/websocket`;
 
     try {
       this.ws = new WebSocket(this.url);

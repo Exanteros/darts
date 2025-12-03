@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   async headers() {
     // WebSocket-URLs für verschiedene Umgebungen
     const wsUrls = process.env.NODE_ENV === 'production'
-      ? 'ws://localhost:3001 wss://localhost:3001' // In Produktion: Passe dies an deine Domain an
+      ? 'wss://' + (process.env.NEXTAUTH_URL ? new URL(process.env.NEXTAUTH_URL).hostname : 'localhost')
       : 'ws://localhost:3001 ws://127.0.0.1:3001';
     
     return [
@@ -50,7 +50,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "font-src 'self' data:",
-              `connect-src 'self' ${wsUrls}`, // WebSocket für Echtzeit-Updates
+              `connect-src 'self' ws: wss: ${wsUrls}`, // WebSocket für Echtzeit-Updates
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

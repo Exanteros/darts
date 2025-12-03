@@ -54,6 +54,11 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Kopiere WebSocket Server und Start Script
+COPY --from=builder /app/websocket-game-server.js ./
+COPY --from=builder /app/start.sh ./
+RUN chmod +x start.sh
+
 # Installiere nur Production Dependencies (inkl. Prisma Client)
 RUN npm ci --only=production --legacy-peer-deps && \
     npx prisma generate && \
@@ -64,6 +69,7 @@ USER nextjs
 
 # Exponiere Port
 EXPOSE 3000
+EXPOSE 3001
 
 # Setze Environment Variables
 ENV NODE_ENV=production
@@ -75,4 +81,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Starte die App
-CMD ["node", "server.js"]
+CMD ["./start.sh"]

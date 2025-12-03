@@ -50,6 +50,7 @@ services:
         condition: service_healthy
     ports:
       - "3000:3000"
+      - "3001:3001"
     environment:
       # Database
       DATABASE_URL: postgresql://dartsturnier:${DB_PASSWORD:-changeme123}@postgres:5432/dartsturnier
