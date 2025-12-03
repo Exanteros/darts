@@ -17,7 +17,7 @@ NC='\033[0m'
 # Konfiguration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="/var/log/dartsturnier-setup.log"
-BACKUP_DIR="/home/ubuntu/backups"
+BACKUP_DIR="$HOME/backups"
 
 # Logging Funktion
 log() {
@@ -147,22 +147,40 @@ fi
 
 # Projekt bereitstellen
 step "10/12 - Projekt bereitstellen..."
-cd /home/ubuntu
+INSTALL_DIR="$(eval echo ~$SUDO_USER)"
+if [ -z "$INSTALL_DIR" ]; then
+    INSTALL_DIR="$HOME"
+fi
+cd "$INSTALL_DIR"
 
 # Backup vorhandener Installation
 if [ -d "dartsturnier" ]; then
     warn "Vorhandene Installation gefunden - erstelle Backup..."
     mkdir -p "$BACKUP_DIR"
-    sudo tar -czf "$BACKUP_DIR/pre-setup-backup-$(date +%Y%m%d_%H%M%S).tar.gz" -C /home/ubuntu dartsturnier 2>/dev/null || true
+    sudo tar -czf "$BACKUP_DIR/pre-setup-backup-$(date +%Y%m%d_%H%M%S).tar.gz" -C "$INSTALL_DIR" dartsturnier 2>/dev/null || true
     sudo rm -rf dartsturnier
 fi
 
 # Repository klonen
-git clone https://github.com/Exanteros/kneipenquiz.git dartsturnier
+git clone https://github.com/Exanteros/darts.git dartsturnier
 cd dartsturnier
 
+# Patch Dockerfile to fix build error (NextAuth Secret)
+info "Patche Dockerfile für Production Build..."
+sed -i '/RUN npm run build/i \
+# Setze temporäre Environment Variables für den Build\
+ARG NEXTAUTH_SECRET=build-time-placeholder-will-be-overridden-at-runtime\
+ARG NEXTAUTH_URL=http://localhost:3000\
+ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET\
+ENV NEXTAUTH_URL=$NEXTAUTH_URL\
+' Dockerfile
+
+# Patch Prisma Schema für PostgreSQL
+info "Patche Prisma Schema für PostgreSQL..."
+sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/schema.prisma
+
 # Dependencies installieren
-npm install
+npm install --legacy-peer-deps
 
 # Starke Passwörter generieren
 DB_PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32)
@@ -195,23 +213,52 @@ EOF
 
 # Datenbank und Redis starten
 step "11/12 - Services starten..."
+# System-Services stoppen falls aktiv
+sudo systemctl stop postgresql 2>/dev/null || true
+sudo systemctl disable postgresql 2>/dev/null || true
+sudo systemctl stop redis-server 2>/dev/null || true
+sudo systemctl disable redis-server 2>/dev/null || true
+
 docker-compose --env-file .env.docker.local up -d postgres redis
 
-# Warten auf Datenbank
-info "Warte auf PostgreSQL..."
-sleep 10
-docker-compose exec -T postgres pg_isready -U dartsturnier
+# Warten auf Datenbank (retry loop)
+info "Warte auf PostgreSQL (bis zu 60s)..."
+for i in {1..30}; do
+    if docker-compose exec -T postgres pg_isready -U dartsturnier >/dev/null 2>&1; then
+        info "PostgreSQL ist bereit"
+        break
+    fi
+    info "Warte auf PostgreSQL... ($i/30)"
+    sleep 2
+done
+
+# Build und starte die App (erst nachdem DB & Redis bereit sind)
+info "Baue und starte die App..."
+docker-compose --env-file .env.docker.local up -d --build app
+
+# Warte, bis die App auf Port 3000 erreichbar ist (Health endpoint)
+info "Warte auf die App (bis zu 2 Minuten)..."
+for i in {1..60}; do
+    if curl -sS http://localhost:3000/api/health >/dev/null 2>&1; then
+        info "App ist erreichbar"
+        break
+    fi
+    info "Warte auf App... ($i/60)"
+    sleep 2
+done
 
 # Datenbank initialisieren
 info "Datenbank initialisieren..."
-docker-compose exec app npx prisma generate
+# Prisma generate ist bereits in Dockerfile während des Builds gelaufen, aber sicherheitshalber ausführen
+docker-compose exec app npx prisma generate || warn "Prisma generate schlug fehl (wird fortgesetzt)"
 docker-compose exec app npx prisma migrate deploy
 
 # Admin User erstellen
 info "Admin User erstellen..."
 docker-compose exec app npx ts-node scripts/create-admin-user.ts
 
-# Anwendung starten
+# Falls noch weitere Dienste fehlen, starte alles
+info "Starte alle Dienste (falls nötig)..."
 docker-compose --env-file .env.docker.local up -d
 
 # Nginx konfigurieren
@@ -264,60 +311,60 @@ sudo certbot --nginx -d $DOMAIN -d www.$DOMAIN --non-interactive --agree-tos --e
 # Backup-Script einrichten
 step "Bonus - Backup-System einrichten..."
 mkdir -p "$BACKUP_DIR"
-sudo tee /etc/cron.daily/dartsturnier-backup > /dev/null << 'EOF'
+sudo tee /etc/cron.daily/dartsturnier-backup > /dev/null << EOF
 #!/bin/bash
-BACKUP_DIR="/home/ubuntu/backups"
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_NAME="dartsturnier_$TIMESTAMP"
+BACKUP_DIR="$INSTALL_DIR/backups"
+TIMESTAMP=\$(date +%Y%m%d_%H%M%S)
+BACKUP_NAME="dartsturnier_\$TIMESTAMP"
 
-cd /home/ubuntu/dartsturnier
+cd "$INSTALL_DIR/dartsturnier"
 
 # PostgreSQL Backup
-docker-compose exec -T postgres pg_dump -U dartsturnier -d dartsturnier > "$BACKUP_DIR/${BACKUP_NAME}_database.sql"
+docker-compose exec -T postgres pg_dump -U dartsturnier -d dartsturnier > "\$BACKUP_DIR/\${BACKUP_NAME}_database.sql"
 
 # Konfiguration sichern
-tar -czf "$BACKUP_DIR/${BACKUP_NAME}_config.tar.gz" .env.docker.local docker-compose.yml
+tar -czf "\$BACKUP_DIR/\${BACKUP_NAME}_config.tar.gz" .env.docker.local docker-compose.yml
 
 # Gesamt-Backup komprimieren
-cd "$BACKUP_DIR"
-tar -czf "${BACKUP_NAME}.tar.gz" ${BACKUP_NAME}_*.sql ${BACKUP_NAME}_*.tar.gz
+cd "\$BACKUP_DIR"
+tar -czf "\${BACKUP_NAME}.tar.gz" \${BACKUP_NAME}_*.sql \${BACKUP_NAME}_*.tar.gz
 
 # Aufräumen
-rm -f ${BACKUP_NAME}_*.sql ${BACKUP_NAME}_*.tar.gz
+rm -f \${BACKUP_NAME}_*.sql \${BACKUP_NAME}_*.tar.gz
 
 # Alte Backups löschen (7 Tage)
-find "$BACKUP_DIR" -name "dartsturnier_*.tar.gz" -mtime +7 -delete
+find "\$BACKUP_DIR" -name "dartsturnier_*.tar.gz" -mtime +7 -delete
 EOF
 
 sudo chmod +x /etc/cron.daily/dartsturnier-backup
 
 # Monitoring-Script einrichten
-sudo tee /usr/local/bin/dartsturnier-health > /dev/null << 'EOF'
+sudo tee /usr/local/bin/dartsturnier-health > /dev/null << EOF
 #!/bin/bash
-cd /home/ubuntu/dartsturnier
+cd "$INSTALL_DIR/dartsturnier"
 
 SERVICES_OK=0
 SERVICES_TOTAL=0
 
 check_service() {
-    local service=$1
-    SERVICES_TOTAL=$((SERVICES_TOTAL + 1))
-    if sudo systemctl is-active --quiet "$service" 2>/dev/null; then
-        echo "✅ $service: Running"
-        SERVICES_OK=$((SERVICES_OK + 1))
+    local service=\$1
+    SERVICES_TOTAL=\$((SERVICES_TOTAL + 1))
+    if sudo systemctl is-active --quiet "\$service" 2>/dev/null; then
+        echo "✅ \$service: Running"
+        SERVICES_OK=\$((SERVICES_OK + 1))
     else
-        echo "❌ $service: Stopped"
+        echo "❌ \$service: Stopped"
     fi
 }
 
 check_docker_service() {
-    local service=$1
-    SERVICES_TOTAL=$((SERVICES_TOTAL + 1))
-    if docker-compose ps | grep -q "$service.*Up"; then
-        echo "✅ $service: Running"
-        SERVICES_OK=$((SERVICES_OK + 1))
+    local service=\$1
+    SERVICES_TOTAL=\$((SERVICES_TOTAL + 1))
+    if docker-compose ps | grep -q "\$service.*Up"; then
+        echo "✅ \$service: Running"
+        SERVICES_OK=\$((SERVICES_OK + 1))
     else
-        echo "❌ $service: Stopped"
+        echo "❌ \$service: Stopped"
     fi
 }
 
@@ -330,16 +377,16 @@ check_docker_service "app"
 
 if curl -s http://localhost:3000/api/health > /dev/null; then
     echo "✅ Health Check: OK"
-    SERVICES_OK=$((SERVICES_OK + 1))
+    SERVICES_OK=\$((SERVICES_OK + 1))
 else
     echo "❌ Health Check: Failed"
 fi
-SERVICES_TOTAL=$((SERVICES_TOTAL + 1))
+SERVICES_TOTAL=\$((SERVICES_TOTAL + 1))
 
 echo ""
-echo "Services OK: $SERVICES_OK/$SERVICES_TOTAL"
+echo "Services OK: \$SERVICES_OK/\$SERVICES_TOTAL"
 
-if [ $SERVICES_OK -eq $SERVICES_TOTAL ]; then
+if [ \$SERVICES_OK -eq \$SERVICES_TOTAL ]; then
     echo "🎉 All systems operational!"
     exit 0
 else
@@ -361,14 +408,14 @@ echo "🌐 Deine Website: https://$DOMAIN"
 echo "🔐 Admin-Login: https://$DOMAIN/login"
 echo ""
 echo "📧 WICHTIG: Konfiguriere E-Mail für Magic Link Authentication:"
-echo "   Bearbeite: /home/ubuntu/dartsturnier/.env.docker.local"
+echo "   Bearbeite: $INSTALL_DIR/dartsturnier/.env.docker.local"
 echo "   Setze SMTP_USER und SMTP_PASS für Gmail oder deinen Provider"
 echo ""
 echo "🛠️  Verwaltung:"
 echo "   • Status prüfen: dartsturnier-health"
-echo "   • Logs anzeigen: cd /home/ubuntu/dartsturnier && docker-compose logs -f"
+echo "   • Logs anzeigen: cd $INSTALL_DIR/dartsturnier && docker-compose logs -f"
 echo "   • Backup manuell: /etc/cron.daily/dartsturnier-backup"
-echo "   • Services neustarten: cd /home/ubuntu/dartsturnier && docker-compose restart"
+echo "   • Services neustarten: cd $INSTALL_DIR/dartsturnier && docker-compose restart"
 echo ""
 echo "🔒 Sicherheit:"
 echo "   • SSH-Key Authentication aktivieren (empfohlen)"

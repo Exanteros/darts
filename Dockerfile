@@ -19,6 +19,14 @@ COPY . .
 
 # Generiere Prisma Client und baue Next.js App
 RUN npx prisma generate
+
+# Setze temporäre Environment Variables für den Build
+# WICHTIG: Diese müssen VOR dem Build-Befehl gesetzt werden
+ARG NEXTAUTH_SECRET=build-time-placeholder-will-be-overridden-at-runtime
+ARG NEXTAUTH_URL=http://localhost:3000
+ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET
+ENV NEXTAUTH_URL=$NEXTAUTH_URL
+
 RUN npm run build
 
 # Production Stage
