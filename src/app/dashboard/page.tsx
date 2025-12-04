@@ -1,6 +1,6 @@
 "use client";
 
-import { useUserCheck } from '@/hooks/useUserCheck';
+import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import { AppSidebar } from "@/components/app-sidebar"
 import { ChartAreaInteractive } from "@/components/chart-area-interactive"
 import { DataTable } from "@/components/data-table"
@@ -29,25 +29,25 @@ interface TournamentData {
 }
 
 export default function Page() {
-  const { isAdmin, isLoading, isAuthenticated } = useUserCheck();
+  const { isAdmin, hasTournamentAccess, tournamentAccess, isLoading, isAuthenticated } = useTournamentAccess();
   const [dashboardData, setDashboardData] = useState<TournamentData[]>([]);
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated && isAdmin) {
+    if (isAuthenticated && hasTournamentAccess) {
       fetchDashboardData();
     }
     
     const handleUpdate = () => {
-      if (isAuthenticated && isAdmin) {
+      if (isAuthenticated && hasTournamentAccess) {
         fetchDashboardData();
       }
     };
     
     window.addEventListener('tournament-updated', handleUpdate);
     return () => window.removeEventListener('tournament-updated', handleUpdate);
-  }, [isAuthenticated, isAdmin]);
+  }, [isAuthenticated, hasTournamentAccess]);
 
   const fetchDashboardData = async () => {
     try {
@@ -112,8 +112,8 @@ export default function Page() {
     );
   }
 
-  // Zeige Admin-Dashboard nur für Admins
-  if (isAuthenticated && isAdmin) {
+  // Zeige Dashboard für Admins und Benutzer mit Turnier-Zugriff
+  if (isAuthenticated && hasTournamentAccess) {
     if (loading) {
       return (
         <SidebarProvider
@@ -136,8 +136,8 @@ export default function Page() {
       );
     }
 
-    // Show onboarding if no tournament exists
-    if (showOnboarding) {
+    // Show onboarding if no tournament exists (nur für Admins)
+    if (showOnboarding && isAdmin) {
       return <TournamentOnboarding onComplete={() => {
         setShowOnboarding(false);
         fetchDashboardData();

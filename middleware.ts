@@ -13,15 +13,11 @@ export default withAuth(
     const isAdmin = token.role === 'ADMIN';
     const pathname = req.nextUrl.pathname;
 
-    // Weiterleitung von /dashboard basierend auf Rolle
+    // Weiterleitung von /dashboard wird jetzt von der Seite selbst gehandhabt
+    // (nicht mehr automatisch zu /user für Nicht-Admins)
     if (pathname === '/dashboard') {
-      if (isAdmin) {
-        // Admin bleibt auf /dashboard
-        return NextResponse.next();
-      } else {
-        // Normaler Benutzer wird zu /user weitergeleitet
-        return NextResponse.redirect(new URL('/user', req.url));
-      }
+      // Lasse die Seite selbst die Berechtigung prüfen
+      return NextResponse.next();
     }
 
     // Für Admin-only API-Routen zusätzliche Rolle prüfen
