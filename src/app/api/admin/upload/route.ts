@@ -47,8 +47,8 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes);
     await writeFile(filePath, buffer);
 
-    // Return the public URL
-    const fileUrl = `/uploads/logos/${fileName}`;
+    // Return the public URL (via API to bypass static caching issues)
+    const fileUrl = `/api/uploads/logos/${fileName}`;
 
     return NextResponse.json({
       success: true,

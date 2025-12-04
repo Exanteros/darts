@@ -83,6 +83,9 @@ server {
     ssl_certificate /path/to/cert.pem;
     ssl_certificate_key /path/to/key.pem;
 
+    # Upload Size Limit
+    client_max_body_size 10M;
+
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;

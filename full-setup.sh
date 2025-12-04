@@ -289,6 +289,9 @@ server {
     listen 80;
     server_name $DOMAIN www.$DOMAIN;
 
+    # Upload Size Limit
+    client_max_body_size 10M;
+
     # SSE (Server-Sent Events) specific configuration
     location /api/dashboard/tournament/events {
         proxy_pass http://localhost:3000;

@@ -246,6 +246,9 @@ server {
     add_header Referrer-Policy "no-referrer-when-downgrade" always;
     add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
 
+    # Upload Size Limit
+    client_max_body_size 10M;
+
     # Gzip compression
     gzip on;
     gzip_vary on;
