@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
           // Check for status changes
           const currentStatus = tournament.status;
-          const activePlayers = tournament.players.filter(p => p.status === 'ACTIVE');
+          const activePlayers = tournament.players.filter(p => p.status === 'ACTIVE' || p.status === 'CONFIRMED');
           const completedPlayers = tournament.shootoutResults.length;
           const currentShootoutState = tournament.shootoutState?.status || '';
 
@@ -95,9 +95,19 @@ export async function GET(request: NextRequest) {
       // Check for updates every 2 seconds
       const interval = setInterval(checkForUpdates, 2000);
 
+      // Send heartbeat every 15 seconds to keep connection alive
+      const heartbeatInterval = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(': heartbeat\n\n'));
+        } catch (e) {
+          // Ignore errors on heartbeat
+        }
+      }, 15000);
+
       // Clean up on client disconnect
       request.signal.addEventListener('abort', () => {
         clearInterval(interval);
+        clearInterval(heartbeatInterval);
         controller.close();
       });
 

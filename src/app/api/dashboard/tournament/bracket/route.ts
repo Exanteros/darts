@@ -211,7 +211,7 @@ export async function GET() {
       rank: result.rank, boardName: result.board?.name || null, completedAt: result.completedAt
     }));
 
-    const activePlayers = tournament.players.filter(p => p.status === 'ACTIVE');
+    const activePlayers = tournament.players.filter(p => p.status === 'ACTIVE' || p.status === 'CONFIRMED');
     const completedShootouts = shootoutResults.length;
     const totalPlayers = activePlayers.length;
 

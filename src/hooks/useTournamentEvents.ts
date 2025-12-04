@@ -33,6 +33,7 @@ export function useTournamentEvents(tournamentId: string | null) {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (!tournamentId) {
@@ -57,6 +58,11 @@ export function useTournamentEvents(tournamentId: string | null) {
 
     eventSource.onmessage = (event) => {
       try {
+        // Ignore heartbeat messages
+        if (event.data === ': heartbeat') {
+          return;
+        }
+
         const data: TournamentUpdate = JSON.parse(event.data);
         setLastUpdate(data);
 
@@ -65,14 +71,20 @@ export function useTournamentEvents(tournamentId: string | null) {
         }
       } catch (err) {
         console.error('Failed to parse SSE data:', err);
-        setError('Failed to parse server data');
+        // Don't set error for parse failures on heartbeats or empty lines
       }
     };
 
     eventSource.onerror = (event) => {
       setIsConnected(false);
-      setError('Connection lost');
+      setError('Connection lost. Reconnecting...');
       console.error('SSE connection error:', event);
+      eventSource.close();
+      
+      // Retry after 3 seconds
+      setTimeout(() => {
+        setRetryCount(prev => prev + 1);
+      }, 3000);
     };
 
     // Cleanup on unmount or tournamentId change
@@ -81,7 +93,7 @@ export function useTournamentEvents(tournamentId: string | null) {
       eventSourceRef.current = null;
       setIsConnected(false);
     };
-  }, [tournamentId]);
+  }, [tournamentId, retryCount]);
 
   return {
     lastUpdate,

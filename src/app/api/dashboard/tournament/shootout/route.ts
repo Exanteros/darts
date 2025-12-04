@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Erstelle korrekte Seeds basierend auf Shootout-Ergebnissen
-      const activePlayers = tournamentWithPlayers.players.filter(p => p.status === 'ACTIVE');
+      const activePlayers = tournamentWithPlayers.players.filter(p => p.status === 'ACTIVE' || p.status === 'CONFIRMED');
       const shootoutResults = tournamentWithPlayers.shootoutResults;
 
       // Sortiere Spieler nach Shootout-Score (höchster Score = beste Platzierung)
@@ -280,7 +280,7 @@ export async function GET() {
 
     // Mock Shootout-Ergebnisse für Demo
     // In der echten Implementierung würden diese aus der Datenbank kommen
-    const activePlayers = tournament.players.filter(p => p.status === 'ACTIVE');
+    const activePlayers = tournament.players.filter(p => p.status === 'ACTIVE' || p.status === 'CONFIRMED');
     const shootoutResults = await prisma.shootoutResult.findMany({
       where: { tournamentId: tournament.id },
       include: { player: true }
