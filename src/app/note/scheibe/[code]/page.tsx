@@ -12,6 +12,11 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 
 // --- STATE-DEFINITION ---
 
+interface ThrowDart {
+  value: number;
+  multiplier: number;
+}
+
 interface GameState {
   player1: {
     name: string;
@@ -72,7 +77,7 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
 
   // Game State
   const [gameState, setGameState] = useState<GameState>(initialGameState);
-  const [currentThrow, setCurrentThrow] = useState<number[]>([]);
+  const [currentThrow, setCurrentThrow] = useState<ThrowDart[]>([]);
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
   
   // Tournament State
@@ -481,7 +486,7 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
     } catch (error) { console.error(error); }
   };
 
-  const updateCurrentThrowDisplay = async (darts: number[]) => {
+  const updateCurrentThrowDisplay = async (darts: ThrowDart[]) => {
     if (!currentGame?.id) return;
     try {
       await fetch('/api/game/current-throw', {
@@ -489,9 +494,9 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           gameId: currentGame.id,
-          darts: darts,
+          darts: darts.map(d => d.value),
           player: gameState.currentPlayer,
-          score: darts.reduce((sum, d) => sum + d, 0)
+          score: darts.reduce((sum, d) => sum + d.value, 0)
         })
       });
     } catch (error) { console.error(error); }
@@ -506,10 +511,10 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
 
   // --- GAME ACTIONS ---
 
-  const addDart = (baseNumber: number, mult: 1 | 2 | 3) => {
+  const addDart = (baseNumber: number, mult: 0 | 1 | 2 | 3) => {
     if (currentThrow.length < 3 && gameState.gameStatus === "active") {
       const dartValue = baseNumber * mult;
-      const newThrow = [...currentThrow, dartValue];
+      const newThrow = [...currentThrow, { value: dartValue, multiplier: mult }];
       setCurrentThrow(newThrow);
       setSelectedNumber(null);
       updateCurrentThrowDisplay(newThrow);
@@ -524,12 +529,12 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
 
   const submitThrow = async () => {
     if (currentThrow.length !== 3 || gameState.gameStatus !== "active") return;
-    const throwTotal = currentThrow.reduce((sum, dart) => sum + dart, 0);
+    const throwTotal = currentThrow.reduce((sum, dart) => sum + dart.value, 0);
 
     if (gameState.isShootout) {
       setGameState(prev => {
         const newState = { ...prev };
-        newState.shootoutThrows.push({ player: prev.currentPlayer, darts: [...currentThrow], total: throwTotal });
+        newState.shootoutThrows.push({ player: prev.currentPlayer, darts: currentThrow.map(d => d.value), total: throwTotal });
         const player = `player${prev.currentPlayer}` as "player1" | "player2";
         newState[player] = {
           ...newState[player],
@@ -547,7 +552,12 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
     } else {
       // 501 Logic
       const newScore = currentPlayerData.score - throwTotal;
-      const isBust = newScore < 0 || (newScore === 1) || (newScore === 0 && currentThrow[currentThrow.length - 1] % 2 !== 0);
+      const lastDart = currentThrow[currentThrow.length - 1];
+      
+      // Double Out Check: Must reach 0 exactly, and last dart must be a double (multiplier 2)
+      // Exception: Bullseye (50) is considered a double for checkout.
+      const isDoubleOut = lastDart.multiplier === 2 || lastDart.value === 50;
+      const isBust = newScore < 0 || (newScore === 1) || (newScore === 0 && !isDoubleOut);
 
       setGameState(prev => {
         const newState = { ...prev };
@@ -588,7 +598,7 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
 
         newState.throws.push({
           player: prev.currentPlayer,
-          darts: [...currentThrow],
+          darts: currentThrow.map(d => d.value),
           total: throwTotal,
           remaining: isBust ? currentPlayerData.score : newScore,
           leg: prev.currentLeg
@@ -609,9 +619,9 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
             body: JSON.stringify({
               gameId: currentGame.id,
               playerId: gameState.currentPlayer === 1 ? currentGame.player1Id : currentGame.player2Id,
-              dart1: currentThrow[0] || 0,
-              dart2: currentThrow[1] || 0,
-              dart3: currentThrow[2] || 0,
+              dart1: currentThrow[0]?.value || 0,
+              dart2: currentThrow[1]?.value || 0,
+              dart3: currentThrow[2]?.value || 0,
               score: isBust ? 0 : throwTotal
             })
           });
@@ -635,7 +645,7 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
           },
           throw: {
             player: gameState.currentPlayer,
-            darts: currentThrow,
+            darts: currentThrow.map(d => d.value),
             total: throwTotal,
             newScore: isBust ? currentPlayerData.score : newScore,
             isBust
@@ -988,7 +998,7 @@ const PlayerOverview: FC<PlayerOverviewProps> = ({ gameState, tournamentStatus }
 
 interface CurrentTurnProps {
   gameState: GameState;
-  currentThrow: number[];
+  currentThrow: ThrowDart[];
   currentPlayerData: GameState['player1'];
   onSubmitThrow: () => void;
   onClearThrow: () => void;
@@ -1023,14 +1033,14 @@ const CurrentTurn: FC<CurrentTurnProps> = ({ gameState, currentThrow, currentPla
                   : "border-slate-100 bg-slate-50 text-slate-300"
               }`}
             >
-              {currentThrow[i] !== undefined ? currentThrow[i] : (i + 1)}
+              {currentThrow[i] !== undefined ? currentThrow[i].value : (i + 1)}
             </div>
           ))}
         </div>
 
         <div className="space-y-1 text-center">
           <div className="text-4xl font-bold font-mono text-slate-900 tracking-tight">
-            {currentThrow.length > 0 ? currentThrow.reduce((sum, dart) => sum + dart, 0) : 0}
+            {currentThrow.length > 0 ? currentThrow.reduce((sum, dart) => sum + dart.value, 0) : 0}
           </div>
           <div className="text-sm text-slate-400 font-medium uppercase tracking-wider">
             Gesamtpunkte
@@ -1064,7 +1074,7 @@ interface DartboardInputProps {
   dartboardNumbers: number[];
   selectedNumber: number | null;
   onSetSelectedNumber: (num: number | null) => void;
-  onAddDart: (base: number, mult: 1 | 2 | 3) => void;
+  onAddDart: (base: number, mult: 0 | 1 | 2 | 3) => void;
   currentThrowLength: number;
   gameStatus: "active" | "finished";
   className?: string;
@@ -1105,8 +1115,15 @@ const DartboardInput: FC<DartboardInputProps> = ({
           ))}
       </div>
 
-      {/* Bulls Row */}
+      {/* Bulls Row & Miss */}
       <div className="flex gap-2 h-16 shrink-0">
+        <Button
+          className="flex-1 h-full font-bold text-xl rounded-lg touch-manipulation transition-all bg-slate-100 text-slate-500 hover:bg-slate-200 border-2 border-slate-200"
+          onClick={() => onAddDart(0, 0)}
+          disabled={currentThrowLength >= 3 || gameStatus !== "active"}
+        >
+          MISS
+        </Button>
         <Button
           className={`flex-1 h-full font-bold text-xl rounded-lg touch-manipulation transition-all ${
              selectedNumber === 25 
@@ -1187,7 +1204,7 @@ const GameHistory: FC<GameHistoryProps> = ({ gameState, className = '' }) => {
 interface MultiplierDialogProps {
   selectedNumber: number | null;
   onSetSelectedNumber: (num: number | null) => void;
-  onAddDart: (base: number, mult: 1 | 2 | 3) => void;
+  onAddDart: (base: number, mult: 0 | 1 | 2 | 3) => void;
   currentThrowLength: number;
 }
 
