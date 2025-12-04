@@ -1,6 +1,6 @@
 "use client";
 
-import { useUserCheck } from '@/hooks/useUserCheck';
+import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import {
@@ -192,7 +192,7 @@ function UploadedImagesList() {
 }
 
 export default function TournamentPage() {
-  const { isAdmin, isLoading, isAuthenticated } = useUserCheck();
+  const { isAdmin, hasTournamentAccess, tournamentAccess, isLoading, isAuthenticated } = useTournamentAccess();
   const [boards, setBoards] = useState<DartBoard[]>([]);
   const [settings, setSettings] = useState<TournamentSettings>({
     id: undefined,
@@ -239,13 +239,19 @@ export default function TournamentPage() {
   });
   const { toast } = useToast();
 
+  // Prüfe Berechtigung für Turnier-Management
+  const canManageTournaments = isAdmin || tournamentAccess.some(access => {
+    const permissions = JSON.parse(access.permissions || '{}');
+    return permissions.games?.create === true || permissions.bracket?.edit === true;
+  });
+
   useEffect(() => {
-    if (isAuthenticated && isAdmin) {
+    if (isAuthenticated && canManageTournaments) {
       fetchBoards();
       fetchSettings();
       fetchBracketConfig();
     }
-  }, [isAuthenticated, isAdmin]);
+  }, [isAuthenticated, canManageTournaments]);
 
   const fetchBoards = async () => {
     try {

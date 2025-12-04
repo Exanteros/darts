@@ -34,6 +34,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { useTournamentAccess } from "@/hooks/useTournamentAccess"
 
 interface Board {
   id: string;
@@ -75,6 +76,7 @@ function DynamicLogo() {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { isAdmin, hasTournamentAccess, tournamentAccess, isAuthenticated } = useTournamentAccess();
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<{ name: string; email: string; role: string } | null>(null);
@@ -119,6 +121,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     loadUser();
   }, []);
 
+  // Hilfsfunktionen für Berechtigung prüfen
+  const hasPermission = (category: string, action: string) => {
+    if (isAdmin) return true;
+    return tournamentAccess.some(access => {
+      const permissions = JSON.parse(access.permissions || '{}');
+      return permissions[category]?.[action] === true;
+    });
+  };
+
+  const canManageTournaments = hasPermission('bracket', 'edit') || hasPermission('games', 'create') || isAdmin;
+  const canViewPlayers = hasPermission('players', 'view');
+  const canViewStats = hasPermission('dashboard', 'viewStats');
+  const canManageSettings = hasPermission('settings', 'viewGeneral') || isAdmin;
+  const canManageAccess = isAdmin; // Nur Admins können Benutzerverwaltung machen
+  const canSendMail = hasPermission('mail', 'send') || isAdmin;
+  const canViewLive = hasPermission('live', 'view');
+  const canUseSearch = hasPermission('search', 'use');
+
   const data = {
     user: {
       name: currentUser?.name || "FW Puschendorf",
@@ -126,47 +146,61 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       avatar: "/LogoFW-Pudo2013-.png",
     },
     navMain: [
-      {
+      // Dashboard - immer verfügbar wenn Zugriff
+      ...(hasTournamentAccess ? [{
         title: "Dashboard",
         url: "/dashboard",
         icon: IconDashboard,
-      },
-      {
+      }] : []),
+      
+      // Turnier-Verwaltung - wenn Turnier-Management Berechtigung
+      ...(canManageTournaments ? [{
         title: "Turnier-Verwaltung",
         url: "/dashboard/tournament",
         icon: IconTrophy,
         iconColor: "text-amber-600",
-      },
-      {
+      }] : []),
+      
+      // Turnierbaum - wenn Bracket-Berechtigung
+      ...(hasPermission('bracket', 'view') ? [{
         title: "Turnierbaum",
         url: "/dashboard/tournament/bracket",
         icon: IconListDetails,
-      },
-      {
+      }] : []),
+      
+      // Live-Überwachung - wenn Live-Berechtigung
+      ...(canViewLive ? [{
         title: "Live-Überwachung",
         url: "/dashboard/live",
         icon: IconActivity,
-      },
-      {
+      }] : []),
+      
+      // Spieler-Verwaltung - wenn Player-Berechtigung
+      ...(canViewPlayers ? [{
         title: "Spieler-Verwaltung",
         url: "/dashboard/players",
         icon: IconUsers,
         iconColor: "text-blue-600",
-      },
-      {
+      }] : []),
+      
+      // Statistiken - wenn Stats-Berechtigung
+      ...(canViewStats ? [{
         title: "Statistiken",
         url: "/dashboard/stats",
         icon: IconChartBar,
-      },
-      {
+      }] : []),
+      
+      // E-Mail Verwaltung - wenn Mail-Berechtigung
+      ...(canSendMail ? [{
         title: "E-Mail Verwaltung",
         url: "/dashboard/mail",
         icon: IconMail,
         iconColor: "text-green-600",
-      },
+      }] : []),
     ],
     navClouds: [
-      {
+      // Scheiben-Verwaltung - wenn Board-Berechtigung
+      ...(hasPermission('boards', 'view') ? [{
         title: "Scheiben-Verwaltung",
         icon: IconShield,
         isActive: true,
@@ -180,8 +214,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           title: `${board.name} (Broadcast)`,
           url: `/display/scheibe/${board.accessCode}`,
         })),
-      },
-      {
+      }] : []),
+      
+      // Eingabe-Interfaces - wenn Board-Berechtigung
+      ...(hasPermission('boards', 'view') ? [{
         title: "Eingabe-Interfaces",
         icon: IconListDetails,
         url: "#",
@@ -194,24 +230,31 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           title: `${board.name} Eingabe`,
           url: `/note/scheibe/${board.accessCode}`,
         })),
-      },
+      }] : []),
     ],
     navSecondary: [
-      {
+      // Suche - wenn Search-Berechtigung
+      ...(canUseSearch ? [{
         title: "Suche",
         url: "/dashboard/search",
         icon: IconSearch,
-      },
-      {
+      }] : []),
+      
+      // Benutzerverwaltung - nur für Admins
+      ...(canManageAccess ? [{
         title: "Benutzerverwaltung",
         url: "/dashboard/access",
         icon: IconShield,
-      },
-      {
+      }] : []),
+      
+      // Einstellungen - wenn Settings-Berechtigung
+      ...(canManageSettings ? [{
         title: "Einstellungen",
         url: "/dashboard/settings",
         icon: IconSettings,
-      },
+      }] : []),
+      
+      // Hilfe - immer verfügbar
       {
         title: "Hilfe",
         url: "/dashboard/help",
