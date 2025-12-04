@@ -33,7 +33,7 @@ export async function GET(
     else if (ext === 'svg') contentType = 'image/svg+xml';
     else if (ext === 'webp') contentType = 'image/webp';
 
-    return new Response(fileBuffer, {
+    return new Response(fileBuffer as unknown as BodyInit, {
       headers: {
         'Content-Type': contentType,
         'Cache-Control': 'public, max-age=31536000, immutable',
