@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { broadcastGameReset } from '@/lib/websocketBroadcast';
+import { Prisma } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
         startedAt: new Date(),
         finishedAt: null,
         winnerId: null,
-        currentThrow: null
+        currentThrow: Prisma.DbNull
       },
       include: {
         player1: true,
