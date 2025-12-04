@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const isGlobalAdmin = session.user.role === 'ADMIN';
 
     // Prüfe Turnier-Zugriff falls kein globaler Admin
-    let tournamentAccess = [];
+    let tournamentAccess: any[] = [];
     if (!isGlobalAdmin) {
       tournamentAccess = await prisma.tournamentAccess.findMany({
         where: { userId },
@@ -164,7 +164,7 @@ export async function PATCH(request: NextRequest) {
     const isGlobalAdmin = session.user.role === 'ADMIN';
 
     // Prüfe Turnier-Zugriff falls kein globaler Admin
-    let tournamentAccess = [];
+    let tournamentAccess: any[] = [];
     if (!isGlobalAdmin) {
       tournamentAccess = await prisma.tournamentAccess.findMany({
         where: { userId },

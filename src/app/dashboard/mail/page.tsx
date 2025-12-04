@@ -42,7 +42,22 @@ interface Template {
   description: string;
 }
 
+import { useTournamentAccess } from '@/hooks/useTournamentAccess';
+import { ShieldAlert } from "lucide-react";
+
 export default function MailPage() {
+  const { isAdmin, hasTournamentAccess, tournamentAccess, isLoading, isAuthenticated } = useTournamentAccess();
+
+  const canSendMail = isAdmin || tournamentAccess.some(access => {
+    const permissions = JSON.parse(access.permissions || '{}');
+    return permissions.mail?.send === true;
+  });
+
+  const canEditTemplates = isAdmin || tournamentAccess.some(access => {
+    const permissions = JSON.parse(access.permissions || '{}');
+    return permissions.mail?.manageTemplates === true;
+  });
+
   const [templates, setTemplates] = useState<Template[]>([])
   const [isSending, setIsSending] = useState(false)
   const [recipientType, setRecipientType] = useState("all")
@@ -86,43 +101,45 @@ export default function MailPage() {
   }, [subject, message, recipientType])
 
   useEffect(() => {
-    const fetchTemplates = async () => {
-      try {
-        const response = await fetch('/api/admin/mail/templates');
-        if (response.ok) {
-          const data = await response.json();
-          setTemplates(data);
+    if (isAuthenticated && canSendMail) {
+      const fetchTemplates = async () => {
+        try {
+          const response = await fetch('/api/admin/mail/templates');
+          if (response.ok) {
+            const data = await response.json();
+            setTemplates(data);
+          }
+        } catch (error) {
+          console.error("Failed to fetch templates", error);
         }
-      } catch (error) {
-        console.error("Failed to fetch templates", error);
-      }
-    };
-    fetchTemplates();
-    
-    const loadSmtpSettings = async () => {
-      try {
-        const response = await fetch('/api/admin/mail/settings', {
-          credentials: 'include'
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setSmtpSettings({
-            host: data.host || "",
-            port: data.port || "",
-            user: data.user || "",
-            from: data.from || ""
+      };
+      fetchTemplates();
+      
+      const loadSmtpSettings = async () => {
+        try {
+          const response = await fetch('/api/admin/mail/settings', {
+            credentials: 'include'
           });
-        } else {
-          console.error('Failed to load SMTP settings:', response.status);
+          if (response.ok) {
+            const data = await response.json();
+            setSmtpSettings({
+              host: data.host || "",
+              port: data.port || "",
+              user: data.user || "",
+              from: data.from || ""
+            });
+          } else {
+            console.error('Failed to load SMTP settings:', response.status);
+          }
+        } catch (error) {
+          console.error('Error loading SMTP settings:', error);
+        } finally {
+          setLoadingSettings(false);
         }
-      } catch (error) {
-        console.error('Error loading SMTP settings:', error);
-      } finally {
-        setLoadingSettings(false);
-      }
-    };
-    loadSmtpSettings();
-  }, []);
+      };
+      loadSmtpSettings();
+    }
+  }, [isAuthenticated, canSendMail]);
 
   useEffect(() => {
     if (editingTemplate) {
@@ -334,6 +351,33 @@ export default function MailPage() {
       setTesting(false);
     }
   };
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Laden...</div>;
+  }
+
+  if (!canSendMail) {
+    return (
+      <SidebarProvider>
+        <AppSidebar variant="inset" />
+        <SidebarInset>
+          <SiteHeader />
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+            <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
+              <div className="p-4 rounded-full bg-red-100 text-red-600">
+                <ShieldAlert className="w-12 h-12" />
+              </div>
+              <h2 className="text-2xl font-bold">Zugriff verweigert</h2>
+              <p className="text-muted-foreground text-center max-w-md">
+                Sie haben keine Berechtigung, E-Mails zu versenden.
+                Bitte wenden Sie sich an einen Administrator.
+              </p>
+            </div>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    );
+  }
 
   return (
     <SidebarProvider>

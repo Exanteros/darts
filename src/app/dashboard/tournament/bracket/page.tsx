@@ -1,7 +1,7 @@
 // @ts-nocheck
 "use client";
 
-import { useUserCheck } from '@/hooks/useUserCheck';
+import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import { useTournamentEvents } from '@/hooks/useTournamentEvents';
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
@@ -30,7 +30,8 @@ import {
   Search,
   Filter,
   RotateCcw,
-  Maximize
+  Maximize,
+  ShieldAlert
 } from 'lucide-react';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -136,7 +137,7 @@ interface SimpleBracketMatch {
 }
 
 export default function TournamentBracket() {
-  const { isAdmin, isLoading, isAuthenticated } = useUserCheck();
+  const { isAdmin, hasTournamentAccess, tournamentAccess, isLoading, isAuthenticated } = useTournamentAccess();
   const [games, setGames] = useState<Game[]>([]);
   const [boards, setBoards] = useState<Board[]>([]);
   const [tournament, setTournament] = useState<Tournament | null>(null);
@@ -157,6 +158,22 @@ export default function TournamentBracket() {
   const [shootoutLoading, setShootoutLoading] = useState(false);
   const [selectedShootoutBoard, setSelectedShootoutBoard] = useState<string>('');
   const [debugInfo, setDebugInfo] = useState<string>('');
+
+  // Prüfe Berechtigung für Bracket
+  const canViewBracket = isAdmin || tournamentAccess.some(access => {
+    const permissions = JSON.parse(access.permissions || '{}');
+    return permissions.bracket?.view === true;
+  });
+
+  const canEditBracket = isAdmin || tournamentAccess.some(access => {
+    const permissions = JSON.parse(access.permissions || '{}');
+    return permissions.bracket?.edit === true;
+  });
+
+  const canManageShootout = isAdmin || tournamentAccess.some(access => {
+    const permissions = JSON.parse(access.permissions || '{}');
+    return permissions.shootout?.manage === true;
+  });
 
   const showDebugInfo = async () => {
     try {
@@ -307,7 +324,7 @@ export default function TournamentBracket() {
 
   // Legacy polling - keep as fallback but reduce frequency
   useEffect(() => {
-    if (tournament?.status === 'SHOOTOUT') {
+    if (tournament?.status === 'SHOOTOUT' && canManageShootout) {
       // Poll more frequently when shootout is active
       const pollInterval = currentShootoutPlayer ? 2000 : 5000; // 2s when player active, 5s otherwise
 
@@ -317,7 +334,7 @@ export default function TournamentBracket() {
 
       return () => clearInterval(interval);
     }
-  }, [tournament?.status, currentShootoutPlayer]);
+  }, [tournament?.status, currentShootoutPlayer, canManageShootout]);
 
   // Show popup ONLY ONCE for the FIRST player in the shootout
   useEffect(() => {
@@ -540,12 +557,12 @@ export default function TournamentBracket() {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && canViewBracket) {
       fetchTournamentData();
       const interval = setInterval(fetchTournamentData, 5000);
       return () => clearInterval(interval);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, canViewBracket]);
 
   // Drag & Drop Handler
   const handleDragEnd = (result: any) => {
@@ -1796,7 +1813,7 @@ export default function TournamentBracket() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !canViewBracket) {
     return (
       <SidebarProvider
         style={
@@ -1810,7 +1827,7 @@ export default function TournamentBracket() {
         <SidebarInset>
           <SiteHeader />
           <div className="flex flex-1 flex-col items-center justify-center">
-            <p className="text-muted-foreground">Nicht angemeldet</p>
+            <p className="text-muted-foreground">Zugriff verweigert</p>
           </div>
         </SidebarInset>
       </SidebarProvider>
@@ -1929,6 +1946,33 @@ export default function TournamentBracket() {
         );
     }
   };
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Laden...</div>;
+  }
+
+  if (!canViewBracket) {
+    return (
+      <SidebarProvider>
+        <AppSidebar variant="inset" />
+        <SidebarInset>
+          <SiteHeader />
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+            <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
+              <div className="p-4 rounded-full bg-red-100 text-red-600">
+                <ShieldAlert className="w-12 h-12" />
+              </div>
+              <h2 className="text-2xl font-bold">Zugriff verweigert</h2>
+              <p className="text-muted-foreground text-center max-w-md">
+                Sie haben keine Berechtigung, den Turnierbaum zu sehen.
+                Bitte wenden Sie sich an einen Administrator.
+              </p>
+            </div>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    );
+  }
 
   return (
     <SidebarProvider
