@@ -81,7 +81,9 @@ export default function DisplayBoard({ params }: { params: Promise<{ code: strin
 
   // Connection Status für UI-Feedback
   const { isConnected, sendMessage } = useWebSocket({
-    url: typeof window !== 'undefined' ? `ws://${window.location.hostname}:3001` : 'ws://localhost:3001',
+    url: typeof window !== 'undefined' 
+      ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/websocket`
+      : 'ws://localhost:3001',
     onMessage: (data) => {
       if (['game-update', 'throw-update', 'game-reset'].includes(data.type)) {
         setRefreshTrigger(prev => prev + 1);

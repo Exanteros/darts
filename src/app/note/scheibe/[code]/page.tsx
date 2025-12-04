@@ -102,7 +102,9 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
   
   // WebSocket für Game-Updates an Display
   const { sendMessage: sendGameUpdate, isConnected: wsConnected } = useWebSocket({
-    url: typeof window !== 'undefined' ? `ws://${window.location.hostname}:3001` : 'ws://localhost:3001',
+    url: typeof window !== 'undefined' 
+      ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/websocket`
+      : 'ws://localhost:3001',
     onConnect: () => {
       console.log('🎯 Note/Scheibe: WebSocket verbunden');
     }
