@@ -55,6 +55,21 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Überprüfe Zahlungsstatus
+    const settings = await prisma.tournamentSettings.findUnique({
+      where: { id: 'default' }
+    });
+    
+    const stripeEnabled = settings?.stripeEnabled ?? false;
+
+    // Wenn Stripe aktiviert ist und das Turnier etwas kostet, muss eine Zahlung vorliegen
+    if (tournament.entryFee > 0 && stripeEnabled && !paymentIntentId) {
+      return NextResponse.json({
+        success: false,
+        message: 'Zahlung erforderlich. Bitte schließen Sie den Bezahlvorgang ab.'
+      }, { status: 400 });
+    }
+
     // Überprüfe, ob bereits ein Benutzer mit dieser E-Mail existiert
     let user = await prisma.user.findUnique({
       where: { email }
