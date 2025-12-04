@@ -511,35 +511,19 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
 
   // --- GAME ACTIONS ---
 
-  const addDart = (baseNumber: number, mult: 0 | 1 | 2 | 3) => {
-    if (currentThrow.length < 3 && gameState.gameStatus === "active") {
-      const dartValue = baseNumber * mult;
-      const newThrow = [...currentThrow, { value: dartValue, multiplier: mult }];
-      setCurrentThrow(newThrow);
-      setSelectedNumber(null);
-      updateCurrentThrowDisplay(newThrow);
-    }
-  };
-
-  const clearThrow = () => {
-    setCurrentThrow([]);
-    setSelectedNumber(null);
-    clearCurrentThrowDisplay();
-  };
-
-  const submitThrow = async () => {
-    if (currentThrow.length !== 3 || gameState.gameStatus !== "active") return;
-    const throwTotal = currentThrow.reduce((sum, dart) => sum + dart.value, 0);
+  const processThrow = async (dartsToProcess: ThrowDart[]) => {
+    if (gameState.gameStatus !== "active") return;
+    const throwTotal = dartsToProcess.reduce((sum, dart) => sum + dart.value, 0);
 
     if (gameState.isShootout) {
       setGameState(prev => {
         const newState = { ...prev };
-        newState.shootoutThrows.push({ player: prev.currentPlayer, darts: currentThrow.map(d => d.value), total: throwTotal });
+        newState.shootoutThrows.push({ player: prev.currentPlayer, darts: dartsToProcess.map(d => d.value), total: throwTotal });
         const player = `player${prev.currentPlayer}` as "player1" | "player2";
         newState[player] = {
           ...newState[player],
           score: newState[player].score + throwTotal,
-          totalDarts: newState[player].totalDarts + currentThrow.length
+          totalDarts: newState[player].totalDarts + dartsToProcess.length
         };
         
         const totalDartsThrown = newState.shootoutThrows.filter(t => t.player === 1).reduce((sum, t) => sum + t.darts.length, 0);
@@ -552,22 +536,28 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
     } else {
       // 501 Logic
       const newScore = currentPlayerData.score - throwTotal;
-      const lastDart = currentThrow[currentThrow.length - 1];
+      const lastDart = dartsToProcess[dartsToProcess.length - 1];
       
       // Double Out Check: Must reach 0 exactly, and last dart must be a double (multiplier 2)
       // Exception: Bullseye (50) is considered a double for checkout.
       const isDoubleOut = lastDart.multiplier === 2 || lastDart.value === 50;
+      const isCheckout = newScore === 0 && isDoubleOut;
       const isBust = newScore < 0 || (newScore === 1) || (newScore === 0 && !isDoubleOut);
+
+      // Validation for 501: Enforce 3 darts unless checkout or bust
+      if (dartsToProcess.length < 3 && !isCheckout && !isBust) {
+          return;
+      }
 
       setGameState(prev => {
         const newState = { ...prev };
         const player = `player${prev.currentPlayer}` as "player1" | "player2";
 
         if (isBust) {
-          newState[player].totalDarts += currentThrow.length;
+          newState[player].totalDarts += dartsToProcess.length;
         } else {
           newState[player].score = newScore;
-          newState[player].totalDarts += currentThrow.length;
+          newState[player].totalDarts += dartsToProcess.length;
           
           if (newScore === 0) {
             newState[player].legs += 1;
@@ -598,7 +588,7 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
 
         newState.throws.push({
           player: prev.currentPlayer,
-          darts: currentThrow.map(d => d.value),
+          darts: dartsToProcess.map(d => d.value),
           total: throwTotal,
           remaining: isBust ? currentPlayerData.score : newScore,
           leg: prev.currentLeg
@@ -619,9 +609,9 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
             body: JSON.stringify({
               gameId: currentGame.id,
               playerId: gameState.currentPlayer === 1 ? currentGame.player1Id : currentGame.player2Id,
-              dart1: currentThrow[0]?.value || 0,
-              dart2: currentThrow[1]?.value || 0,
-              dart3: currentThrow[2]?.value || 0,
+              dart1: dartsToProcess[0]?.value || 0,
+              dart2: dartsToProcess[1]?.value || 0,
+              dart3: dartsToProcess[2]?.value || 0,
               score: isBust ? 0 : throwTotal
             })
           });
@@ -645,7 +635,7 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
           },
           throw: {
             player: gameState.currentPlayer,
-            darts: currentThrow.map(d => d.value),
+            darts: dartsToProcess.map(d => d.value),
             total: throwTotal,
             newScore: isBust ? currentPlayerData.score : newScore,
             isBust
@@ -655,6 +645,37 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
       }
     }
 
+    setCurrentThrow([]);
+    setSelectedNumber(null);
+    clearCurrentThrowDisplay();
+  };
+
+  const submitThrow = () => processThrow(currentThrow);
+
+  const addDart = (baseNumber: number, mult: 0 | 1 | 2 | 3) => {
+    if (currentThrow.length >= 3 || gameState.gameStatus !== "active") return;
+
+    const dartValue = baseNumber * mult;
+    const newDart = { value: dartValue, multiplier: mult };
+    const newThrow = [...currentThrow, newDart];
+    
+    // Check checkout
+    const total = newThrow.reduce((s, d) => s + d.value, 0);
+    const rem = currentPlayerData.score - total;
+    const last = newThrow[newThrow.length - 1];
+    const isDoubleOut = last.multiplier === 2 || last.value === 50;
+    const isCheckout = rem === 0 && isDoubleOut;
+    
+    if (isCheckout && !gameState.isShootout) {
+        processThrow(newThrow);
+    } else {
+        setCurrentThrow(newThrow);
+        setSelectedNumber(null);
+        updateCurrentThrowDisplay(newThrow);
+    }
+  };
+
+  const clearThrow = () => {
     setCurrentThrow([]);
     setSelectedNumber(null);
     clearCurrentThrowDisplay();
