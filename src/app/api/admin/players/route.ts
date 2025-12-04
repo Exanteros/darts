@@ -8,11 +8,38 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user || session.user.role !== 'ADMIN') {
+    if (!session?.user) {
       return NextResponse.json(
         { error: 'Nicht autorisiert' },
         { status: 401 }
       );
+    }
+
+    const userId = session.user.id;
+    const isGlobalAdmin = session.user.role === 'ADMIN';
+
+    // Prüfe Turnier-Zugriff falls kein globaler Admin
+    let tournamentAccess = [];
+    if (!isGlobalAdmin) {
+      tournamentAccess = await prisma.tournamentAccess.findMany({
+        where: { userId },
+        include: {
+          tournament: { select: { id: true, name: true } }
+        }
+      });
+
+      // Prüfe ob der Benutzer irgendeine Turnier-Berechtigung für players.view hat
+      const hasPlayerViewAccess = tournamentAccess.some(access => {
+        const permissions = JSON.parse(access.permissions || '{}');
+        return permissions.players?.view === true;
+      });
+
+      if (!hasPlayerViewAccess) {
+        return NextResponse.json(
+          { error: 'Keine Berechtigung für Spieler-Verwaltung' },
+          { status: 403 }
+        );
+      }
     }
 
     const { searchParams } = new URL(request.url);
@@ -25,7 +52,12 @@ export async function GET(request: NextRequest) {
     // Basis-Query für TournamentPlayer
     let whereClause: any = {};
 
-    if (tournamentId) {
+    // Wenn kein globaler Admin, filtere nach Turnieren, auf die der Benutzer Zugriff hat
+    if (!isGlobalAdmin && tournamentAccess.length > 0) {
+      whereClause.tournamentId = {
+        in: tournamentAccess.map(access => access.tournamentId)
+      };
+    } else if (tournamentId) {
       whereClause.tournamentId = tournamentId;
     }
 
@@ -121,11 +153,38 @@ export async function PATCH(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user || session.user.role !== 'ADMIN') {
+    if (!session?.user) {
       return NextResponse.json(
         { error: 'Nicht autorisiert' },
         { status: 401 }
       );
+    }
+
+    const userId = session.user.id;
+    const isGlobalAdmin = session.user.role === 'ADMIN';
+
+    // Prüfe Turnier-Zugriff falls kein globaler Admin
+    let tournamentAccess = [];
+    if (!isGlobalAdmin) {
+      tournamentAccess = await prisma.tournamentAccess.findMany({
+        where: { userId },
+        include: {
+          tournament: { select: { id: true, name: true } }
+        }
+      });
+
+      // Prüfe ob der Benutzer irgendeine Turnier-Berechtigung für players.edit hat
+      const hasPlayerEditAccess = tournamentAccess.some(access => {
+        const permissions = JSON.parse(access.permissions || '{}');
+        return permissions.players?.edit === true;
+      });
+
+      if (!hasPlayerEditAccess) {
+        return NextResponse.json(
+          { error: 'Keine Berechtigung zum Bearbeiten von Spielern' },
+          { status: 403 }
+        );
+      }
     }
 
     const body = await request.json();
@@ -136,6 +195,21 @@ export async function PATCH(request: NextRequest) {
         { error: 'PlayerId und Updates erforderlich' },
         { status: 400 }
       );
+    }
+
+    // Prüfe ob der Spieler zu einem Turnier gehört, auf das der Benutzer Zugriff hat
+    if (!isGlobalAdmin) {
+      const player = await prisma.tournamentPlayer.findUnique({
+        where: { id: playerId },
+        select: { tournamentId: true }
+      });
+
+      if (!player || !tournamentAccess.some(access => access.tournamentId === player.tournamentId)) {
+        return NextResponse.json(
+          { error: 'Keine Berechtigung für dieses Turnier' },
+          { status: 403 }
+        );
+      }
     }
 
     // Spieler aktualisieren

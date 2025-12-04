@@ -1,6 +1,6 @@
 "use client";
 
-import { useUserCheck } from '@/hooks/useUserCheck';
+import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { PlayerStatisticsCard } from '@/components/player-statistics-card';
@@ -111,7 +111,7 @@ interface PlayerStats {
 }
 
 export default function PlayersPage() {
-  const { isAdmin, isLoading, isAuthenticated } = useUserCheck();
+  const { isAdmin, hasTournamentAccess, tournamentAccess, isLoading, isAuthenticated } = useTournamentAccess();
   const [players, setPlayers] = useState<Player[]>([]);
   const [stats, setStats] = useState<PlayerStats>({ total: 0 });
   const [loading, setLoading] = useState(true);
@@ -126,11 +126,32 @@ export default function PlayersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const { toast } = useToast();
 
+  // Prüfe Berechtigung für Spieler-Verwaltung
+  const canViewPlayers = isAdmin || tournamentAccess.some(access => {
+    const permissions = JSON.parse(access.permissions || '{}');
+    return permissions.players?.view === true;
+  });
+
+  const canEditPlayers = isAdmin || tournamentAccess.some(access => {
+    const permissions = JSON.parse(access.permissions || '{}');
+    return permissions.players?.edit === true;
+  });
+
+  const canCreatePlayers = isAdmin || tournamentAccess.some(access => {
+    const permissions = JSON.parse(access.permissions || '{}');
+    return permissions.players?.create === true;
+  });
+
+  const canDeletePlayers = isAdmin || tournamentAccess.some(access => {
+    const permissions = JSON.parse(access.permissions || '{}');
+    return permissions.players?.delete === true;
+  });
+
   useEffect(() => {
-    if (isAuthenticated && isAdmin) {
+    if (isAuthenticated && canViewPlayers) {
       fetchPlayers();
     }
-  }, [isAuthenticated, isAdmin, searchTerm, statusFilter, tournamentFilter, currentPage]);
+  }, [isAuthenticated, canViewPlayers, searchTerm, statusFilter, tournamentFilter, currentPage]);
 
   const fetchPlayers = async () => {
     try {
@@ -373,8 +394,8 @@ export default function PlayersPage() {
     );
   }
 
-  // Zeige Spielerverwaltung nur für Admins
-  if (isAuthenticated && isAdmin) {
+  // Zeige Spielerverwaltung für berechtigte Benutzer
+  if (isAuthenticated && canViewPlayers) {
     return (
       <SidebarProvider
         style={
