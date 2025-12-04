@@ -81,6 +81,12 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Setze Spieler-Status auf ACTIVE
+      await prisma.tournamentPlayer.update({
+        where: { id: player.id },
+        data: { status: 'ACTIVE' }
+      });
+
       // Setze Turnier-Status auf SHOOTOUT falls noch nicht geschehen
       await prisma.tournament.update({
         where: { id: tournament.id },

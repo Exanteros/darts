@@ -359,7 +359,10 @@ export default function TournamentBracket() {
 
   // Start shootout for single player - NEW SEQUENTIAL WORKFLOW
   const startShootout = async () => {
+    console.log('🚀 startShootout called');
     const boardToUse = lockedInBoard || selectedShootoutBoard;
+    console.log('Board to use:', boardToUse);
+    console.log('Selected players:', selectedPlayers);
 
     if (!boardToUse) {
       alert('Bitte wählen Sie eine Scheibe aus');
@@ -375,6 +378,7 @@ export default function TournamentBracket() {
       setShootoutLoading(true);
       setShowShootoutSpinner(true); // Show spinner immediately
 
+      console.log('Step 1: Calling start_single API...');
       // Step 1: Set tournament to SHOOTOUT status (if not already done)
       const setupResponse = await fetch('/api/dashboard/tournament/shootout', {
         method: 'POST',
@@ -387,17 +391,21 @@ export default function TournamentBracket() {
       });
 
       if (!setupResponse.ok) {
-        throw new Error('Fehler beim Shootout-Setup');
+        const errorData = await setupResponse.json();
+        console.error('Setup response error:', errorData);
+        throw new Error(errorData.error || 'Fehler beim Shootout-Setup');
       }
+      console.log('Step 1 success');
 
       // Step 2: Select player and set status to "player_selected"
       const selectedPlayerId = selectedPlayers[0];
       const player = tournament?.players?.find(p => p.userId === selectedPlayerId);
 
       if (!player) {
-        throw new Error('Spieler nicht gefunden');
+        throw new Error('Spieler nicht gefunden in lokaler Liste');
       }
 
+      console.log('Step 2: Calling select_player API for', player.playerName);
       const selectResponse = await fetch('/api/dashboard/tournament/shootout/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -408,8 +416,11 @@ export default function TournamentBracket() {
       });
 
       if (!selectResponse.ok) {
-        throw new Error('Fehler beim Spieler auswählen');
+        const errorData = await selectResponse.json();
+        console.error('Select response error:', errorData);
+        throw new Error(errorData.error || 'Fehler beim Spieler auswählen');
       }
+      console.log('Step 2 success');
 
       // Success - Admin panel shows "Shootout Player X is running"
       setSelectedPlayers([]);
