@@ -341,7 +341,7 @@ export default function TournamentBracket() {
       const player = tournament.players?.find(p => p.id === currentShootoutPlayer);
       if (player && !shownPopups.has('first-shootout-player')) {
         // Find all players without shootout results
-        const activePlayers = tournament.players?.filter(p => p.status === 'ACTIVE' || p.status === 'CONFIRMED') || [];
+        const activePlayers = tournament.players || [];
         const playersWithoutResults = activePlayers.filter(p => !shootoutResults.some(r => r.playerId === p.id));
 
         // Show popup only for the first player (the one with the lowest index)
@@ -1185,8 +1185,7 @@ export default function TournamentBracket() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-60 overflow-y-auto border rounded-lg p-4">
                     {tournament?.players
-                      ?.filter(player => player.status === 'ACTIVE' || player.status === 'CONFIRMED')
-                      .map(player => (
+                      ?.map(player => (
                         <div
                           key={player.id}
                           onClick={() => {
@@ -1202,7 +1201,7 @@ export default function TournamentBracket() {
                             <div className="flex-1">
                               <div className="font-medium">{player.playerName}</div>
                               <div className="text-xs text-muted-foreground">
-                                {player.seed ? `Seed: ${player.seed}` : 'Noch kein Shootout'}
+                                {player.seed ? `Seed: ${player.seed}` : 'Noch kein Shootout'} • {player.status}
                               </div>
                             </div>
                             {selectedPlayers.includes(player.userId) && (
@@ -1242,8 +1241,7 @@ export default function TournamentBracket() {
                     <Button
                       onClick={() => {
                         const allPlayers = tournament?.players
-                          ?.filter(player => player.status === 'ACTIVE' || player.status === 'CONFIRMED')
-                          .map(player => player.userId) || [];
+                          ?.map(player => player.userId) || [];
                         setSelectedPlayers(allPlayers);
                       }}
                       disabled={!selectedShootoutBoard && !lockedInBoard}
