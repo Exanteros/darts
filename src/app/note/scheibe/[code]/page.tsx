@@ -588,18 +588,22 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
 
       // Sync throw to DB
       if (currentGame?.id) {
-        fetch('/api/game/throw', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            gameId: currentGame.id,
-            playerId: gameState.currentPlayer === 1 ? currentGame.player1Id : currentGame.player2Id,
-            dart1: currentThrow[0] || 0,
-            dart2: currentThrow[1] || 0,
-            dart3: currentThrow[2] || 0,
-            score: isBust ? 0 : throwTotal
-          })
-        }).catch(console.error);
+        try {
+          await fetch('/api/game/throw', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              gameId: currentGame.id,
+              playerId: gameState.currentPlayer === 1 ? currentGame.player1Id : currentGame.player2Id,
+              dart1: currentThrow[0] || 0,
+              dart2: currentThrow[1] || 0,
+              dart3: currentThrow[2] || 0,
+              score: isBust ? 0 : throwTotal
+            })
+          });
+        } catch (error) {
+          console.error('Error syncing throw:', error);
+        }
       }
       
       // Sende WebSocket-Update an Display
