@@ -1,6 +1,6 @@
 "use client";
 
-import { useUserCheck } from '@/hooks/useUserCheck';
+import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import {
@@ -34,17 +34,23 @@ interface Board {
 }
 
 export default function LivePage() {
-  const { isAdmin, isLoading, isAuthenticated } = useUserCheck();
+  const { isAdmin, hasTournamentAccess, tournamentAccess, isLoading, isAuthenticated } = useTournamentAccess();
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Prüfe Berechtigung für Live-Überwachung
+  const canViewLive = isAdmin || tournamentAccess.some(access => {
+    const permissions = JSON.parse(access.permissions || '{}');
+    return permissions.live?.view === true;
+  });
+
   useEffect(() => {
-    if (isAuthenticated && isAdmin) {
+    if (isAuthenticated && canViewLive) {
       fetchData();
       const interval = setInterval(fetchData, 5000); // Poll every 5 seconds
       return () => clearInterval(interval);
     }
-  }, [isAuthenticated, isAdmin]);
+  }, [isAuthenticated, canViewLive]);
 
   const fetchData = async () => {
     try {
@@ -82,8 +88,8 @@ export default function LivePage() {
     );
   }
 
-  if (!isAuthenticated || !isAdmin) {
-    return null; // Redirect handled by useUserCheck or layout
+  if (!isAuthenticated || !canViewLive) {
+    return null; // Redirect handled by useTournamentAccess or layout
   }
 
   return (

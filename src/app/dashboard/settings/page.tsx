@@ -1,6 +1,6 @@
 "use client";
 
-import { useUserCheck } from '@/hooks/useUserCheck';
+import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import {
@@ -56,7 +56,7 @@ interface SystemSettings {
 }
 
 export default function SettingsPage() {
-  const { isAdmin, isLoading, isAuthenticated } = useUserCheck();
+  const { isAdmin, hasTournamentAccess, tournamentAccess, isLoading, isAuthenticated } = useTournamentAccess();
     const [tournamentSettings, setTournamentSettings] = useState<TournamentSettings>({
     id: undefined,
     name: '',
@@ -101,14 +101,20 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
+  // Prüfe Berechtigung für Einstellungen
+  const canManageSettings = isAdmin || tournamentAccess.some(access => {
+    const permissions = JSON.parse(access.permissions || '{}');
+    return permissions.settings?.viewGeneral === true;
+  });
+
   useEffect(() => {
-    if (isAuthenticated && isAdmin) {
+    if (isAuthenticated && canManageSettings) {
       fetchSettings();
       fetchBoards();
       fetchSystemSettings();
       loadBroadcastingSettings();
     }
-  }, [isAuthenticated, isAdmin]);
+  }, [isAuthenticated, canManageSettings]);
 
   const loadBroadcastingSettings = async () => {
     try {
@@ -388,7 +394,7 @@ export default function SettingsPage() {
     );
   }
 
-  if (!isAuthenticated || !isAdmin) {
+  if (!isAuthenticated || !canManageSettings) {
     return (
       <SidebarProvider>
         <AppSidebar />
