@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useUserCheck } from '@/hooks/useUserCheck';
+import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import {
@@ -65,19 +65,25 @@ interface TournamentStats {
 }
 
 export default function StatsPage() {
-  const { isAdmin, isLoading, isAuthenticated } = useUserCheck();
+  const { isAdmin, hasTournamentAccess, tournamentAccess, isLoading, isAuthenticated } = useTournamentAccess();
   const [stats, setStats] = useState<TournamentStats | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Prüfe Berechtigung für Statistiken
+  const canViewStats = isAdmin || tournamentAccess.some(access => {
+    const permissions = JSON.parse(access.permissions || '{}');
+    return permissions.dashboard?.viewStats === true;
+  });
+
   useEffect(() => {
-    if (isAuthenticated && isAdmin) {
+    if (isAuthenticated && canViewStats) {
       fetchStats();
       
       // Refresh every 10 seconds
       const interval = setInterval(fetchStats, 10000);
       return () => clearInterval(interval);
     }
-  }, [isAuthenticated, isAdmin]);
+  }, [isAuthenticated, canViewStats]);
 
   const fetchStats = async () => {
     try {
@@ -116,8 +122,8 @@ export default function StatsPage() {
     );
   }
 
-  // Zeige Admin-Statistiken nur für Admins
-  if (!isAuthenticated || !isAdmin) {
+  // Zeige Statistiken für berechtigte Benutzer
+  if (!isAuthenticated || !canViewStats) {
     return null;
   }
 
