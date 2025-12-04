@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { sendMail, renderHtml } from '@/lib/mail';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 // GET - Liste aller Benutzer mit Access für ein Turnier
 export async function GET(request: Request) {
@@ -74,15 +77,25 @@ export async function POST(request: Request) {
     }
 
     // Find user by email
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { email: userEmail }
     });
 
+    let isNewUser = false;
+
     if (!user) {
-      return NextResponse.json(
-        { error: 'Benutzer nicht gefunden' },
-        { status: 404 }
-      );
+      // Benutzer existiert nicht -> Erstellen mit Dummy-Passwort (wird nicht verwendet wegen Magic Link)
+      isNewUser = true;
+      const dummyPassword = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10);
+
+      user = await prisma.user.create({
+        data: {
+          email: userEmail,
+          password: dummyPassword, // Wird nicht verwendet - nur für DB-Anforderung
+          role: 'USER', // Standardrolle, Access Grant regelt Turnier-Rechte
+          name: userEmail.split('@')[0], // Fallback Name
+        }
+      });
     }
 
     // Check if access already exists
@@ -124,7 +137,62 @@ export async function POST(request: Request) {
       }
     });
 
-    return NextResponse.json({ accessGrant });
+    // Magic Link senden, wenn neuer Benutzer
+    if (isNewUser) {
+        const tournament = await prisma.tournament.findUnique({ where: { id: tournamentId } });
+        const tournamentName = tournament?.name || 'Darts Turnier';
+        
+        // Generiere Magic Link Token
+        const token = crypto.randomBytes(64).toString('hex');
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 Stunden für neue Benutzer
+        
+        await prisma.magicLinkToken.create({
+          data: {
+            token,
+            email: userEmail,
+            expiresAt,
+            used: false
+          }
+        });
+        
+        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+        const magicLinkUrl = `${baseUrl}/api/auth/verify?token=${token}`;
+        
+        const emailSubject = `Einladung zu ${tournamentName}`;
+        const emailText = `Hallo,\n\nDu wurdest zum Turnier "${tournamentName}" eingeladen.\n\nKlicke auf den folgenden Link, um dich anzumelden:\n${magicLinkUrl}\n\nDeine Rolle: ${role}\n\nDieser Link ist 24 Stunden gültig und kann nur einmal verwendet werden.\n\nViele Grüße,\nDas Darts Team`;
+        
+        const htmlContent = await renderHtml(`
+# Einladung zum Turnier
+
+Hallo,
+
+Du wurdest zum Turnier **${tournamentName}** eingeladen.
+
+## Deine Zugangsdaten
+* **Email:** ${userEmail}
+* **Rolle:** ${role}
+
+Klicke auf den folgenden Link, um dich anzumelden:
+
+[Jetzt anmelden](${magicLinkUrl})
+
+**Wichtig:**
+* Dieser Link ist 24 Stunden gültig
+* Der Link kann nur einmal verwendet werden
+* Du benötigst kein Passwort - die Anmeldung erfolgt automatisch über diesen Link
+
+Viel Erfolg beim Turnier!
+        `, tournamentName);
+
+        await sendMail({
+            to: userEmail,
+            subject: emailSubject,
+            text: emailText,
+            html: htmlContent
+        });
+    }
+
+    return NextResponse.json({ accessGrant, isNewUser });
 
   } catch (error) {
     console.error('Error creating tournament access:', error);
