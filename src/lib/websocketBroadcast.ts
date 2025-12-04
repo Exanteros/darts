@@ -65,13 +65,14 @@ export function broadcastThrowUpdate(throwData: any) {
   }
 }
 
-export function broadcastGameReset() {
+export function broadcastGameReset(gameId?: string) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({
       type: 'game-reset',
+      gameId: gameId,
       timestamp: new Date().toISOString()
     }));
-    console.log('📤 Broadcasted game-reset from server');
+    console.log(`📤 Broadcasted game-reset from server ${gameId ? `for game ${gameId}` : ''}`);
   } else {
     connectWebSocket();
   }

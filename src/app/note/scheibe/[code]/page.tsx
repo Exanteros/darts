@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, RotateCcw, Target, Trash2, CheckCircle, Trophy, Play, Users, Activity, Loader2 } from "lucide-react";
+import { ArrowLeft, RotateCcw, Target, Trash2, CheckCircle, Trophy, Play, Users, Activity, Loader2, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTournamentEvents } from '@/hooks/useTournamentEvents';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -93,6 +93,7 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
   const [showStartShootoutPopup, setShowStartShootoutPopup] = useState(false);
   const [showGameStartPopup, setShowGameStartPopup] = useState(false);
   const [shownGamePopups, setShownGamePopups] = useState<Set<string>>(new Set());
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   
   // Utils
   const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
@@ -107,6 +108,12 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
       : 'ws://localhost:3001',
     onConnect: () => {
       console.log('🎯 Note/Scheibe: WebSocket verbunden');
+    },
+    onMessage: (data) => {
+      if (data.type === 'game-reset' && (!data.gameId || (currentGame && data.gameId === currentGame.id))) {
+        console.log('🔄 Game reset received');
+        window.location.reload();
+      }
     }
   });
   
@@ -642,6 +649,20 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
     }
   };
 
+  const resetGame = async () => {
+    if (!currentGame?.id) return;
+    try {
+      await fetch('/api/game/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gameId: currentGame.id })
+      });
+      setShowResetConfirm(false);
+    } catch (error) {
+      console.error('Error resetting game:', error);
+    }
+  };
+
   // --- RENDER ---
 
   if (loading) {
@@ -690,6 +711,7 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
           gameState={gameState}
           onBackClick={() => router.push("/")}
           onUndoClick={undoLastThrow}
+          onResetClick={() => setShowResetConfirm(true)}
           isConnected={isConnected}
           lastUpdateTime={lastUpdateTime}
         />
@@ -785,6 +807,29 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
         startAssignedGame={startAssignedGame}
       />
 
+      <Dialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+        <DialogContent className="sm:max-w-md bg-white rounded-2xl border-slate-200">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <RefreshCw className="h-5 w-5" /> Spiel zurücksetzen?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-slate-600">
+              Möchtest du das aktuelle Spiel wirklich zurücksetzen? Alle Würfe und Punkte werden gelöscht und das Spiel beginnt von vorne bei 501.
+            </p>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowResetConfirm(false)}>
+              Abbrechen
+            </Button>
+            <Button variant="destructive" onClick={resetGame}>
+              Zurücksetzen
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <GameOverModal
         gameState={gameState}
         onBackClick={() => router.push("/")}
@@ -801,11 +846,12 @@ interface HeaderProps {
   gameState: GameState;
   onBackClick: () => void;
   onUndoClick: () => void;
+  onResetClick: () => void;
   isConnected: boolean;
   lastUpdateTime: Date | null;
 }
 
-const ScoreEntryHeader: FC<HeaderProps> = ({ boardId, gameState, onBackClick, onUndoClick, isConnected, lastUpdateTime }) => (
+const ScoreEntryHeader: FC<HeaderProps> = ({ boardId, gameState, onBackClick, onUndoClick, onResetClick, isConnected, lastUpdateTime }) => (
   <div className="flex items-center justify-between px-3 py-2 bg-white border-b border-slate-200 shadow-sm">
     <div className="flex items-center gap-3">
       <Button variant="ghost" size="icon" onClick={onBackClick} className="h-9 w-9 -ml-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-full">
@@ -834,6 +880,9 @@ const ScoreEntryHeader: FC<HeaderProps> = ({ boardId, gameState, onBackClick, on
       </div>
       <Button variant="outline" onClick={onUndoClick} disabled={gameState.throws.length === 0} size="icon" className="h-8 w-8 border-slate-200 text-slate-600 hover:bg-slate-50">
         <RotateCcw className="h-4 w-4" />
+      </Button>
+      <Button variant="outline" onClick={onResetClick} size="icon" className="h-8 w-8 border-slate-200 text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200">
+        <RefreshCw className="h-4 w-4" />
       </Button>
     </div>
   </div>
