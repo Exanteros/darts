@@ -35,6 +35,21 @@ async function generateBracketFromShootout() {
 
     console.log(`🎯 ${shootoutResults.length} Shootout-Ergebnisse gefunden`);
 
+    // Lade Bracket-Konfiguration
+    const config = await prisma.bracketConfig.findFirst();
+    let legsConfig: any = {};
+    try {
+        legsConfig = config?.legsPerRound ? JSON.parse(config.legsPerRound as string) : {};
+    } catch (e) { console.error('Error parsing legs config', e); }
+
+    const getLegsForRound = (round: number) => {
+        if (legsConfig && legsConfig[`round${round}`]) {
+            return legsConfig[`round${round}`];
+        }
+        // Fallback
+        return round >= 5 ? 3 : 2;
+    };
+
     // 3. Lösche alle bestehenden Spiele
     const deletedGames = await prisma.game.deleteMany({
       where: { tournamentId: tournament.id }
@@ -54,14 +69,23 @@ async function generateBracketFromShootout() {
 
     const games: any[] = [];
 
-    // Runde 1: Weise Spieler basierend auf Shootout-Ranking zu
-    // Bester vs Schlechtester, Zweitbester vs Zweitschlechtester, etc.
-    for (let i = 0; i < 32; i++) {
-      const player1Index = i;  // Bester verfügbarer Spieler
-      const player2Index = 63 - i;  // Schlechtester verfügbarer Spieler
+    // Bereite Spieler-Liste vor (Standard oder Zufall)
+    let seedingList = [...shootoutResults];
+    if (config?.seedingAlgorithm === 'random') {
+        console.log('🎲 Zufällige Setzliste wird angewendet');
+        for (let i = seedingList.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [seedingList[i], seedingList[j]] = [seedingList[j], seedingList[i]];
+        }
+    }
 
-      const player1 = shootoutResults[player1Index]?.player;
-      const player2 = shootoutResults[player2Index]?.player;
+    // Runde 1: Weise Spieler basierend auf Liste zu
+    for (let i = 0; i < 32; i++) {
+      const player1Index = i;
+      const player2Index = 63 - i;
+
+      const player1 = seedingList[player1Index]?.player;
+      const player2 = seedingList[player2Index]?.player;
 
       games.push({
         tournamentId: tournament.id,
@@ -69,7 +93,7 @@ async function generateBracketFromShootout() {
         player1Id: player1?.id || null,
         player2Id: player2?.id || null,
         status: (player1 && player2) ? 'WAITING' : 'WAITING',
-        legsToWin: 2, // Best of 3 für erste Runden
+        legsToWin: getLegsForRound(1),
         boardId: null
       });
     }
@@ -83,7 +107,7 @@ async function generateBracketFromShootout() {
           player1Id: null, // Beide Spieler null für höhere Runden
           player2Id: null,
           status: 'WAITING',
-          legsToWin: round >= 5 ? 3 : 2, // Finale: Best of 5
+          legsToWin: getLegsForRound(round),
           boardId: null
         });
       }

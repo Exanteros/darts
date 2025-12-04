@@ -261,6 +261,19 @@ export async function POST(request: NextRequest) {
         });
         if (!tournament) return NextResponse.json({ error: 'Kein aktives Turnier gefunden' }, { status: 404 });
 
+        // Lade Bracket-Konfiguration
+        const config = await prisma.bracketConfig.findFirst();
+        
+        if (config && !config.autoAssignBoards) {
+           return NextResponse.json({ error: 'Automatische Zuordnung ist deaktiviert' }, { status: 400 });
+        }
+
+        // Parse legsPerRound
+        let legsConfig: any = {};
+        try {
+            legsConfig = config?.legsPerRound ? JSON.parse(config.legsPerRound as string) : {};
+        } catch (e) { console.error('Error parsing legs config', e); }
+
         const [availableBoards, readyGames] = await Promise.all([
           prisma.board.findMany({
             where: { tournamentId: tournament.id, isActive: true },
@@ -268,17 +281,89 @@ export async function POST(request: NextRequest) {
             orderBy: { priority: 'asc' }
           }),
           prisma.game.findMany({
-            where: { tournamentId: tournament.id, status: 'WAITING', boardId: null, player1Id: { not: undefined }, player2Id: { not: undefined } },
-            orderBy: { round: 'asc' }
+            where: { 
+                tournamentId: tournament.id, 
+                status: 'WAITING', 
+                boardId: null, 
+                player1Id: { not: null }, 
+                player2Id: { not: null } 
+            },
+            orderBy: [{ round: 'desc' }, { id: 'asc' }] // Höhere Runden zuerst (Finale/Halbfinale)
           })
         ]);
 
         let assignedCount = 0;
-        for (const board of availableBoards) {
-          if (board.games.length === 0 && assignedCount < readyGames.length) {
-            await prisma.game.update({ where: { id: readyGames[assignedCount].id }, data: { boardId: board.id } });
-            assignedCount++;
-          }
+        
+        // Identifiziere Mainboard
+        const mainBoard = availableBoards.find(b => b.isMain) || availableBoards[0];
+        
+        // Helper: Ist das Board frei?
+        const isBoardFree = (boardId: string) => {
+            const board = availableBoards.find(b => b.id === boardId);
+            return board && board.games.length === 0;
+        };
+
+        // Helper: Markiere Board als belegt (lokal für diesen Request)
+        const occupyBoard = (boardId: string) => {
+            const board = availableBoards.find(b => b.id === boardId);
+            if (board) board.games.push({ status: 'ACTIVE' } as any);
+        };
+
+        for (const game of readyGames) {
+            let targetBoardId: string | null = null;
+            
+            // Prüfe auf Mainboard-Priorität
+            const isImportantGame = config?.mainBoardPriority && (
+                config.mainBoardPriorityLevel === 'all' ||
+                (config.mainBoardPriorityLevel === 'semifinals' && game.round >= 5) ||
+                (config.mainBoardPriorityLevel === 'finals' && game.round >= 6)
+            );
+
+            if (isImportantGame) {
+                if (mainBoard && isBoardFree(mainBoard.id)) {
+                    targetBoardId = mainBoard.id;
+                }
+            } else {
+                // Normales Spiel
+                const freeBoards = availableBoards.filter(b => b.games.length === 0);
+                
+                if (freeBoards.length > 0) {
+                    if (config?.mainBoardPriority && mainBoard) {
+                        // Wenn Mainboard Priorität aktiv ist, versuche Mainboard für unwichtige Spiele zu vermeiden,
+                        // es sei denn es ist das einzige freie Board oder wir wollen alle nutzen
+                        const otherBoards = freeBoards.filter(b => b.id !== mainBoard.id);
+                        if (otherBoards.length > 0) {
+                            targetBoardId = otherBoards[0].id;
+                        } else if (config.distributeEvenly) {
+                            targetBoardId = mainBoard.id;
+                        }
+                    } else {
+                        // Nimm einfach das erste freie Board
+                        targetBoardId = freeBoards[0].id;
+                    }
+                }
+            }
+
+            if (targetBoardId) {
+                // Bestimme Legs für diese Runde aus Config
+                let legsToWin = game.legsToWin;
+                if (legsConfig) {
+                    const roundKey = `round${game.round}`;
+                    if (legsConfig[roundKey]) {
+                        legsToWin = legsConfig[roundKey];
+                    }
+                }
+
+                await prisma.game.update({ 
+                    where: { id: game.id }, 
+                    data: { 
+                        boardId: targetBoardId,
+                        legsToWin: legsToWin 
+                    } 
+                });
+                occupyBoard(targetBoardId);
+                assignedCount++;
+            }
         }
         return NextResponse.json({ success: true, assignedGames: assignedCount, message: `${assignedCount} Spiele automatisch zugewiesen` });
       }
