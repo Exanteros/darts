@@ -42,6 +42,67 @@ export async function GET(
     // Find the current game assigned to this board
     const currentGame = board.games.find(g => g.boardId === board.id && g.status === 'ACTIVE');
     
+    let gameDetails = null;
+    if (currentGame) {
+      // Fetch throws for the current leg to calculate scores
+      const throws = await prisma.throw.findMany({
+        where: {
+          gameId: currentGame.id,
+          leg: currentGame.currentLeg
+        },
+        orderBy: { createdAt: 'asc' }
+      });
+
+      // Calculate current scores (501 - sum of throws)
+      const player1Throws = throws.filter(t => t.playerId === currentGame.player1Id);
+      const player2Throws = throws.filter(t => t.playerId === currentGame.player2Id);
+
+      const player1Score = 501 - player1Throws.reduce((sum, t) => sum + t.score, 0);
+      const player2Score = 501 - player2Throws.reduce((sum, t) => sum + t.score, 0);
+
+      // Determine current player based on who started the leg and number of throws
+      // Assuming Player 1 starts Leg 1, Player 2 starts Leg 2, etc.
+      // Leg 1 (odd): P1 starts. Even throws -> P1's turn. Odd throws -> P2's turn.
+      // Leg 2 (even): P2 starts. Even throws -> P2's turn. Odd throws -> P1's turn.
+      
+      const totalThrows = throws.length;
+      const legIsOdd = currentGame.currentLeg % 2 !== 0;
+      
+      let currentPlayerId = currentGame.player1Id; // Default
+      
+      if (legIsOdd) {
+        // P1 starts
+        currentPlayerId = totalThrows % 2 === 0 ? currentGame.player1Id : currentGame.player2Id;
+      } else {
+        // P2 starts
+        currentPlayerId = totalThrows % 2 === 0 ? currentGame.player2Id : currentGame.player1Id;
+      }
+
+      gameDetails = {
+        id: currentGame.id,
+        player1: currentGame.player1?.playerName || 'Unbekannt',
+        player2: currentGame.player2?.playerName || 'Unbekannt',
+        player1Id: currentGame.player1Id,
+        player2Id: currentGame.player2Id,
+        status: currentGame.status,
+        // Detailed state
+        player1Legs: currentGame.player1Legs,
+        player2Legs: currentGame.player2Legs,
+        currentLeg: currentGame.currentLeg,
+        player1Score: player1Score,
+        player2Score: player2Score,
+        currentPlayerId: currentPlayerId,
+        legsToWin: currentGame.legsToWin,
+        throws: throws.map(t => ({
+          player: t.playerId === currentGame.player1Id ? 1 : 2,
+          darts: [t.dart1, t.dart2, t.dart3],
+          total: t.score,
+          remaining: 0, // Calculated on frontend or could be stored
+          leg: t.leg
+        }))
+      };
+    }
+    
     // Transform to match UI expectations
     const transformedBoard = {
       id: board.id,
@@ -50,14 +111,7 @@ export async function GET(
       isActive: board.isActive,
       priority: board.priority,
       isMain: board.isMain || false,
-      currentGame: currentGame ? {
-        id: currentGame.id,
-        player1: currentGame.player1?.playerName || 'Unbekannt',
-        player2: currentGame.player2?.playerName || 'Unbekannt',
-        player1Id: currentGame.player1Id,
-        player2Id: currentGame.player2Id,
-        status: currentGame.status
-      } : null,
+      currentGame: gameDetails,
       queueLength: board.games.filter(g => g.status === 'WAITING').length
     };
 

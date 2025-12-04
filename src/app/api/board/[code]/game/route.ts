@@ -88,8 +88,20 @@ export async function GET(
     const player2CurrentScore = 501 - player2TotalScore;
 
     // Determine current player based on throw count (or from currentThrow data)
+    // Logic: Leg 1 (odd) -> P1 starts. Leg 2 (even) -> P2 starts.
     const totalThrows = currentLegThrows.length;
-    const currentPlayer = currentThrowData?.player || (totalThrows % 2 === 0 ? 1 : 2);
+    const legIsOdd = currentGame.currentLeg % 2 !== 0;
+    
+    let calculatedCurrentPlayer = 1;
+    if (legIsOdd) {
+      // P1 starts: Even throws -> P1, Odd throws -> P2
+      calculatedCurrentPlayer = totalThrows % 2 === 0 ? 1 : 2;
+    } else {
+      // P2 starts: Even throws -> P2, Odd throws -> P1
+      calculatedCurrentPlayer = totalThrows % 2 === 0 ? 2 : 1;
+    }
+
+    const currentPlayer = currentThrowData?.player || calculatedCurrentPlayer;
 
     // Return game data
     return NextResponse.json({

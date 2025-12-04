@@ -317,18 +317,39 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
         
         setCurrentGame(game);
         
-        if (gameState.player1.name !== game.player1 || gameState.player2.name !== game.player2) {
+        // Check if we need to update the local state (if it's a new game OR if we just reloaded/reconnected)
+        // We update if the game ID changed OR if the local state is at initial values (501/0/0) while the server has progress
+        const isNewGame = gameState.player1.name !== game.player1 || gameState.player2.name !== game.player2;
+        const isStateOutdated = gameState.player1.score === 501 && gameState.player1.legs === 0 && 
+                                gameState.player2.score === 501 && gameState.player2.legs === 0 &&
+                                (game.player1Score !== 501 || game.player1Legs > 0 || game.player2Score !== 501 || game.player2Legs > 0);
+
+        if (isNewGame || isStateOutdated) {
+          console.log('🔄 Syncing game state from server:', game);
           setGameState(prev => ({
             ...prev,
-            player1: { ...prev.player1, name: game.player1, score: 501 },
-            player2: { ...prev.player2, name: game.player2, score: 501 },
-            currentPlayer: 1,
+            player1: { 
+              ...prev.player1, 
+              name: game.player1, 
+              score: game.player1Score ?? 501,
+              legs: game.player1Legs ?? 0
+            },
+            player2: { 
+              ...prev.player2, 
+              name: game.player2, 
+              score: game.player2Score ?? 501,
+              legs: game.player2Legs ?? 0
+            },
+            currentPlayer: game.currentPlayerId === game.player2Id ? 2 : 1,
+            currentLeg: game.currentLeg ?? 1,
+            legsToWin: game.legsToWin ?? 2,
             gameStatus: 'active',
-            isShootout: false
+            isShootout: false,
+            throws: game.throws || []
           }));
         }
         
-        if (!shownGamePopups.has(game.id) && !showGameStartPopup) {
+        if (!shownGamePopups.has(game.id) && !showGameStartPopup && isNewGame) {
           setShowGameStartPopup(true);
           setShownGamePopups(prev => new Set([...prev, game.id]));
         }
@@ -568,7 +589,8 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
             playerId: gameState.currentPlayer === 1 ? currentGame.player1Id : currentGame.player2Id,
             dart1: currentThrow[0] || 0,
             dart2: currentThrow[1] || 0,
-            dart3: currentThrow[2] || 0
+            dart3: currentThrow[2] || 0,
+            score: isBust ? 0 : throwTotal
           })
         }).catch(console.error);
       }

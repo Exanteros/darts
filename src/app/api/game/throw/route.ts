@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { gameId, playerId, dart1, dart2, dart3 } = body;
+    const { gameId, playerId, dart1, dart2, dart3, score } = body;
 
     if (!gameId || !playerId) {
       return NextResponse.json({
@@ -30,12 +30,7 @@ export async function POST(request: NextRequest) {
       where: { id: gameId },
       include: {
         player1: true,
-        player2: true,
-        throws: {
-          where: {
-            playerId: playerId
-          }
-        }
+        player2: true
       }
     });
 
@@ -61,9 +56,6 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
-    // Prüfe ob bereits ein Wurf für dieses Leg existiert
-    const existingThrow = game.throws.find((t: Throw) => t.leg === game.currentLeg);
-
     const throwData = {
       gameId,
       playerId,
@@ -71,22 +63,13 @@ export async function POST(request: NextRequest) {
       dart1: dart1 || 0,
       dart2: dart2 || 0,
       dart3: dart3 || 0,
-      score: (dart1 || 0) + (dart2 || 0) + (dart3 || 0)
+      score: score !== undefined ? score : ((dart1 || 0) + (dart2 || 0) + (dart3 || 0))
     };
 
-    let throwResult;
-    if (existingThrow) {
-      // Update existing throw
-      throwResult = await prisma.throw.update({
-        where: { id: existingThrow.id },
-        data: throwData
-      });
-    } else {
-      // Create new throw
-      throwResult = await prisma.throw.create({
-        data: throwData
-      });
-    }
+    // Create new throw (ALWAYS create, never overwrite)
+    const throwResult = await prisma.throw.create({
+      data: throwData
+    });
 
     // Berechne neue Legs-Scores
     const allThrows = await prisma.throw.findMany({
