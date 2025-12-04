@@ -2,7 +2,7 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -38,6 +38,8 @@ model Tournament {
   status      TournamentStatus @default(UPCOMING)
   maxPlayers  Int      @default(64)
   entryFee    Float    @default(0)
+  location    String?  // Veranstaltungsort (z.B. "Sportheim Puschendorf")
+  street      String?  // Straße und Hausnummer (z.B. "Waldstraße 1")
   shootoutBoardId String? // ID der Scheibe für Shootout
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

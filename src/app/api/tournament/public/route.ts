@@ -24,6 +24,8 @@ export async function GET(request: NextRequest) {
         startDate: tournament.startDate.toISOString(),
         maxPlayers: tournament.maxPlayers,
         entryFee: tournament.entryFee,
+        location: tournament.location,
+        street: tournament.street,
         status: tournament.status,
         _count: tournament._count
       }))

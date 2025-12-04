@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Trophy, Calendar, Euro, Users, ArrowRight, CreditCard, CheckCircle2, ChevronLeft, Lock, ArrowLeft, XCircle } from "lucide-react";
+import { Loader2, Trophy, Calendar, Euro, Users, ArrowRight, CreditCard, CheckCircle2, ChevronLeft, Lock, ArrowLeft, XCircle, MapPin } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,8 @@ interface Tournament {
   startDate: string;
   maxPlayers: number;
   entryFee: number;
+  location?: string;
+  street?: string;
   status: string;
   _count: { players: number };
 }
@@ -66,7 +68,7 @@ function SpotlightCard({ children, className, onClick }: { children: React.React
 
 export default function TournamentRegistrationPage() {
   const router = useRouter();
-  const [step, setStep] = useState<'SELECTION' | 'FORM' | 'PAYMENT' | 'SUCCESS'>('SELECTION');
+  const [step, setStep] = useState<'SELECTION' | 'FORM' | 'PAYMENT' | 'PAY_ON_SITE' | 'SUCCESS'>('SELECTION');
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
   
@@ -79,6 +81,7 @@ export default function TournamentRegistrationPage() {
 
   // Stripe
   const [stripePromise, setStripePromise] = useState<Promise<any> | null>(null);
+  const [stripeEnabled, setStripeEnabled] = useState(false);
 
   useEffect(() => {
     // 1. Load Tournaments
@@ -90,6 +93,7 @@ export default function TournamentRegistrationPage() {
     fetch('/api/admin/tournament/settings')
       .then(res => res.json())
       .then(data => {
+        setStripeEnabled(!!data.stripeEnabled);
         if (data.stripeEnabled && data.stripePublishableKey) {
           setStripePromise(loadStripe(data.stripePublishableKey));
         }
@@ -146,6 +150,13 @@ export default function TournamentRegistrationPage() {
       } finally {
         setLoading(false);
       }
+      return;
+    }
+
+    // Check if Stripe is disabled (Pay on Site)
+    if (!stripeEnabled) {
+      setStep('PAY_ON_SITE');
+      setLoading(false);
       return;
     }
 
@@ -229,6 +240,33 @@ export default function TournamentRegistrationPage() {
     );
   };
 
+  const handlePayOnSiteRegistration = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/tournament/register/public', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tournamentId: selectedTournament?.id,
+          playerName,
+          email,
+          paymentIntentId: null // No payment needed
+        }),
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setStep('SUCCESS');
+      } else {
+        setError(data.message || "Fehler bei der Anmeldung");
+      }
+    } catch (err) {
+      setError("Verbindungsfehler");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   /* --- RENDER --- */
 
   return (
@@ -301,6 +339,15 @@ export default function TournamentRegistrationPage() {
                           <Calendar className="h-4 w-4 mr-3 text-slate-400" />
                           {new Date(t.startDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })}
                         </div>
+                        {(t.location || t.street) && (
+                          <div className="flex items-start text-sm text-slate-600">
+                            <MapPin className="h-4 w-4 mr-3 text-slate-400 mt-0.5 shrink-0" />
+                            <div className="flex flex-col">
+                              {t.location && <span>{t.location}</span>}
+                              {t.street && <span className="text-slate-400 text-xs">{t.street}</span>}
+                            </div>
+                          </div>
+                        )}
                         <div className="flex items-center text-sm text-slate-600">
                           <Users className="h-4 w-4 mr-3 text-slate-400" />
                           {t._count.players} / {t.maxPlayers} Teilnehmer
@@ -320,7 +367,7 @@ export default function TournamentRegistrationPage() {
           )}
 
           {/* STEP 2: FORM & PAYMENT (Unified Layout) */}
-          {(step === 'FORM' || step === 'PAYMENT') && selectedTournament && (
+          {(step === 'FORM' || step === 'PAYMENT' || step === 'PAY_ON_SITE') && selectedTournament && (
             <motion.div
               key="process"
               initial={{ opacity: 0, scale: 0.95 }}
@@ -335,8 +382,10 @@ export default function TournamentRegistrationPage() {
                   <span className={cn("flex items-center justify-center w-5 h-5 rounded-full text-[10px]", step === 'FORM' ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-600")}>1</span>
                   <span className={step === 'FORM' ? "text-slate-900" : "text-slate-400"}>Daten</span>
                   <div className="w-6 h-[1px] bg-slate-200 mx-2" />
-                  <span className={cn("flex items-center justify-center w-5 h-5 rounded-full text-[10px]", step === 'PAYMENT' ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-600")}>2</span>
-                  <span className={step === 'PAYMENT' ? "text-slate-900" : "text-slate-400"}>Zahlung</span>
+                  <span className={cn("flex items-center justify-center w-5 h-5 rounded-full text-[10px]", (step === 'PAYMENT' || step === 'PAY_ON_SITE') ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-600")}>2</span>
+                  <span className={(step === 'PAYMENT' || step === 'PAY_ON_SITE') ? "text-slate-900" : "text-slate-400"}>
+                    {step === 'PAY_ON_SITE' ? 'Bestätigung' : 'Zahlung'}
+                  </span>
                 </div>
               </div>
 
@@ -404,11 +453,11 @@ export default function TournamentRegistrationPage() {
                             Zurück
                           </Button>
                           <Button type="submit" disabled={loading} className="h-10 flex-[2] bg-slate-900 text-white hover:bg-black rounded-lg shadow-lg shadow-slate-900/20 text-sm font-medium">
-                             {loading ? <Loader2 className="animate-spin h-4 w-4" /> : "Weiter zur Zahlung"}
+                             {loading ? <Loader2 className="animate-spin h-4 w-4" /> : (stripeEnabled ? "Weiter zur Zahlung" : "Weiter zur Bestätigung")}
                           </Button>
                         </div>
                       </motion.form>
-                    ) : (
+                    ) : step === 'PAYMENT' ? (
                       /* PAYMENT STEP */
                       <motion.div
                         key="payment-form"
@@ -427,6 +476,45 @@ export default function TournamentRegistrationPage() {
                         )}
                          
                          <div className="mt-4 text-center">
+                           <button 
+                             onClick={() => setStep('FORM')} 
+                             className="text-xs text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center w-full gap-1"
+                            >
+                             <ArrowLeft className="h-3 w-3" /> Daten korrigieren
+                           </button>
+                         </div>
+                      </motion.div>
+                    ) : (
+                      /* PAY ON SITE STEP */
+                      <motion.div
+                        key="pay-on-site"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="space-y-6"
+                      >
+                        <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 text-center">
+                          <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Euro className="h-6 w-6" />
+                          </div>
+                          <h3 className="text-lg font-bold text-slate-900 mb-2">Zahlung vor Ort</h3>
+                          <p className="text-sm text-slate-600 mb-4">
+                            Das Startgeld von <strong>{selectedTournament.entryFee}€</strong> wird am Turniertag vor Ort in bar beglichen.
+                          </p>
+                          <div className="text-xs text-slate-500 bg-white p-3 rounded border border-slate-100">
+                            Bitte bringe den Betrag möglichst passend mit.
+                          </div>
+                        </div>
+
+                        <Button 
+                          onClick={handlePayOnSiteRegistration} 
+                          disabled={loading} 
+                          className="w-full h-12 bg-slate-900 text-white hover:bg-black rounded-lg shadow-lg shadow-slate-900/20 text-base font-medium"
+                        >
+                          {loading ? <Loader2 className="animate-spin" /> : "Kostenpflichtig anmelden"}
+                        </Button>
+
+                        <div className="text-center">
                            <button 
                              onClick={() => setStep('FORM')} 
                              className="text-xs text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center w-full gap-1"

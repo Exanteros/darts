@@ -59,6 +59,8 @@ export async function GET() {
         status: activeTournament?.status || 'UPCOMING',
         maxPlayers: activeTournament?.maxPlayers || (defaultSettings as any).defaultMaxPlayers,
         entryFee: activeTournament?.entryFee || (defaultSettings as any).defaultEntryFee,
+        location: (activeTournament as any)?.location || '',
+        street: (activeTournament as any)?.street || '',
         legSettings: {
           round1to3: 2,
           semifinalsAndFinal: 3
@@ -91,6 +93,8 @@ export async function GET() {
       status: activeTournament?.status || 'UPCOMING',
       maxPlayers: activeTournament?.maxPlayers || (settings as any).defaultMaxPlayers,
       entryFee: activeTournament?.entryFee || (settings as any).defaultEntryFee,
+      location: (activeTournament as any)?.location || '',
+      street: (activeTournament as any)?.street || '',
       legSettings: {
         round1to3: 2,
         semifinalsAndFinal: 3
@@ -189,6 +193,8 @@ export async function PUT(request: NextRequest) {
             status: data.status || existingTournament.status,
             maxPlayers: data.maxPlayers || existingTournament.maxPlayers,
             entryFee: data.entryFee || existingTournament.entryFee,
+            location: data.location || existingTournament.location,
+            street: data.street || existingTournament.street,
             updatedAt: new Date(),
           },
         });
@@ -203,6 +209,8 @@ export async function PUT(request: NextRequest) {
             status: data.status || 'UPCOMING',
             maxPlayers: data.maxPlayers || 64,
             entryFee: data.entryFee || 0,
+            location: data.location || '',
+            street: data.street || '',
           },
         });
       }
@@ -225,6 +233,8 @@ export async function PUT(request: NextRequest) {
       status: tournament?.status || data.status || 'UPCOMING',
       maxPlayers: tournament?.maxPlayers || (settings as any).defaultMaxPlayers,
       entryFee: tournament?.entryFee || (settings as any).defaultEntryFee,
+      location: (tournament as any)?.location || data.location || '',
+      street: (tournament as any)?.street || data.street || '',
       legSettings: data.legSettings || {
         round1to3: 2,
         semifinalsAndFinal: 3

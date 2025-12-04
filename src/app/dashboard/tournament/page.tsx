@@ -60,6 +60,8 @@ interface TournamentSettings {
   stripeWebhookSecret: string;
   mainLogo: string;
   sponsorLogos: string[];
+  location: string;
+  street: string;
 }
 
 function UploadedImagesList() {
@@ -209,7 +211,9 @@ export default function TournamentPage() {
     stripeSecretKey: '',
     stripeWebhookSecret: '',
     mainLogo: '',
-    sponsorLogos: []
+    sponsorLogos: [],
+    location: '',
+    street: ''
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -288,7 +292,9 @@ export default function TournamentPage() {
           stripeSecretKey: data.stripeSecretKey || '',
           stripeWebhookSecret: data.stripeWebhookSecret || '',
           mainLogo: data.mainLogo || '',
-          sponsorLogos: data.sponsorLogos && typeof data.sponsorLogos === 'string' ? JSON.parse(data.sponsorLogos) : []
+          sponsorLogos: data.sponsorLogos && typeof data.sponsorLogos === 'string' ? JSON.parse(data.sponsorLogos) : [],
+          location: data.location || '',
+          street: data.street || ''
         });
       }
     } catch (error) {
@@ -665,6 +671,27 @@ export default function TournamentPage() {
                           placeholder="Beschreibung des Turniers..."
                           rows={3}
                         />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="location">Veranstaltungsort</Label>
+                          <Input
+                            id="location"
+                            value={settings.location}
+                            onChange={(e) => setSettings(prev => ({ ...prev, location: e.target.value }))}
+                            placeholder="z.B. Sportheim Puschendorf"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="street">Straße & Hausnummer</Label>
+                          <Input
+                            id="street"
+                            value={settings.street}
+                            onChange={(e) => setSettings(prev => ({ ...prev, street: e.target.value }))}
+                            placeholder="z.B. Waldstraße 1"
+                          />
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
