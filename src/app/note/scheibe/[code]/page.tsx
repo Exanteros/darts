@@ -324,15 +324,29 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
         
         setCurrentGame(game);
         
-        // Check if we need to update the local state (if it's a new game OR if we just reloaded/reconnected)
-        // We update if the game ID changed OR if the local state is at initial values (501/0/0) while the server has progress
-        const isNewGame = gameState.player1.name !== game.player1 || gameState.player2.name !== game.player2;
-        const isStateOutdated = gameState.player1.score === 501 && gameState.player1.legs === 0 && 
-                                gameState.player2.score === 501 && gameState.player2.legs === 0 &&
-                                (game.player1Score !== 501 || game.player1Legs > 0 || game.player2Score !== 501 || game.player2Legs > 0);
+        // Check if we need to update the local state
+        // We update if:
+        // 1. It's a different game (names don't match)
+        // 2. OR our local state is "fresh" (501/0) but the server has progress
+        // 3. OR we explicitly want to force a sync (e.g. on load)
+        
+        const isFreshState = gameState.player1.score === 501 && gameState.player1.legs === 0 && 
+                             gameState.player2.score === 501 && gameState.player2.legs === 0 &&
+                             gameState.throws.length === 0;
 
-        if (isNewGame || isStateOutdated) {
-          console.log('🔄 Syncing game state from server:', game);
+        const serverHasProgress = game.player1Score !== 501 || game.player1Legs > 0 || 
+                                  game.player2Score !== 501 || game.player2Legs > 0 ||
+                                  (game.throws && game.throws.length > 0);
+
+        const isNewGame = gameState.player1.name !== game.player1 || gameState.player2.name !== game.player2;
+
+        if (isNewGame || (isFreshState && serverHasProgress)) {
+          console.log('🔄 Syncing game state from server:', {
+            local: { p1: gameState.player1.score, p2: gameState.player2.score },
+            server: { p1: game.player1Score, p2: game.player2Score },
+            reason: isNewGame ? 'new_game' : 'fresh_state_sync'
+          });
+          
           setGameState(prev => ({
             ...prev,
             player1: { 
