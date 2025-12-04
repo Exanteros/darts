@@ -289,6 +289,21 @@ server {
     listen 80;
     server_name $DOMAIN www.$DOMAIN;
 
+    # SSE (Server-Sent Events) specific configuration
+    location /api/dashboard/tournament/events {
+        proxy_pass http://localhost:3000;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_set_header Connection '';
+        proxy_http_version 1.1;
+        chunked_transfer_encoding off;
+        proxy_read_timeout 24h;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
