@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
       throw new Error('NEXTAUTH_URL muss HTTPS verwenden in Production');
     }
 
-    const magicLinkUrl = `${baseUrl}/api/auth/verify?token=${token}`;
+    const magicLinkUrl = `${baseUrl}/api/auth/magic-link/verify?token=${token}`;
 
     // Sende Email mit Magic Link
     const { sendMail, renderHtml } = await import('@/lib/mail');
