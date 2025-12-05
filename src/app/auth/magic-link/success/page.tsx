@@ -9,46 +9,27 @@ import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 function MagicLinkSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const sessionData = searchParams.get('session');
+  const token = searchParams.get('token');
   const [error, setError] = useState<string | null>(null);
-  const [userData, setUserData] = useState<{ email: string; name: string } | null>(null);
 
   useEffect(() => {
     const handleLogin = async () => {
       try {
         console.log('🔐 Magic Link Success: Starting authentication');
         
-        if (!sessionData) {
-          console.error('❌ No session data found');
-          setError('Ungültige Session-Daten');
+        if (!token) {
+          console.error('❌ No token found');
+          setError('Ungültiges Login-Token');
           setTimeout(() => router.push('/login'), 2000);
           return;
         }
 
-        // Decode session data
-        // Use atob for browser compatibility instead of Buffer
-        const decoded = JSON.parse(decodeURIComponent(escape(window.atob(sessionData))));
-        const { email, name, timestamp } = decoded;
-
-        console.log('📧 Decoded session data:', { email, name, age: Date.now() - timestamp });
-
-        // Security: Check timestamp (max 30 Sekunden alt)
-        if (Date.now() - timestamp > 30000) {
-          console.error('❌ Session expired');
-          setError('Session abgelaufen. Bitte melde dich erneut an.');
-          setTimeout(() => router.push('/login'), 2000);
-          return;
-        }
-
-        setUserData({ email, name });
-
-        console.log('🔑 Calling signIn with magic link...');
+        console.log('🔑 Calling signIn with magic link token...');
 
         // Login via NextAuth mit Magic Link Provider
-        // Verwende redirect: false um die Kontrolle über die Weiterleitung zu behalten
+        // Wir übergeben das Token als "password" oder in einem eigenen Feld
         const result = await signIn('credentials', {
-          email,
-          password: '',
+          token, // Pass the signed token
           isMagicLink: 'true',
           redirect: false
         });

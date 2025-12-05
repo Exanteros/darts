@@ -2,6 +2,7 @@ import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
+import { verifyLoginToken } from '@/lib/jwt';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -10,10 +11,49 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
-        isMagicLink: { label: 'IsMagicLink', type: 'text' }
+        isMagicLink: { label: 'IsMagicLink', type: 'text' },
+        token: { label: 'Token', type: 'text' }
       },
       async authorize(credentials) {
-        if (!credentials?.email) {
+        // Magic Link Authentifizierung
+        if (credentials?.isMagicLink === 'true') {
+          if (!credentials.token) {
+            console.error('Magic Link login attempt without token');
+            return null;
+          }
+
+          // Verifiziere das signierte Token
+          const payload = await verifyLoginToken(credentials.token);
+          
+          if (!payload || !payload.email) {
+            console.error('Invalid or expired magic link token');
+            return null;
+          }
+
+          const normalizedEmail = payload.email.toLowerCase().trim();
+
+          // Suche Benutzer in der Datenbank
+          const user = await prisma.user.findUnique({
+            where: { email: normalizedEmail }
+          });
+
+          if (!user) {
+            console.error(`User not found for verified token: ${normalizedEmail}`);
+            return null;
+          }
+
+          console.log(`Magic Link login successful for user ${user.id} (${user.email})`);
+          
+          return {
+            id: user.id.toString(),
+            email: user.email,
+            name: user.name,
+            role: user.role,
+          };
+        }
+
+        // Standard Passwort-Authentifizierung
+        if (!credentials?.email || !credentials?.password) {
           return null;
         }
 
@@ -25,25 +65,6 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!user) {
-          return null;
-        }
-
-        // Magic Link Authentifizierung (kein Passwort erforderlich)
-        if (credentials.isMagicLink === 'true') {
-          // Bei Magic Link ist Token bereits verifiziert
-          // Zusätzliche Sicherheit: Prüfe ob User aktiv ist
-          console.log(`Magic Link login successful for user ${user.id} (${user.email})`);
-          
-          return {
-            id: user.id.toString(),
-            email: user.email,
-            name: user.name,
-            role: user.role,
-          };
-        }
-
-        // Standard Passwort-Authentifizierung (Legacy - sollte nicht mehr verwendet werden)
-        if (!credentials.password) {
           return null;
         }
 

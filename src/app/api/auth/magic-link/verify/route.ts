@@ -98,6 +98,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/login?error=user_not_found', request.url));
     }
 
+import { signLoginToken } from '@/lib/jwt';
+
+// ... existing code ...
+
     // Lösche alle anderen Tokens dieser E-Mail (One-Time-Use für alle parallelen Anfragen)
     await prisma.magicLinkToken.deleteMany({
       where: {
@@ -106,22 +110,18 @@ export async function GET(request: NextRequest) {
       }
     });
 
-  // Audit Log: minimal - do not log email or full IP
-  console.log('Successful magic link verification for user', { userId: user.id });
+    // Audit Log: minimal - do not log email or full IP
+    console.log('Successful magic link verification for user', { userId: user.id });
 
-    // Erstelle Session-Daten für NextAuth Callback
-    const sessionData = {
-      email: user.email,
-      name: user.name,
-      timestamp: Date.now()
-    };
+    // Erstelle signiertes Login-Token für NextAuth Callback
+    const loginToken = await signLoginToken({ 
+      email: user.email, 
+      userId: user.id 
+    });
 
-    // Encode session data
-    const encodedSession = Buffer.from(JSON.stringify(sessionData)).toString('base64');
-
-    // Redirect zur Success-Seite mit Session-Daten
+    // Redirect zur Success-Seite mit Token
     const successUrl = new URL('/auth/magic-link/success', request.url);
-    successUrl.searchParams.set('session', encodedSession);
+    successUrl.searchParams.set('token', loginToken);
 
     // Brief success log - do not include tokens or full links
     console.log('✅ Magic link verified for user', { 
