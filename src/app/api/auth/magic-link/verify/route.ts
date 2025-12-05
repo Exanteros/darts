@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { signLoginToken } from '@/lib/jwt';
 
 // Rate Limiting für Token-Verifikation - Redis-backed
 
@@ -97,10 +98,6 @@ export async function GET(request: NextRequest) {
       console.error(`User not found for token from IP ${ip}`);
       return NextResponse.redirect(new URL('/login?error=user_not_found', request.url));
     }
-
-import { signLoginToken } from '@/lib/jwt';
-
-// ... existing code ...
 
     // Lösche alle anderen Tokens dieser E-Mail (One-Time-Use für alle parallelen Anfragen)
     await prisma.magicLinkToken.deleteMany({
