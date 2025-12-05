@@ -225,7 +225,10 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
           const winnerName = gameState[`player${gameState.winner}`].name;
           await fetch('/api/game/finish', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-board-code': code
+            },
             body: JSON.stringify({
               gameId: currentGame.id,
               winner: winnerName,
@@ -397,7 +400,10 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
 
       await fetch('/api/dashboard/tournament/shootout/finish-player', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-board-code': code
+        },
         body: JSON.stringify({
           playerId: currentShootoutPlayer,
           score: totalScore,
@@ -407,7 +413,10 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
 
       await fetch('/api/dashboard/tournament/shootout/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-board-code': code
+        },
         body: JSON.stringify({
           action: 'complete_throwing',
           playerId: currentShootoutPlayer,
@@ -433,7 +442,10 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
     try {
       await fetch('/api/dashboard/tournament/shootout/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-board-code': code
+        },
         body: JSON.stringify({ action: 'set_active_player', playerId })
       });
     } catch (error) { console.error(error); }
@@ -455,7 +467,10 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
     try {
       await fetch('/api/dashboard/tournament/shootout/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-board-code': code
+        },
         body: JSON.stringify({ action: 'set_active_player', playerId: currentShootoutPlayer })
       });
     } catch (error) { console.error(error); }
@@ -479,7 +494,10 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
     try {
       const response = await fetch('/api/dashboard/tournament/shootout/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-board-code': code
+        },
         body: JSON.stringify({ action: 'start_throwing' })
       });
       if (response.ok) setShowStartShootoutPopup(false);
@@ -491,7 +509,10 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
     try {
       await fetch('/api/game/current-throw', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-board-code': code
+        },
         body: JSON.stringify({
           gameId: currentGame.id,
           darts: darts.map(d => d.value),
@@ -505,7 +526,10 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
   const clearCurrentThrowDisplay = async () => {
     if (!currentGame?.id) return;
     try {
-      await fetch(`/api/game/current-throw?gameId=${currentGame.id}`, { method: 'DELETE' });
+      await fetch(`/api/game/current-throw?gameId=${currentGame.id}`, { 
+        method: 'DELETE',
+        headers: { 'x-board-code': code }
+      });
     } catch (error) { console.error(error); }
   };
 
@@ -572,7 +596,10 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
               if (currentGame?.id) {
                 fetch('/api/game/leg-won', {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                  headers: { 
+                    'Content-Type': 'application/json',
+                    'x-board-code': code
+                  },
                   body: JSON.stringify({
                     gameId: currentGame.id,
                     winnerId: prev.currentPlayer === 1 ? currentGame.player1Id : currentGame.player2Id,
@@ -605,7 +632,10 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
         try {
           await fetch('/api/game/throw', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-board-code': code
+            },
             body: JSON.stringify({
               gameId: currentGame.id,
               playerId: gameState.currentPlayer === 1 ? currentGame.player1Id : currentGame.player2Id,
@@ -703,7 +733,10 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
     try {
       await fetch('/api/game/reset', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-board-code': code
+        },
         body: JSON.stringify({ gameId: currentGame.id })
       });
       setShowResetConfirm(false);

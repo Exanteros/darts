@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 // POST - Aktualisiere Shootout-Status
 export async function POST(request: NextRequest) {
@@ -21,6 +23,27 @@ export async function POST(request: NextRequest) {
         { error: 'Kein aktives Shootout gefunden' },
         { status: 404 }
       );
+    }
+
+    // Auth Check
+    const session = await getServerSession(authOptions);
+    const isAdmin = session?.user?.role === 'ADMIN';
+    const boardCode = request.headers.get('x-board-code');
+    
+    let isBoardAuthorized = false;
+    if (boardCode && tournament.shootoutBoardId) {
+       const board = await prisma.board.findUnique({
+         where: { id: tournament.shootoutBoardId }
+       });
+       if (board && board.accessCode === boardCode.toUpperCase()) {
+         isBoardAuthorized = true;
+       }
+    }
+
+    if (!isAdmin && !isBoardAuthorized) {
+      return NextResponse.json({
+        error: 'Nicht autorisiert'
+      }, { status: 403 });
     }
 
     if (action === 'select_player') {

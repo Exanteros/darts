@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendVictoryEmail, sendDefeatEmail, sendRoundNotificationEmail, sendFinalWinnerEmail } from '@/lib/mail-events';
 import { broadcastGameUpdate } from '@/lib/websocketBroadcast';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { verifyBoardAccess } from '@/lib/board-auth';
 
 /**
  * Befördert den Gewinner eines Spiels in die nächste Runde
@@ -92,6 +95,19 @@ export async function POST(request: NextRequest) {
         success: false,
         message: 'Spiel-ID und Gewinner sind erforderlich'
       }, { status: 400 });
+    }
+
+    // Auth Check
+    const session = await getServerSession(authOptions);
+    const isAdmin = session?.user?.role === 'ADMIN';
+    const boardCode = request.headers.get('x-board-code');
+    const isBoardAuthorized = await verifyBoardAccess(gameId, boardCode);
+
+    if (!isAdmin && !isBoardAuthorized) {
+      return NextResponse.json({
+        success: false,
+        message: 'Nicht autorisiert'
+      }, { status: 403 });
     }
 
     // Prüfe ob das Spiel existiert

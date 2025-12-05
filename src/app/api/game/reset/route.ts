@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { broadcastGameReset } from '@/lib/websocketBroadcast';
 import { Prisma } from '@prisma/client';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { verifyBoardAccess } from '@/lib/board-auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +16,19 @@ export async function POST(request: NextRequest) {
         success: false,
         message: 'Game ID is required'
       }, { status: 400 });
+    }
+
+    // Auth Check
+    const session = await getServerSession(authOptions);
+    const isAdmin = session?.user?.role === 'ADMIN';
+    const boardCode = request.headers.get('x-board-code');
+    const isBoardAuthorized = await verifyBoardAccess(gameId, boardCode);
+
+    if (!isAdmin && !isBoardAuthorized) {
+      return NextResponse.json({
+        success: false,
+        message: 'Nicht autorisiert'
+      }, { status: 403 });
     }
 
     // 1. Delete all throws for this game

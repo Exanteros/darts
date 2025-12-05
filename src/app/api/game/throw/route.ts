@@ -4,16 +4,13 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Throw, GameStatus } from '@prisma/client';
 
+import { verifyBoardAccess } from '@/lib/board-auth';
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.id) {
-      return NextResponse.json({
-        success: false,
-        message: 'Authentifizierung erforderlich'
-      }, { status: 401 });
-    }
+    // Note: We don't return 401 immediately because board access might be valid without session
 
     const body = await request.json();
     const { gameId, playerId, dart1, dart2, dart3, score } = body;
@@ -53,6 +50,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: false,
         message: 'Spieler gehört nicht zu diesem Spiel'
+      }, { status: 403 });
+    }
+
+    // Authorization Check: Nur der Spieler selbst, ein Admin oder ein autorisiertes Board darf werfen
+    const isAdmin = session?.user?.role === 'ADMIN';
+    const isPlayer = session?.user?.id === playerId;
+    
+    const boardCode = request.headers.get('x-board-code');
+    const isBoardAuthorized = await verifyBoardAccess(gameId, boardCode);
+
+    if (!isAdmin && !isPlayer && !isBoardAuthorized) {
+      return NextResponse.json({
+        success: false,
+        message: 'Sie sind nicht berechtigt, für diesen Spieler einen Wurf einzutragen.'
       }, { status: 403 });
     }
 
