@@ -130,7 +130,7 @@ function MagicLinkSuccessContent() {
         </CardHeader>
         <CardContent className="text-center space-y-4">
           <p className="text-muted-foreground">
-            Willkommen zurück{userData?.name ? `, ${userData.name}` : ''}!
+            Willkommen zurück!
           </p>
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
