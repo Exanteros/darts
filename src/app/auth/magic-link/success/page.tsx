@@ -95,7 +95,7 @@ function MagicLinkSuccessContent() {
     };
 
     handleLogin();
-  }, [sessionData, router]);
+  }, [token, router]);
 
   if (error) {
     return (
