@@ -506,6 +506,12 @@ export default function TournamentRegistrationPage() {
                           </div>
                         </div>
 
+                        {error && (
+                          <div className="p-2.5 rounded-lg bg-red-50 text-red-600 text-xs border border-red-100 flex items-center gap-2">
+                            <XCircle className="h-3.5 w-3.5" /> {error}
+                          </div>
+                        )}
+
                         <Button 
                           onClick={handlePayOnSiteRegistration} 
                           disabled={loading} 
@@ -551,7 +557,14 @@ export default function TournamentRegistrationPage() {
                 <Button onClick={() => router.push('/user')} className="h-10 px-6 rounded-full bg-slate-900 text-white hover:bg-black text-sm">
                   Zum Dashboard
                 </Button>
-                <Button variant="outline" onClick={() => { setStep('SELECTION'); setSelectedTournament(null); setPlayerName(""); setEmail(""); }} className="h-10 px-6 rounded-full border-slate-200 text-sm">
+                <Button variant="outline" onClick={() => { 
+                  setStep('FORM'); 
+                  setPlayerName(""); 
+                  setEmail(""); 
+                  setError(null); 
+                  setLoading(false);
+                  setClientSecret("");
+                }} className="h-10 px-6 rounded-full border-slate-200 text-sm">
                   Weitere Anmeldung
                 </Button>
               </div>
