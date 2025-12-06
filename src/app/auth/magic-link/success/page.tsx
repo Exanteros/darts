@@ -10,6 +10,7 @@ function MagicLinkSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
+  const sessionParam = searchParams.get('session');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -17,6 +18,13 @@ function MagicLinkSuccessContent() {
       try {
         console.log('🔐 Magic Link Success: Starting authentication');
         
+        if (sessionParam && !token) {
+          console.warn('⚠️ Old session param detected, but no token.');
+          setError('Dieser Link ist veraltet. Bitte fordere einen neuen Login-Link an.');
+          setTimeout(() => router.push('/login'), 4000);
+          return;
+        }
+
         if (!token) {
           console.error('❌ No token found');
           setError('Ungültiges Login-Token');
@@ -95,7 +103,7 @@ function MagicLinkSuccessContent() {
     };
 
     handleLogin();
-  }, [token, router]);
+  }, [token, sessionParam, router]);
 
   if (error) {
     return (

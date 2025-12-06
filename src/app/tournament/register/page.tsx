@@ -420,11 +420,11 @@ export default function TournamentRegistrationPage() {
                         className="space-y-4"
                       >
                         <div className="space-y-1.5">
-                          <Label className="text-slate-700 text-sm">Dein Spielername</Label>
+                          <Label className="text-slate-700 text-sm">Vor- und Nachname</Label>
                           <Input 
                             value={playerName} 
                             onChange={e => setPlayerName(e.target.value)} 
-                            placeholder="z.B. 'The Power'"
+                            placeholder="z.B. Max Mustermann"
                             className="h-10 bg-slate-50 border-slate-200 focus:bg-white transition-all"
                             required
                             autoFocus

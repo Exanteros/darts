@@ -109,7 +109,9 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
   // WebSocket für Game-Updates an Display
   const { sendMessage: sendGameUpdate, isConnected: wsConnected } = useWebSocket({
     url: typeof window !== 'undefined' 
-      ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/websocket`
+      ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+          ? 'ws://localhost:3001'
+          : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/websocket`)
       : 'ws://localhost:3001',
     onConnect: () => {
       console.log('🎯 Note/Scheibe: WebSocket verbunden');
@@ -652,16 +654,45 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
       
       // Sende WebSocket-Update an Display
       if (boardId && wsConnected) {
+        // Hat der aktuelle Spieler gerade ein Leg gewonnen?
+        const currentPlayerLegWon = !isBust && isCheckout;
+        const newLegsPlayer1 = gameState.player1.legs + (gameState.currentPlayer === 1 && currentPlayerLegWon ? 1 : 0);
+        const newLegsPlayer2 = gameState.player2.legs + (gameState.currentPlayer === 2 && currentPlayerLegWon ? 1 : 0);
+        
+        // Ist das Spiel zu Ende?
+        const isGameOver = newLegsPlayer1 >= gameState.legsToWin || newLegsPlayer2 >= gameState.legsToWin;
+        
+        // Berechne den NEUEN Score (nach Leg-Gewinn wird auf 501 zurückgesetzt)
+        let newPlayer1Score, newPlayer2Score;
+        if (currentPlayerLegWon && !isGameOver) {
+          // Leg gewonnen, aber Spiel geht weiter -> beide auf 501
+          newPlayer1Score = 501;
+          newPlayer2Score = 501;
+        } else {
+          // Normaler Wurf: Aktualisiere nur den Score des aktuellen Spielers
+          newPlayer1Score = gameState.currentPlayer === 1 
+            ? (isBust ? gameState.player1.score : newScore)
+            : gameState.player1.score;
+          newPlayer2Score = gameState.currentPlayer === 2 
+            ? (isBust ? gameState.player2.score : newScore)
+            : gameState.player2.score;
+        }
+        
+        // Nach einem erfolgreichen Wurf wechselt der Spieler (außer bei Game Over)
+        const nextPlayer = isGameOver 
+          ? gameState.currentPlayer
+          : (gameState.currentPlayer === 1 ? 2 : 1);
+
         sendGameUpdate({
           type: 'throw-update',
           boardId,
           gameData: {
-            player1Score: gameState.player1.score - (gameState.currentPlayer === 1 ? throwTotal : 0),
-            player2Score: gameState.player2.score - (gameState.currentPlayer === 2 ? throwTotal : 0),
-            player1Legs: gameState.player1.legs,
-            player2Legs: gameState.player2.legs,
-            currentPlayer: gameState.currentPlayer,
-            currentLeg: gameState.currentLeg
+            player1Score: newPlayer1Score,
+            player2Score: newPlayer2Score,
+            player1Legs: newLegsPlayer1,
+            player2Legs: newLegsPlayer2,
+            currentPlayer: nextPlayer,
+            currentLeg: gameState.currentLeg + (currentPlayerLegWon && !isGameOver ? 1 : 0)
           },
           throw: {
             player: gameState.currentPlayer,
@@ -671,7 +702,7 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
             isBust
           }
         });
-        console.log('📤 WebSocket throw-update gesendet für Board:', boardId);
+        console.log('📤 WebSocket throw-update gesendet für Board:', boardId, '- Next Player:', nextPlayer);
       }
     }
 

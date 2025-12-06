@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useId } from "react";
 import { 
   motion, 
   useScroll, 
@@ -151,7 +151,18 @@ function AnimatedGridPattern({
   duration = 4,
   ...props
 }: any) {
-  const id = useRef(`grid-pattern-${Math.random().toString(36).substr(2, 9)}`).current;
+  const id = useId();
+  const [squares, setSquares] = useState<Array<{x: number, y: number, delay: number}>>([]);
+
+  useEffect(() => {
+    setSquares(
+      [...Array(numSquares)].map(() => ({
+        x: Math.floor(Math.random() * 20) * width + 1,
+        y: Math.floor(Math.random() * 20) * height + 1,
+        delay: Math.random() * 10,
+      }))
+    );
+  }, [numSquares, width, height]);
 
   return (
     <div className={cn("pointer-events-none absolute inset-0 h-full w-full overflow-hidden [mask-image:linear-gradient(to_bottom,white,transparent)]", className)} {...props}>
@@ -177,13 +188,13 @@ function AnimatedGridPattern({
         </defs>
         <rect width="100%" height="100%" strokeWidth={0} fill={`url(#${id})`} />
         <svg x={x} y={y} className="overflow-visible">
-            {[...Array(numSquares)].map((_, i) => (
+            {squares.map((sq, i) => (
                 <motion.rect
                     key={i}
                     width={width - 1}
                     height={height - 1}
-                    x={Math.floor(Math.random() * 20) * width + 1}
-                    y={Math.floor(Math.random() * 20) * height + 1}
+                    x={sq.x}
+                    y={sq.y}
                     fill="currentColor"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: maxOpacity }}
@@ -191,7 +202,7 @@ function AnimatedGridPattern({
                         duration,
                         repeat: Infinity,
                         repeatType: "reverse",
-                        delay: Math.random() * 10,
+                        delay: sq.delay,
                     }}
                 />
             ))}

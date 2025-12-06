@@ -82,10 +82,37 @@ export default function DisplayBoard({ params }: { params: Promise<{ code: strin
   // Connection Status für UI-Feedback
   const { isConnected, sendMessage } = useWebSocket({
     url: typeof window !== 'undefined' 
-      ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/websocket`
+      ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+          ? 'ws://localhost:3001'
+          : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/websocket`)
       : 'ws://localhost:3001',
     onMessage: (data) => {
-      if (['game-update', 'throw-update', 'game-reset'].includes(data.type)) {
+      // Prüfe ob die Nachricht für dieses Board ist
+      if (data.boardId && data.boardId !== boardId) return;
+
+      if (data.type === 'throw-update' && data.gameData && gameState) {
+        // Aktualisiere Game State direkt aus WebSocket-Daten
+        setGameState(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            player1: {
+              ...prev.player1,
+              score: data.gameData.player1Score,
+              legs: data.gameData.player1Legs
+            },
+            player2: {
+              ...prev.player2,
+              score: data.gameData.player2Score,
+              legs: data.gameData.player2Legs
+            },
+            currentPlayer: data.gameData.currentPlayer,
+            currentLeg: data.gameData.currentLeg
+          };
+        });
+        console.log('🎯 Display: Live-Update empfangen - Spieler:', data.gameData.currentPlayer);
+      } else if (data.type === 'game-update' || data.type === 'game-reset') {
+        // Für andere Updates: Trigger API refresh
         setRefreshTrigger(prev => prev + 1);
       }
     },

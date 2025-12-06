@@ -5,19 +5,28 @@ const http = require('http');
 const server = http.createServer();
 const wss = new WebSocket.Server({ server });
 
-// Speichere alle verbundenen Clients
-const clients = new Set();
+// Speichere alle verbundenen Clients mit ihren Board-Subscriptions
+const clients = new Map(); // ws -> { boardIds: Set<string> }
 
 wss.on('connection', (ws, req) => {
   console.log('✅ Client connected:', req.socket.remoteAddress);
-  clients.add(ws);
+  clients.set(ws, { boardIds: new Set() });
 
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message);
-      console.log('📨 Received:', data.type);
+      console.log('📨 Received:', data.type, data.boardId ? `(Board: ${data.boardId})` : '');
 
-      // Broadcast an alle anderen Clients
+      // Handle subscription
+      if (data.type === 'subscribe' && data.boardId) {
+        const clientData = clients.get(ws);
+        if (clientData) {
+          clientData.boardIds.add(data.boardId);
+          console.log(`📍 Client subscribed to board: ${data.boardId}`);
+        }
+      }
+
+      // Broadcast game updates to subscribed clients only
       if (data.type === 'game-update' || data.type === 'throw-update' || data.type === 'game-reset') {
         broadcast(data, ws);
       }
@@ -40,15 +49,33 @@ wss.on('connection', (ws, req) => {
   ws.send(JSON.stringify({ type: 'connected', message: 'WebSocket verbunden' }));
 });
 
-// Broadcast-Funktion
+// Broadcast-Funktion - sendet nur an Clients, die das Board abonniert haben
 function broadcast(data, sender) {
   const message = JSON.stringify(data);
-  clients.forEach((client) => {
-    if (client !== sender && client.readyState === WebSocket.OPEN) {
-      client.send(message);
+  const targetBoardId = data.boardId;
+  let sentCount = 0;
+
+  clients.forEach((clientData, client) => {
+    // Skip sender
+    if (client === sender) return;
+    
+    // Check if client is ready
+    if (client.readyState === WebSocket.OPEN) {
+      // If message has boardId, only send to subscribed clients
+      if (targetBoardId) {
+        if (clientData.boardIds.has(targetBoardId)) {
+          client.send(message);
+          sentCount++;
+        }
+      } else {
+        // No boardId, send to all (fallback)
+        client.send(message);
+        sentCount++;
+      }
     }
   });
-  console.log(`📢 Broadcasted ${data.type} to ${clients.size - 1} clients`);
+  
+  console.log(`📢 Broadcasted ${data.type} to ${sentCount} client(s)${targetBoardId ? ` (Board: ${targetBoardId})` : ''}`);
 }
 
 const PORT = 3001;

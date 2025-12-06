@@ -130,7 +130,9 @@ export default function DartsScoreboardLive() {
   // WebSocket für Echtzeit-Updates
   const { isConnected, sendMessage } = useWebSocket({
     url: typeof window !== 'undefined' 
-      ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/websocket`
+      ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+          ? 'ws://localhost:3001'
+          : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/websocket`)
       : 'ws://localhost:3001',
     onMessage: (data) => {
       if (data.type === 'game-update' || data.type === 'throw-update') {
