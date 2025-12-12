@@ -1,15 +1,18 @@
+version: '3.8'
+
 services:
-  # PostgreSQL Datenbank
+
+  # 1. PostgreSQL Datenbank
   postgres:
     image: postgres:16-alpine
     container_name: dartsturnier-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: dartsturnier
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme123}
+      # Nutzt den Standardwert, wenn DB_PASSWORD nicht in der .env gesetzt ist
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme123} 
       POSTGRES_DB: dartsturnier
-    ports:
-      # - "5432:5432" # Port nicht nach außen exponieren für mehr Sicherheit
+    # Sicher: Port ist nur intern zugänglich
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -18,57 +21,53 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis für Rate Limiting und Caching
+  # 2. Redis für Rate Limiting und Caching
   redis:
     image: redis:7-alpine
     container_name: dartsturnier-redis
     restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_PASSWORD:-changeme123}
-    ports:
-      # - "6379:6379" # Port nicht nach außen exponieren für mehr Sicherheit
+    # Wichtig: requirepass MUSS den Wert aus der Umgebungsvariable/Default-Wert lesen
+    command: redis-server --requirepass ${REDIS_PASSWORD:-changeme123} 
+    # Sicher: Port ist nur intern zugänglich
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      # Prüft Verbindung und Auth (incr ping)
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"] 
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Next.js Application
+  # 3. Next.js Application
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: dartsturnier-app
     restart: unless-stopped
-    read_only: true # Dateisystem schreibgeschützt machen
-    security_opt:
-      - no-new-privileges:true # Verhindert Privilege Escalation
-    cap_drop:
-      - ALL # Alle Linux Capabilities droppen
-    tmpfs:
-      - /tmp:exec,mode=1777 # /tmp im RAM, exec erlaubt für temporäre Scripts falls nötig, aber sicherer wäre noexec
-      - /run
+    
+    # --- Ports ---
+    ports:
+      - "3000:3000"
+      - "3001:3001" # <--- Diese Ports waren falsch platziert
+    
+    # --- Volumes ---
+    volumes:
+      - next_cache:/app/.next/cache # Cache Volume für read-only Filesystem
+      
+    # --- Dependencies ---
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    ports:
-      - "3000:3000"
-    volumes:
-      - next_cache:/app/.next/cache # Cache Volume für read-only Filesystem
 
-volumes:
-  postgres_data:
-  redis_data:
-  next_cache:
-      - "3001:3001"
+    # --- Umgebungsvariablen für die App ---
     environment:
-      # Database
+      # Database Connection String
       DATABASE_URL: postgresql://dartsturnier:${DB_PASSWORD:-changeme123}@postgres:5432/dartsturnier
       
-      # Redis
+      # Redis Connection String
       REDIS_URL: redis://:${REDIS_PASSWORD:-changeme123}@redis:6379
       
       # NextAuth
@@ -82,14 +81,21 @@ volumes:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-noreply@dartsturnier.local}
       
-      # Stripe (Optional)
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
-      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      
       # App Config
       NODE_ENV: production
-      PORT: 3000
+      PORT: 3000 # Interne App Port
+    
+    # --- Sicherheits-Features ---
+    read_only: true 
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:exec,mode=1777 
+      - /run
+    
+    # --- Healthcheck ---
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s
@@ -97,8 +103,11 @@ volumes:
       retries: 3
       start_period: 40s
 
+# --- DEFINITION DER VOLUMES (GANZ AM ENDE) ---
 volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  next_cache:
     driver: local
