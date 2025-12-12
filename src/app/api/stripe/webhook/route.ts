@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { PrismaClient } from '@prisma/client';
+import { decrypt } from '@/lib/crypto';
 
 const prisma = new PrismaClient();
 
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    const stripe = new Stripe(systemSettings.stripeSecretKey);
+    const stripe = new Stripe(decrypt(systemSettings.stripeSecretKey));
 
     // Hole Raw Body für Signature Verification
     const body = await request.text();
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
       event = stripe.webhooks.constructEvent(
         body,
         sig,
-        systemSettings.stripeWebhookSecret
+        decrypt(systemSettings.stripeWebhookSecret)
       );
     } catch (err: any) {
       console.error('⚠️  Webhook signature verification failed:', err.message);

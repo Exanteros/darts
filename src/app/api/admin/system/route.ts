@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { PrismaClient } from '@prisma/client';
+import { encrypt, decrypt } from '@/lib/crypto';
 
 const prisma = new PrismaClient();
 
@@ -52,8 +53,8 @@ export async function GET() {
         monitoringInterval: systemSettings.monitoringInterval,
         stripeEnabled: systemSettings.stripeEnabled,
         stripePublishableKey: systemSettings.stripePublishableKey,
-        stripeSecretKey: systemSettings.stripeSecretKey,
-        stripeWebhookSecret: systemSettings.stripeWebhookSecret
+        stripeSecretKey: systemSettings.stripeSecretKey ? decrypt(systemSettings.stripeSecretKey) : null,
+        stripeWebhookSecret: systemSettings.stripeWebhookSecret ? decrypt(systemSettings.stripeWebhookSecret) : null
       }
     });
 
@@ -109,8 +110,8 @@ export async function PUT(request: NextRequest) {
         monitoringInterval: monitoringInterval || 30,
         stripeEnabled: stripeEnabled !== undefined ? stripeEnabled : false,
         stripePublishableKey: stripePublishableKey || null,
-        stripeSecretKey: stripeSecretKey || null,
-        stripeWebhookSecret: stripeWebhookSecret || null,
+        stripeSecretKey: stripeSecretKey ? encrypt(stripeSecretKey) : null,
+        stripeWebhookSecret: stripeWebhookSecret ? encrypt(stripeWebhookSecret) : null,
         updatedAt: new Date()
       },
       create: {
@@ -122,8 +123,8 @@ export async function PUT(request: NextRequest) {
         monitoringInterval: monitoringInterval || 30,
         stripeEnabled: stripeEnabled !== undefined ? stripeEnabled : false,
         stripePublishableKey: stripePublishableKey || null,
-        stripeSecretKey: stripeSecretKey || null,
-        stripeWebhookSecret: stripeWebhookSecret || null
+        stripeSecretKey: stripeSecretKey ? encrypt(stripeSecretKey) : null,
+        stripeWebhookSecret: stripeWebhookSecret ? encrypt(stripeWebhookSecret) : null
       }
     });
 

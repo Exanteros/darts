@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme123}
       POSTGRES_DB: dartsturnier
     ports:
-      - "5432:5432"
+      # - "5432:5432" # Port nicht nach außen exponieren für mehr Sicherheit
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -25,7 +25,7 @@ services:
     restart: unless-stopped
     command: redis-server --requirepass ${REDIS_PASSWORD:-changeme123}
     ports:
-      - "6379:6379"
+      # - "6379:6379" # Port nicht nach außen exponieren für mehr Sicherheit
     volumes:
       - redis_data:/data
     healthcheck:
@@ -41,6 +41,14 @@ services:
       dockerfile: Dockerfile
     container_name: dartsturnier-app
     restart: unless-stopped
+    read_only: true # Dateisystem schreibgeschützt machen
+    security_opt:
+      - no-new-privileges:true # Verhindert Privilege Escalation
+    cap_drop:
+      - ALL # Alle Linux Capabilities droppen
+    tmpfs:
+      - /tmp:exec,mode=1777 # /tmp im RAM, exec erlaubt für temporäre Scripts falls nötig, aber sicherer wäre noexec
+      - /run
     depends_on:
       postgres:
         condition: service_healthy
@@ -48,6 +56,13 @@ services:
         condition: service_healthy
     ports:
       - "3000:3000"
+    volumes:
+      - next_cache:/app/.next/cache # Cache Volume für read-only Filesystem
+
+volumes:
+  postgres_data:
+  redis_data:
+  next_cache:
       - "3001:3001"
     environment:
       # Database

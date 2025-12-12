@@ -16,7 +16,8 @@ async function main() {
     console.log(`Tournament: ${t.name} (${t.id}) - Status: ${t.status}`);
     console.log(`Players: ${t.players.length}`);
     t.players.forEach(p => {
-      console.log(` - ${p.playerName} (${p.id}): ${p.status}`);
+      const maskedName = p.playerName ? p.playerName.charAt(0) + '***' + p.playerName.slice(-1) : 'Unknown';
+      console.log(` - ${maskedName} (${p.id}): ${p.status}`);
     });
     
     const activePlayers = t.players.filter(p => p.status === 'ACTIVE');

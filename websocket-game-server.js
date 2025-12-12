@@ -9,7 +9,9 @@ const wss = new WebSocket.Server({ server });
 const clients = new Map(); // ws -> { boardIds: Set<string> }
 
 wss.on('connection', (ws, req) => {
-  console.log('✅ Client connected:', req.socket.remoteAddress);
+  const ip = req.socket.remoteAddress;
+  const maskedIp = ip ? ip.replace(/\d+\.\d+$/, '***.***') : 'unknown';
+  console.log('✅ Client connected:', maskedIp);
   clients.set(ws, { boardIds: new Set() });
 
   ws.on('message', (message) => {
