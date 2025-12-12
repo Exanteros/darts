@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useEffect, useState, useRef, useId } from "react";
 import { 
@@ -19,12 +19,12 @@ import { cn } from "@/lib/utils";
 import { 
   Target, Trophy, Users, Calendar, MapPin, Clock, 
   Zap, TrendingUp, ChevronRight, Sparkles,
-  Shield, Award, ArrowRight, CheckCircle2
+  Shield, Award, ArrowRight, CheckCircle2, Menu // ** MOBILE OPTIMIZATION: Added Menu Icon **
 } from "lucide-react";
 
-/* ======================== MAGIC UI COMPONENTS ======================== */
+/* ======================== MAGIC UI COMPONENTS (Unverändert, sind responsiv genug) ======================== */
 
-// 1. NUMBER TICKER
+// 1. NUMBER TICKER (Unverändert)
 function NumberTicker({ value, className }: { value: number; className?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const motionValue = useMotionValue(0);
@@ -48,7 +48,7 @@ function NumberTicker({ value, className }: { value: number; className?: string 
   return <span className={cn("inline-block tabular-nums text-black dark:text-white tracking-wider", className)} ref={ref} />;
 }
 
-// 2. WORD PULL UP
+// 2. WORD PULL UP (Angepasst für kleinere Schriftgröße auf Mobile)
 function WordPullUp({
   words,
   className,
@@ -78,7 +78,8 @@ function WordPullUp({
       whileInView="show"
       viewport={{ once: true }}
       className={cn(
-        "font-display text-center text-4xl font-bold leading-[5rem] tracking-[-0.02em] drop-shadow-sm",
+        // ** MOBILE OPTIMIZATION: Adjusted base text size and line height **
+        "font-display text-center text-4xl font-bold leading-[3.5rem] tracking-[-0.02em] drop-shadow-sm sm:leading-[5rem] sm:text-5xl",
         className,
       )}
     >
@@ -95,7 +96,7 @@ function WordPullUp({
   );
 }
 
-// 3. BORDER BEAM
+// 3. BORDER BEAM (Unverändert)
 function BorderBeam({
   className,
   size = 200,
@@ -138,7 +139,7 @@ function BorderBeam({
   );
 }
 
-// 4. ANIMATED GRID PATTERN
+// 4. ANIMATED GRID PATTERN (Unverändert)
 function AnimatedGridPattern({
   width = 40,
   height = 40,
@@ -212,7 +213,7 @@ function AnimatedGridPattern({
   );
 }
 
-// 5. SHIMMER BUTTON
+// 5. SHIMMER BUTTON (Unverändert)
 const ShimmerButton = ({ children, className, ...props }: any) => {
   return (
     <button
@@ -243,7 +244,7 @@ const ShimmerButton = ({ children, className, ...props }: any) => {
   );
 };
 
-/* ======================== HELPER COMPONENTS ======================== */
+/* ======================== HELPER COMPONENTS (Unverändert) ======================== */
 
 const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 20, filter: "blur(10px)" },
@@ -265,7 +266,6 @@ const staggerContainer: Variants = {
   }
 };
 
-// --- DIESE KOMPONENTE FEHLTE VORHER ---
 function DynamicLogo() {
   const [mainLogo, setMainLogo] = useState<string>('');
 
@@ -298,7 +298,7 @@ function DynamicLogo() {
   );
 }
 
-/* ======================== PAGE CONTENT ======================== */
+/* ======================== PAGE CONTENT (Unverändert) ======================== */
 
 export default function Home() {
   return (
@@ -338,7 +338,7 @@ export default function Home() {
 
 /* ======================== SECTIONS ======================== */
 
-function HeroSection() {
+ function HeroSection() {
   return (
     <section className="relative overflow-hidden pt-32 pb-20 sm:pt-40 sm:pb-32 lg:pb-48">
       {/* MagicUI: Animated Grid Background */}
@@ -363,11 +363,11 @@ function HeroSection() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
               </span>
-              <span className="text-slate-600 font-medium">Anmeldung geöffnet für 2025</span>
+              <span className="text-slate-600 font-medium">Anmeldung geöffnet für 2026</span>
             </Badge>
           </motion.div>
 
-          {/* Headline - MagicUI: Word Pull Up */}
+          {/* Headline - MagicUI: Word Pull Up (Optimierte interne Schriftgröße) */}
           <WordPullUp 
             words="Darts Masters Puschendorf" 
             className="text-5xl font-extrabold tracking-tight sm:text-6xl md:text-7xl lg:text-8xl text-slate-900 mb-2"
@@ -385,18 +385,22 @@ function HeroSection() {
           {/* Buttons - MagicUI: Shimmer Button */}
           <motion.div 
             variants={fadeInUp}
-            className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
+            // MOBILE OPTIMIZATION: Use items-stretch for full-width buttons on mobile
+            className="mt-10 flex flex-col items-stretch justify-center gap-4 sm:flex-row sm:items-center"
           >
-            <a href="/tournament/register">
-                <ShimmerButton className="shadow-2xl">
-                    <span className="whitespace-pre-wrap text-center text-sm font-medium leading-none tracking-tight text-white dark:from-white dark:to-slate-900/10 lg:text-lg">
-                        Jetzt anmelden
+            <a href="/tournament/register" className="sm:w-auto"> 
+                <ShimmerButton className="shadow-2xl w-full sm:w-auto"> 
+                    {/* ** FEHLERBEHEBUNG: Alle Kinder in einem einzigen <span> zusammenfassen ** */}
+                    <span className="flex items-center justify-center">
+                        <span className="whitespace-pre-wrap text-center text-sm font-medium leading-none tracking-tight text-white dark:from-white dark:to-slate-900/10 lg:text-lg">
+                            Jetzt anmelden
+                        </span>
+                        <ArrowRight className="ml-2 h-4 w-4 text-white" />
                     </span>
-                    <ArrowRight className="ml-2 h-4 w-4 text-white" />
                 </ShimmerButton>
             </a>
             
-            <Button size="lg" variant="outline" className="h-[52px] px-8 rounded-full border-slate-200 hover:bg-slate-50 transition-all hover:scale-105" asChild>
+            <Button size="lg" variant="outline" className="h-[52px] px-8 rounded-full border-slate-200 hover:bg-slate-50 transition-all hover:scale-105 w-full sm:w-auto" asChild> 
               <a href="#features">
                 Mehr erfahren
               </a>
@@ -433,10 +437,11 @@ function StatsSection() {
                 <stat.icon className="h-5 w-5" />
               </div>
               {/* MagicUI: Number Ticker */}
-              <div className="text-3xl font-bold tracking-tight text-slate-900">
+              {/* ** MOBILE OPTIMIZATION: Reduced font size slightly for tight mobile layout ** */}
+              <div className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl"> 
                  <NumberTicker value={stat.value} />{stat.label.includes('Latenz') ? 'ms' : (stat.label.includes('Scheiben') ? '+' : '')}
               </div>
-              <div className="text-sm font-medium text-slate-500 uppercase tracking-wide">{stat.label}</div>
+              <div className="text-xs font-medium text-slate-500 uppercase tracking-wide sm:text-sm">{stat.label}</div>
             </motion.div>
           ))}
         </div>
@@ -459,55 +464,79 @@ function FeaturesBentoGrid() {
           </p>
         </div>
 
-        {/* Bento Grid Layout */}
+        {/* Bento Grid Layout (grid-cols-1 auf Mobile, grid-cols-3 auf Desktop) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[minmax(250px,auto)]">
           
-          {/* Large Card Left */}
+          {/* Large Card Left - Real-Time Scoring OPTIMIZED */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="md:col-span-2 row-span-2 relative group overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-8 hover:shadow-xl transition-all duration-500 hover:border-blue-200"
+            // ** MOBILE FIX: Reduziertes Padding auf p-4 auf Mobile, p-8 ab Small/Medium **
+            className="md:col-span-2 row-span-2 relative group overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-6 lg:p-8 hover:shadow-xl transition-all duration-500 hover:border-blue-200"
           >
             <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-gradient-to-br from-blue-500/20 to-purple-500/20 blur-2xl rounded-full group-hover:scale-150 transition-transform duration-700" />
             
             <div className="relative z-10 h-full flex flex-col justify-between">
               <div>
-                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-6 border border-slate-100">
-                  <Zap className="h-6 w-6 text-blue-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-sm mb-4 sm:mb-6 border border-slate-100">
+                  <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">Real-Time Scoring</h3>
-                <p className="text-slate-500 max-w-md">
+                <h3 className="text-xl font-bold text-slate-900 mb-2 sm:text-2xl">Real-Time Scoring</h3>
+                <p className="text-slate-500 max-w-md text-sm sm:text-base">
                   Erlebe professionelles Caller-Feeling. Alle Scores werden in Echtzeit auf Tablets erfasst und live auf Monitoren und im Web angezeigt.
                 </p>
               </div>
               
               {/* Fake UI Element with animation */}
-              <div className="mt-8 bg-white rounded-xl border border-slate-200 p-4 shadow-sm opacity-90 group-hover:translate-y-[-5px] transition-transform duration-500">
-                 <div className="flex justify-between items-center mb-2">
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.8 }}
+                // ** MOBILE FIX: Reduziertes Padding auf p-4 auf Mobile **
+                className="mt-6 sm:mt-8 bg-white/70 backdrop-blur-sm rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xl ring-2 ring-blue-100 opacity-95 group-hover:translate-y-[-5px] transition-transform duration-500"
+              >
+                 {/* ** MOBILE FIX: mb-2 für mehr Kompaktheit ** */}
+                 <div className="flex justify-between items-center mb-2 sm:mb-4">
                     <div className="flex items-center gap-2">
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                        <span className="relative flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600"></span>
                         </span>
-                        <span className="text-xs font-bold text-slate-400">LIVE</span>
+                        <span className="text-xs font-bold text-red-600 uppercase tracking-widest">Live Match</span>
                     </div>
+                    <Badge variant="secondary" className="bg-blue-50 text-blue-600 border border-blue-200 text-xs sm:text-sm">
+                        Leg 3 / Best of 5
+                    </Badge>
                  </div>
-                 <div className="flex justify-between items-end">
-                  <div>
-                    <div className="text-xs text-slate-400">Spieler 1</div>
-                    <div className="text-3xl font-mono font-bold text-slate-900"> <NumberTicker value={140} /> </div>
+                 
+                 <div className="grid grid-cols-2 gap-4">
+                    {/* Spieler 1: Führender Spieler */}
+                    <div className="p-3 rounded-xl bg-blue-50/50 border border-blue-100">
+                      <div className="text-xs text-blue-600 font-semibold mb-1 uppercase tracking-wider">Pfeil: 140</div>
+                      {/* ** MOBILE FIX: Schriftgröße auf Mobile text-3xl ** */}
+                      <div className="text-3xl font-mono font-extrabold text-slate-900 leading-none sm:text-4xl"> 
+                        <NumberTicker value={161} className="text-blue-700" /> 
+                      </div>
+                      <div className="text-xs font-medium text-slate-500 mt-2 sm:text-sm">Max Mustermann (P1)</div>
+                    </div>
+                    
+                    {/* Spieler 2: Verfolger */}
+                    <div className="p-3 rounded-xl bg-slate-100/50 border border-slate-200">
+                      <div className="text-xs text-slate-500 font-semibold mb-1 uppercase tracking-wider">Pfeil: 60</div>
+                      {/* ** MOBILE FIX: Schriftgröße auf Mobile text-3xl ** */}
+                      <div className="text-3xl font-mono font-extrabold text-slate-900 leading-none sm:text-4xl"> 
+                        <NumberTicker value={241} className="text-slate-500" /> 
+                      </div>
+                      <div className="text-xs font-medium text-slate-500 mt-2 sm:text-sm">Erika Schmidt (P2)</div>
+                    </div>
+                    
                   </div>
-                  <div className="text-right">
-                    <div className="text-xs text-slate-400">Spieler 2</div>
-                    <div className="text-3xl font-mono font-bold text-slate-300"> <NumberTicker value={301} /> </div>
-                  </div>
-                </div>
-              </div>
+              </motion.div>
             </div>
           </motion.div>
 
-          {/* Small Card Top Right */}
+          {/* Small Card Top Right - OPTIMIZED */}
           <BentoCard 
             title="Single Out Format"
             description="Klassisches 501 Single Out für schnellen Spielfluss. Best of 2 Legs in der Gruppenphase."
@@ -515,7 +544,7 @@ function FeaturesBentoGrid() {
             delay={0.1}
           />
 
-          {/* Small Card Middle Right */}
+          {/* Small Card Middle Right - OPTIMIZED */}
           <BentoCard 
             title="Preispool"
             description="Attraktive Sach- und Geldpreise für die Top-Platzierungen und High-Finishes."
@@ -523,16 +552,17 @@ function FeaturesBentoGrid() {
             delay={0.2}
           />
 
-          {/* Wide Card Bottom */}
+          {/* Wide Card Bottom - OPTIMIZED */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.3 }}
-            className="md:col-span-3 bg-slate-900 rounded-3xl p-8 relative overflow-hidden group"
+            // ** MOBILE FIX: Reduziertes Padding auf p-4 auf Mobile **
+            className="md:col-span-3 bg-slate-900 rounded-3xl p-4 sm:p-6 lg:p-8 relative overflow-hidden group"
           >
             {/* MagicUI: Border Beam on Dark Card */}
-            <BorderBeam size={300} duration={12} delay={9} colorFrom="#3b82f6" colorTo="#8b5cf6" />
+            <BorderBeam size={400} duration={12} delay={9} colorFrom="#3b82f6" colorTo="#8b5cf6" />
 
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:24px_24px] opacity-20" />
             <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
@@ -541,8 +571,8 @@ function FeaturesBentoGrid() {
                   <Shield className="h-5 w-5 text-blue-400" />
                   <span className="text-blue-400 font-medium text-sm">Turnier-Struktur</span>
                 </div>
-                <h3 className="text-2xl font-bold mb-2">Single-Elimination K.O.</h3>
-                <p className="text-slate-400 max-w-xl">
+                <h3 className="text-xl font-bold mb-2 sm:text-2xl">Single-Elimination K.O.</h3> 
+                <p className="text-slate-400 max-w-xl text-sm sm:text-base"> 
                   64 Spieler starten. Wer verliert, ist raus. Maximale Spannung ab der ersten Minute. 
                   Kein Double-Out Zwang bis zum Halbfinale.
                 </p>
@@ -556,6 +586,7 @@ function FeaturesBentoGrid() {
   );
 }
 
+// ** BentoCard Funktion mit optimierten Paddings und Titeln **
 function BentoCard({ title, description, icon: Icon, delay }: any) {
   return (
     <motion.div
@@ -563,13 +594,15 @@ function BentoCard({ title, description, icon: Icon, delay }: any) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ delay }}
-      className="bg-white rounded-3xl p-6 border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all duration-300 flex flex-col justify-center relative overflow-hidden group"
+      // ** MOBILE FIX: Reduziertes Padding auf p-4 auf Mobile, p-6 ab Small **
+      className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all duration-300 flex flex-col justify-center relative overflow-hidden group"
     >
-      <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center mb-4 text-slate-900 border border-slate-100 relative z-10">
+      <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center mb-3 sm:mb-4 text-slate-900 border border-slate-100 relative z-10">
         <Icon className="h-5 w-5" />
       </div>
-      <h3 className="text-lg font-bold text-slate-900 mb-2 relative z-10">{title}</h3>
-      <p className="text-sm text-slate-500 leading-relaxed relative z-10">{description}</p>
+      {/* ** MOBILE FIX: Textgröße leicht reduziert auf Mobile ** */}
+      <h3 className="text-base font-bold text-slate-900 mb-2 relative z-10 sm:text-lg">{title}</h3>
+      <p className="text-xs text-slate-500 leading-relaxed relative z-10 sm:text-sm">{description}</p>
     </motion.div>
   );
 }
@@ -601,7 +634,8 @@ function TournamentTimeline() {
           <h2 className="text-3xl font-bold tracking-tight text-slate-900">Der Weg zum Titel</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        {/* ** MOBILE OPTIMIZATION: Removed MD: grid-cols-3, used flex-col with separators for timeline on mobile ** */}
+        <div className="flex flex-col gap-8 max-w-5xl mx-auto md:grid md:grid-cols-3">
           {steps.map((item, i) => (
             <motion.div
               key={i}
@@ -611,14 +645,26 @@ function TournamentTimeline() {
               transition={{ delay: i * 0.2 }}
               className="relative"
             >
+              {/* ** MOBILE OPTIMIZATION: Vertical separator for mobile, horizontal for desktop ** */}
               {i !== steps.length - 1 && (
-                <div className="hidden md:block absolute top-8 left-1/2 w-full h-[2px] bg-gradient-to-r from-slate-200 to-transparent z-0" />
+                <>
+                    {/* Desktop Separator */}
+                    <div className="hidden md:block absolute top-8 left-[calc(50%+40px)] w-[calc(50%-80px)] h-[2px] bg-slate-200 z-0" />
+                    {/* Mobile Separator */}
+                    <div className="absolute left-4 top-0 h-full w-[2px] bg-slate-200 z-0 md:hidden" />
+                </>
               )}
               
-              <div className="relative z-10 bg-white rounded-2xl p-8 border border-slate-200 shadow-sm hover:shadow-md transition-shadow group">
-                <div className="text-5xl font-bold text-slate-100 mb-4 group-hover:text-blue-50 transition-colors">{item.step}</div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">{item.title}</h3>
-                <p className="text-slate-500">{item.desc}</p>
+              <div className="relative z-10 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow group flex flex-row items-start gap-4 md:flex-col md:items-stretch md:gap-0"> {/* ** MOBILE OPTIMIZATION: Flex row for better display with mobile vertical line ** */}
+                {/* ** MOBILE OPTIMIZATION: Step number on the side for mobile vertical line ** */}
+                <div className="text-4xl font-bold text-slate-100 mb-0 md:mb-4 group-hover:text-blue-50 transition-colors md:text-5xl">{item.step}</div>
+                <div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-1 sm:text-xl">{item.title}</h3>
+                    <p className="text-sm text-slate-500 sm:text-base">{item.desc}</p>
+                </div>
+                
+                {/* Mobile Dot (to mark the position on the vertical line) */}
+                <div className="absolute top-6 left-3.5 h-3 w-3 rounded-full bg-blue-500 ring-4 ring-slate-50 md:hidden"></div>
               </div>
             </motion.div>
           ))}
@@ -651,18 +697,18 @@ function CTASection() {
           <h2 className="text-3xl sm:text-5xl font-bold text-white mb-6 tracking-tight relative z-10">
             Bereit für die Challenge?
           </h2>
-          <p className="text-slate-300 text-lg mb-10 max-w-xl mx-auto relative z-10 leading-relaxed">
+          <p className="text-slate-300 text-base sm:text-lg mb-10 max-w-xl mx-auto relative z-10 leading-relaxed"> {/* ** MOBILE OPTIMIZATION: Reduced base text size ** */}
             Die Plätze sind streng limitiert auf 64 Teilnehmer. 
-            Melde dich jetzt an und sichere dir deinen Startplatz im Februar 2025.
+            Melde dich jetzt an und sichere dir deinen Startplatz im Februar 2026.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center relative z-10">
-             <a href="/tournament/register">
-                <ShimmerButton className="h-14 px-8 text-lg">
+             <a href="/tournament/register" className="w-full sm:w-auto"> {/* ** MOBILE OPTIMIZATION: Added w-full ** */}
+                <ShimmerButton className="h-14 px-8 text-lg w-full"> {/* ** MOBILE OPTIMIZATION: Added w-full ** */}
                     Jetzt Anmelden
                 </ShimmerButton>
              </a>
-            <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full border-slate-700 text-white hover:bg-slate-800 hover:text-white transition-all bg-transparent">
+            <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full border-slate-700 text-white hover:bg-slate-800 hover:text-white transition-all bg-transparent w-full sm:w-auto"> {/* ** MOBILE OPTIMIZATION: Added w-full ** */}
               <a href="/login">Login</a>
             </Button>
           </div>
@@ -682,6 +728,7 @@ function CTASection() {
 
 function Header() {
   const [scrolled, setScrolled] = useState(false);
+  // const [isMenuOpen, setIsMenuOpen] = useState(false); // ** MOBILE OPTIMIZATION: Uncomment for Hamburger menu functionality **
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -697,6 +744,7 @@ function Header() {
       <div className="container mx-auto px-4 flex items-center justify-between">
         <DynamicLogo />
 
+        {/* ** MOBILE OPTIMIZATION: Hidden on small screens ** */}
         <nav className="hidden md:flex items-center gap-8">
           <a href="#features" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">Features</a>
           <a href="#ablauf" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">Ablauf</a>
@@ -710,8 +758,34 @@ function Header() {
           <Button size="sm" className="rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-200/50" asChild>
             <a href="/tournament/register">Registrieren</a>
           </Button>
+
+          {/* ** MOBILE OPTIMIZATION: Mobile Menu Button ** */}
+          <Button variant="ghost" size="icon" className="md:hidden" aria-label="Toggle menu">
+            <Menu className="h-5 w-5" />
+          </Button>
         </div>
       </div>
+      
+      {/* ** MOBILE OPTIMIZATION: Mobile Menu Dropdown (Muss noch implementiert werden) ** */}
+      {/*
+      <motion.nav
+        initial={false}
+        animate={isMenuOpen ? "open" : "closed"}
+        variants={{
+            open: { opacity: 1, height: "auto" },
+            closed: { opacity: 0, height: 0, transition: { duration: 0.2, ease: "easeOut" } },
+        }}
+        className="md:hidden overflow-hidden"
+      >
+        <div className="flex flex-col items-center py-4 space-y-2 border-t border-slate-100">
+            <a href="#features" className="w-full text-center py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Features</a>
+            <a href="#ablauf" className="w-full text-center py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Ablauf</a>
+            <a href="/user" className="w-full text-center py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Dashboard</a>
+            <Separator className="w-4/5 my-2" />
+            <a href="/login" className="w-full text-center py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Login</a>
+        </div>
+      </motion.nav>
+      */}
     </header>
   );
 }
@@ -720,28 +794,34 @@ function Footer() {
   return (
     <footer className="border-t border-slate-100 bg-white pt-16 pb-8">
       <div className="container mx-auto px-4">
-        <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4 mb-12">
-          <div>
+        
+        {/* ** OPTIMIERUNG: Standardmäßig 2 Spalten auf Mobile (grid-cols-2) ** */}
+        <div className="grid grid-cols-2 gap-8 lg:grid-cols-4 mb-12">
+          
+          {/* Sektion 1: Logo & Beschreibung (Nimmt 1 Spalte auf Mobile) */}
+          <div className="col-span-1"> 
             <div className="flex items-center gap-2 mb-4">
               <div className="h-6 w-6 bg-black rounded-md flex items-center justify-center">
                 <Target className="h-3 w-3 text-white" />
               </div>
               <span className="font-bold">Darts Masters</span>
             </div>
-            <p className="text-sm text-slate-500 leading-relaxed">
+            <p className="text-sm text-slate-500 leading-relaxed max-w-[200px]">
               Puschendorf 2025. <br/>
               High-End Darts Entertainment.
             </p>
           </div>
           
-          <div>
+          {/* Sektion 2: Turnier (Nimmt 1 Spalte auf Mobile) */}
+          <div className="col-span-1">
             <h4 className="font-semibold text-slate-900 mb-4">Turnier</h4>
             <ul className="space-y-3 text-sm text-slate-500">
               <li><a href="/tournament/register" className="hover:text-slate-900 transition-colors">Anmeldung</a></li>
             </ul>
           </div>
 
-          <div>
+          {/* Sektion 3: Rechtliches (Bricht auf Mobile in die nächste Reihe um, bildet eine neue Reihe mit Ort & Zeit) */}
+          <div className="col-span-1">
             <h4 className="font-semibold text-slate-900 mb-4">Rechtliches</h4>
             <ul className="space-y-3 text-sm text-slate-500">
               <li><a href="/impressum" className="hover:text-slate-900 transition-colors">Impressum</a></li>
@@ -749,7 +829,8 @@ function Footer() {
             </ul>
           </div>
 
-          <div>
+          {/* Sektion 4: Ort & Zeit (Bricht auf Mobile in die nächste Reihe um) */}
+          <div className="col-span-1">
             <h4 className="font-semibold text-slate-900 mb-4">Ort & Zeit</h4>
             <p className="text-sm text-slate-500 mb-2">Februar 2025</p>
             <p className="text-sm text-slate-500">Puschendorf, DE</p>
@@ -758,9 +839,11 @@ function Footer() {
         
         <Separator className="bg-slate-100 mb-8" />
         
+        {/* Copyright Sektion */}
         <div className="flex flex-col sm:flex-row justify-between items-center text-xs text-slate-400">
-          <p>© 2025 Darts Masters. Built with love and passion.</p>
-          <div className="flex gap-4 mt-4 sm:mt-0">
+          <p className="order-2 sm:order-1 mt-4 sm:mt-0">© 2025 Darts Masters. Built with love and passion.</p>
+          <div className="flex gap-4 order-1 sm:order-2">
+            {/* Social Media Icons/Zusätzliche Links hier, falls vorhanden */}
           </div>
         </div>
       </div>
