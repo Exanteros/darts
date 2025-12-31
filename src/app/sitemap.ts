@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   // Use explicit production URL for sitemap to avoid localhost issues
-  const baseUrl = 'https://pudo-dartsmasters.de';
+  const baseUrl = 'https://pudo-dartmasters.de';
 
   return [
     {
