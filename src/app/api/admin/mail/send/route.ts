@@ -11,7 +11,7 @@ const prisma = new PrismaClient();
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
-    if (!session?.user) {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     if (!isAdmin) {
       const access = await prisma.tournamentAccess.findMany({
-        where: { userId: session.user.id },
+        where: { userId: session.userId },
         select: { tournamentId: true }
       });
 

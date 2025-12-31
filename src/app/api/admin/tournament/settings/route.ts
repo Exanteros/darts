@@ -74,7 +74,7 @@ export async function GET() {
 
     // Transform to match UI expectations
     const transformedSettings = {
-      id: activeTournament?.id || settings.id, // Use tournament ID if available, else default settings ID
+      id: activeTournament?.id || settings!.id, // Use tournament ID if available, else default settings ID
       name: activeTournament?.name || '',
       description: activeTournament?.description || '',
       startDate: activeTournament?.startDate ? new Date(activeTournament.startDate).toISOString().split('T')[0] : undefined,
@@ -101,8 +101,8 @@ export async function GET() {
       mainLogo: (settings as any).mainLogo || '',
       sponsorLogos: (settings as any).sponsorLogos && typeof (settings as any).sponsorLogos === 'string' ? JSON.parse((settings as any).sponsorLogos) : [],
       backgroundImage: (settings as any).backgroundImage || '',
-      createdAt: settings.createdAt,
-      updatedAt: settings.updatedAt,
+      createdAt: settings!.createdAt,
+      updatedAt: settings!.updatedAt,
     };
 
     console.log('Returning settings for user:', session.email);
@@ -251,7 +251,7 @@ export async function PUT(request: NextRequest) {
             status: data.status || existingTournament.status,
             maxPlayers: data.maxPlayers || existingTournament.maxPlayers,
             entryFee: data.entryFee || existingTournament.entryFee,
-            gameMode: data.gameMode || existingTournament.gameMode,
+            // gameMode: data.gameMode || existingTournament.gameMode,
             checkoutMode: data.checkoutMode || existingTournament.checkoutMode,
             location: data.location || existingTournament.location,
             street: data.street || existingTournament.street,
@@ -273,7 +273,7 @@ export async function PUT(request: NextRequest) {
             status: data.status || 'UPCOMING',
             maxPlayers: data.maxPlayers || 64,
             entryFee: data.entryFee || 0,
-            gameMode: data.gameMode || '501',
+            // gameMode: data.gameMode || '501',
             checkoutMode: data.checkoutMode || 'DOUBLE_OUT',
             location: data.location || '',
             street: data.street || '',
@@ -300,7 +300,7 @@ export async function PUT(request: NextRequest) {
       status: tournament?.status || data.status || 'UPCOMING',
       maxPlayers: tournament?.maxPlayers || (settings as any).defaultMaxPlayers,
       entryFee: tournament?.entryFee || (settings as any).defaultEntryFee,
-      gameMode: tournament?.gameMode || data.gameMode || '501',
+      gameMode: (tournament as any)?.gameMode || data.gameMode || '501',
       checkoutMode: tournament?.checkoutMode || data.checkoutMode || 'DOUBLE_OUT',
       location: tournament?.location || data.location || '',
       street: tournament?.street || data.street || '',

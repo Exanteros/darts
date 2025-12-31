@@ -108,6 +108,7 @@ interface PlayerStats {
   ACTIVE?: number;
   ELIMINATED?: number;
   WITHDRAWN?: number;
+  WAITING_LIST?: number;
 }
 
 export default function PlayersPage() {

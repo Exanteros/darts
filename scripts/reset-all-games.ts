@@ -1,5 +1,5 @@
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -19,7 +19,7 @@ async function resetAllGames() {
         player1Legs: 0,
         player2Legs: 0,
         currentLeg: 1,
-        currentThrow: null,
+        currentThrow: Prisma.DbNull,
         startedAt: null,
         finishedAt: null,
         // Keep boardId, player1Id, player2Id, round, tournamentId as is

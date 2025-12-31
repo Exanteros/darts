@@ -124,6 +124,10 @@ export async function POST(request: NextRequest) {
                 player2Legs: { increment: winnerId === game.player2Id ? 1 : 0 },
                 currentLeg: { increment: 1 }
             } : {})
+        },
+        include: {
+            player1: true,
+            player2: true
         }
     });
 
