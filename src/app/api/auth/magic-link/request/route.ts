@@ -186,14 +186,14 @@ Darts Masters Puschendorf`;
     }
 
     // Audit Log (optional)
-  // Minimal audit log. Do not log link or full email in production logs.
-  console.log('Magic Link requested for user', { userId: user.id });
+    // Minimal audit log. Do not log link or full email in production logs.
+    console.log('Magic Link requested for user', { userId: user.id });
 
     return NextResponse.json({
       success: true,
       message: 'Ein Login-Link wurde an deine E-Mail-Adresse gesendet. Der Link ist 15 Minuten gültig.',
       // In dev: zeige den Link
-      // Do not return the magic link in API responses to prevent token leakage.
+      devLink: process.env.NODE_ENV === 'development' ? magicLinkUrl : undefined
     });
   } catch (error) {
     console.error('Magic Link Request Error:', error);

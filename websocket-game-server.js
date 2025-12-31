@@ -29,7 +29,7 @@ wss.on('connection', (ws, req) => {
       }
 
       // Broadcast game updates to subscribed clients only
-      if (data.type === 'game-update' || data.type === 'throw-update' || data.type === 'game-reset') {
+      if (data.type === 'game-update' || data.type === 'throw-update' || data.type === 'game-reset' || data.type === 'game-assigned') {
         broadcast(data, ws);
       }
     } catch (error) {

@@ -48,11 +48,24 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    if (tournament._count.players >= tournament.maxPlayers) {
-      return NextResponse.json({
-        success: false,
-        message: 'Das Turnier ist bereits voll'
-      }, { status: 400 });
+    // Zähle nur aktive Spieler (nicht Warteliste oder Zurückgezogen)
+    const activePlayerCount = await prisma.tournamentPlayer.count({
+      where: {
+        tournamentId: tournamentId,
+        status: {
+          in: ['REGISTERED', 'CONFIRMED', 'ACTIVE']
+        }
+      }
+    });
+
+    let playerStatus = 'CONFIRMED';
+    let successMessage = `Erfolgreich für "${tournament.name}" angemeldet! Sie erhalten eine Bestätigungs-E-Mail.`;
+    let isWaitingList = false;
+
+    if (activePlayerCount >= tournament.maxPlayers) {
+      playerStatus = 'WAITING_LIST';
+      successMessage = `Turnier ist voll. Sie wurden auf die Warteliste gesetzt.`;
+      isWaitingList = true;
     }
 
     // Überprüfe Zahlungsstatus
@@ -63,7 +76,8 @@ export async function POST(request: NextRequest) {
     const stripeEnabled = settings?.stripeEnabled ?? false;
 
     // Wenn Stripe aktiviert ist und das Turnier etwas kostet, muss eine Zahlung vorliegen
-    if (tournament.entryFee > 0 && stripeEnabled && !paymentIntentId) {
+    // ABER NICHT WENN WARTELISTE
+    if (tournament.entryFee > 0 && stripeEnabled && !paymentIntentId && !isWaitingList) {
       return NextResponse.json({
         success: false,
         message: 'Zahlung erforderlich. Bitte schließen Sie den Bezahlvorgang ab.'
@@ -117,7 +131,7 @@ export async function POST(request: NextRequest) {
         tournamentId,
         userId: user.id,
         playerName: playerName.trim(),
-        status: 'CONFIRMED',
+        status: playerStatus as any,
         paid: paymentIntentId ? true : false
       },
       include: {
@@ -148,7 +162,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Erfolgreich für "${tournament.name}" angemeldet! Sie erhalten eine Bestätigungs-E-Mail.`,
+      message: successMessage,
       registration: {
         id: registration.id,
         playerName: registration.playerName,

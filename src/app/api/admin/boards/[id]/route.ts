@@ -12,8 +12,18 @@ export async function GET(
   try {
     const { id } = await params;
     const session = await getSession();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const isAdmin = session.role === 'ADMIN';
+    if (!isAdmin) {
+      const access = await prisma.tournamentAccess.findFirst({
+        where: { userId: session.userId }
+      });
+      if (!access) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
     }
 
     const board = await prisma.board.findUnique({
@@ -129,11 +139,20 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    // Temporär Authentifizierung deaktivieren für Debugging
-    // const session = await getSession();
-    // if (!session || session.role !== 'ADMIN') {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const isAdmin = session.role === 'ADMIN';
+    if (!isAdmin) {
+      const access = await prisma.tournamentAccess.findFirst({
+        where: { userId: session.userId }
+      });
+      if (!access) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
+    }
 
     const body = await request.json();
     const { name, location, status, legSettings, isMain, isActive, priority } = body;
@@ -231,8 +250,18 @@ export async function DELETE(
   try {
     const { id } = await params;
     const session = await getSession();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const isAdmin = session.role === 'ADMIN';
+    if (!isAdmin) {
+      const access = await prisma.tournamentAccess.findFirst({
+        where: { userId: session.userId }
+      });
+      if (!access) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
     }
 
     // Prüfe, ob das Board aktive Spiele hat

@@ -4,11 +4,23 @@ import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 
+import { prisma } from '@/lib/prisma';
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const isAdmin = session.role === 'ADMIN';
+    if (!isAdmin) {
+      const access = await prisma.tournamentAccess.findFirst({
+        where: { userId: session.userId }
+      });
+      if (!access) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
     }
 
     const formData = await request.formData();

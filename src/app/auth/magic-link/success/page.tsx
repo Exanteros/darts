@@ -81,8 +81,26 @@ function MagicLinkSuccessContent() {
           return;
         }
 
-        // Redirect basierend auf Rolle
-        const redirectUrl = userSession.user.role === 'ADMIN' ? '/dashboard' : '/user';
+        // Redirect basierend auf Rolle und Berechtigungen
+        let redirectUrl = '/user';
+        
+        if (userSession.user.role === 'ADMIN') {
+          redirectUrl = '/dashboard';
+        } else {
+          // Check for tournament access
+          try {
+            const accessResponse = await fetch('/api/auth/check-access');
+            if (accessResponse.ok) {
+              const accessData = await accessResponse.json();
+              if (accessData.hasAccess) {
+                redirectUrl = '/dashboard';
+              }
+            }
+          } catch (e) {
+            console.error('Error checking access for redirect', e);
+          }
+        }
+
         console.log('🔄 Redirecting to:', redirectUrl);
         
         setTimeout(() => {

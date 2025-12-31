@@ -54,6 +54,7 @@ interface TournamentSettings {
   maxPlayers: number;
   entryFee: number;
   gameMode: '501' | '301' | 'cricket';
+  checkoutMode: 'DOUBLE_OUT' | 'SINGLE_OUT' | 'MASTER_OUT';
   stripeEnabled: boolean;
   stripePublishableKey: string;
   stripeSecretKey: string;
@@ -133,7 +134,7 @@ function UploadedImagesList() {
 
   return (
     <>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {images.map((imageUrl, index) => (
           <div key={index} className="relative group">
             <img
@@ -206,6 +207,7 @@ export default function TournamentPage() {
     maxPlayers: 64,
     entryFee: 0,
     gameMode: '501',
+    checkoutMode: 'DOUBLE_OUT',
     stripeEnabled: false,
     stripePublishableKey: '',
     stripeSecretKey: '',
@@ -287,6 +289,7 @@ export default function TournamentPage() {
           maxPlayers: data.maxPlayers || 64,
           entryFee: data.entryFee || 0,
           gameMode: data.gameMode || '501',
+          checkoutMode: data.checkoutMode || 'DOUBLE_OUT',
           stripeEnabled: data.stripeEnabled || false,
           stripePublishableKey: data.stripePublishableKey || '',
           stripeSecretKey: data.stripeSecretKey || '',
@@ -553,6 +556,38 @@ export default function TournamentPage() {
     }
   };
 
+  const [shootoutStatus, setShootoutStatus] = useState<{ totalPlayers: number; playersWithShootout: number; allCompleted: boolean } | null>(null);
+
+  useEffect(() => {
+    const fetchShootoutStatus = async () => {
+      try {
+        const response = await fetch('/api/admin/tournament/shootout-status');
+        if (response.ok) {
+          const data = await response.json();
+          setShootoutStatus(data);
+        }
+      } catch (error) {
+        console.error('Error fetching shootout status:', error);
+      }
+    };
+
+    if (settings.status === 'SHOOTOUT' || settings.status === 'REGISTRATION_CLOSED') {
+      fetchShootoutStatus();
+    }
+  }, [settings.status]);
+
+  const handleStatusChange = (value: 'UPCOMING' | 'REGISTRATION_OPEN' | 'REGISTRATION_CLOSED' | 'SHOOTOUT' | 'ACTIVE' | 'FINISHED' | 'CANCELLED') => {
+    if (value === 'ACTIVE' && shootoutStatus && !shootoutStatus.allCompleted) {
+      toast({
+        title: "Aktion nicht erlaubt",
+        description: `Shootout noch nicht abgeschlossen! (${shootoutStatus.playersWithShootout}/${shootoutStatus.totalPlayers} Spieler)`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setSettings(prev => ({ ...prev, status: value }));
+  };
+
   const getBoardStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
@@ -579,7 +614,7 @@ export default function TournamentPage() {
     );
   }
 
-  if (!isAuthenticated || !isAdmin) {
+  if (!isAuthenticated || (!isAdmin && !canManageTournaments)) {
     return (
       <SidebarProvider>
         <AppSidebar />
@@ -642,9 +677,7 @@ export default function TournamentPage() {
                           <Label htmlFor="tournamentStatus">Status</Label>
                           <Select
                             value={settings.status}
-                            onValueChange={(value: 'UPCOMING' | 'REGISTRATION_OPEN' | 'REGISTRATION_CLOSED' | 'SHOOTOUT' | 'ACTIVE' | 'FINISHED' | 'CANCELLED') =>
-                              setSettings(prev => ({ ...prev, status: value }))
-                            }
+                            onValueChange={handleStatusChange}
                           >
                             <SelectTrigger>
                               <SelectValue />
@@ -654,7 +687,13 @@ export default function TournamentPage() {
                               <SelectItem value="REGISTRATION_OPEN">Anmeldung offen</SelectItem>
                               <SelectItem value="REGISTRATION_CLOSED">Anmeldung geschlossen</SelectItem>
                               <SelectItem value="SHOOTOUT">Shootout</SelectItem>
-                              <SelectItem value="ACTIVE">Aktiv</SelectItem>
+                              <SelectItem 
+                                value="ACTIVE" 
+                                disabled={shootoutStatus ? !shootoutStatus.allCompleted : false}
+                                className={shootoutStatus && !shootoutStatus.allCompleted ? "opacity-50 cursor-not-allowed" : ""}
+                              >
+                                Aktiv {shootoutStatus && !shootoutStatus.allCompleted && `(${shootoutStatus.playersWithShootout}/${shootoutStatus.totalPlayers})`}
+                              </SelectItem>
                               <SelectItem value="FINISHED">Abgeschlossen</SelectItem>
                               <SelectItem value="CANCELLED">Abgebrochen</SelectItem>
                             </SelectContent>
@@ -754,14 +793,32 @@ export default function TournamentPage() {
                             </SelectContent>
                           </Select>
                         </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="checkoutMode">Checkout-Modus</Label>
+                          <Select
+                            value={settings.checkoutMode}
+                            onValueChange={(value: 'DOUBLE_OUT' | 'SINGLE_OUT' | 'MASTER_OUT') =>
+                              setSettings(prev => ({ ...prev, checkoutMode: value }))
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="DOUBLE_OUT">Double Out</SelectItem>
+                              <SelectItem value="SINGLE_OUT">Single Out</SelectItem>
+                              <SelectItem value="MASTER_OUT">Master Out</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium">Aktueller Status:</span>
                           {getTournamentStatusBadge(settings.status)}
                         </div>
-                        <LoadingButton onClick={updateSettings} loading={saving} loadingText="Speichere...">
+                        <LoadingButton onClick={updateSettings} loading={saving} loadingText="Speichere..." className="w-full sm:w-auto">
                           Turnier-Einstellungen speichern
                         </LoadingButton>
                       </div>
@@ -944,7 +1001,7 @@ export default function TournamentPage() {
                             </CardDescription>
                           </CardHeader>
                           <CardContent className="space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div className="space-y-2">
                                 <Label htmlFor="legs-round1" className="text-xs text-muted-foreground">Runde 1 (64)</Label>
                                 <Input 
@@ -1064,8 +1121,8 @@ export default function TournamentPage() {
                         </div>
                       </div>
 
-                      <div className="flex justify-end">
-                        <Button onClick={async (e) => {
+                      <div className="flex sm:justify-end">
+                        <Button className="w-full sm:w-auto" onClick={async (e) => {
                           const btn = e.currentTarget;
                           const originalText = btn.textContent;
                           btn.disabled = true;
@@ -1133,8 +1190,8 @@ export default function TournamentPage() {
                         }}
                       />
 
-                      <div className="flex justify-end pt-4">
-                        <LoadingButton onClick={updateSettings} loading={saving} loadingText="Speichere...">
+                      <div className="flex sm:justify-end pt-4">
+                        <LoadingButton onClick={updateSettings} loading={saving} loadingText="Speichere..." className="w-full sm:w-auto">
                           Logo-Einstellungen speichern
                         </LoadingButton>
                       </div>
@@ -1173,7 +1230,7 @@ export default function TournamentPage() {
                       </div>
 
                       {settings.stripeEnabled && (
-                        <div className="space-y-4 ml-6">
+                        <div className="space-y-4 mt-4 sm:ml-6">
                           <div className="space-y-2">
                             <Label htmlFor="stripePublishableKey">Stripe Publishable Key</Label>
                             <Input
@@ -1209,8 +1266,8 @@ export default function TournamentPage() {
                         </div>
                       )}
 
-                      <div className="flex justify-end">
-                        <LoadingButton onClick={updateSettings} loading={saving} loadingText="Speichere...">
+                      <div className="flex sm:justify-end">
+                        <LoadingButton onClick={updateSettings} loading={saving} loadingText="Speichere..." className="w-full sm:w-auto">
                           Stripe-Einstellungen speichern
                         </LoadingButton>
                       </div>
@@ -1222,11 +1279,11 @@ export default function TournamentPage() {
                   {/* Dartscheiben-Verwaltung */}
                   <Card>
                     <CardHeader>
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <CardTitle>Dartscheiben-Verwaltung ({boards.length} Scheiben)</CardTitle>
                         <Dialog open={newBoardDialog} onOpenChange={setNewBoardDialog}>
                           <DialogTrigger asChild>
-                            <Button>
+                            <Button className="w-full sm:w-auto">
                               Neue Scheibe
                             </Button>
                           </DialogTrigger>

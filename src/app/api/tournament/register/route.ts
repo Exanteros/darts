@@ -48,11 +48,22 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    if (tournament._count.players >= tournament.maxPlayers) {
-      return NextResponse.json({
-        success: false,
-        message: 'Turnier ist bereits voll'
-      }, { status: 400 });
+    // Zähle nur aktive Spieler (nicht Warteliste oder Zurückgezogen)
+    const activePlayerCount = await prisma.tournamentPlayer.count({
+      where: {
+        tournamentId: tournamentId,
+        status: {
+          in: ['REGISTERED', 'CONFIRMED', 'ACTIVE']
+        }
+      }
+    });
+
+    let playerStatus = 'REGISTERED';
+    let successMessage = 'Erfolgreich für das Turnier angemeldet';
+
+    if (activePlayerCount >= tournament.maxPlayers) {
+      playerStatus = 'WAITING_LIST';
+      successMessage = 'Turnier ist voll. Sie wurden auf die Warteliste gesetzt.';
     }
 
     // Überprüfe, ob der Benutzer bereits angemeldet ist
@@ -78,7 +89,7 @@ export async function POST(request: NextRequest) {
         tournamentId,
         userId: session.user.id,
         playerName,
-        status: 'REGISTERED'
+        status: playerStatus as any // Cast to any to avoid type issues with new enum value if types aren't regenerated yet
       },
       include: {
         tournament: true
@@ -87,7 +98,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Erfolgreich für das Turnier angemeldet',
+      message: successMessage,
       player: blurPlayerData(tournamentPlayer)
     });
   } catch (error) {

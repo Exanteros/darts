@@ -5,8 +5,18 @@ import { prisma } from '@/lib/prisma';
 export async function GET() {
   try {
     const session = await getSession();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const isAdmin = session.role === 'ADMIN';
+    if (!isAdmin) {
+      const access = await prisma.tournamentAccess.findFirst({
+        where: { userId: session.userId }
+      });
+      if (!access) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
     }
 
     const settings = await prisma.tournamentTreeSettings.findUnique({
@@ -34,8 +44,18 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     const session = await getSession();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const isAdmin = session.role === 'ADMIN';
+    if (!isAdmin) {
+      const access = await prisma.tournamentAccess.findFirst({
+        where: { userId: session.userId }
+      });
+      if (!access) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
     }
 
     const data = await request.json();

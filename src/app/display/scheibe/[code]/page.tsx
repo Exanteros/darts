@@ -88,9 +88,19 @@ export default function DisplayBoard({ params }: { params: Promise<{ code: strin
       : 'ws://localhost:3001',
     onMessage: (data) => {
       // Prüfe ob die Nachricht für dieses Board ist
-      if (data.boardId && data.boardId !== boardId) return;
+      if (data.boardId && data.boardId !== boardId) {
+        console.log('⚠️ Display: Nachricht für anderes Board ignoriert:', data.boardId);
+        return;
+      }
 
-      if (data.type === 'throw-update' && data.gameData && gameState) {
+      if (data.type === 'throw-update' && data.gameData) {
+        // Wenn ein neues Leg beginnt (Score 501), erzwinge einen Refresh vom Server
+        // um sicherzustellen, dass alles synchron ist
+        if (data.gameData.player1Score === 501 && data.gameData.player2Score === 501 && 
+           (data.gameData.player1Legs > 0 || data.gameData.player2Legs > 0)) {
+            setRefreshTrigger(prev => prev + 1);
+        }
+
         // Aktualisiere Game State direkt aus WebSocket-Daten
         setGameState(prev => {
           if (!prev) return prev;
@@ -111,7 +121,7 @@ export default function DisplayBoard({ params }: { params: Promise<{ code: strin
           };
         });
         console.log('🎯 Display: Live-Update empfangen - Spieler:', data.gameData.currentPlayer);
-      } else if (data.type === 'game-update' || data.type === 'game-reset') {
+      } else if (data.type === 'game-update' || data.type === 'game-reset' || data.type === 'game-assigned') {
         // Für andere Updates: Trigger API refresh
         setRefreshTrigger(prev => prev + 1);
       }
@@ -159,7 +169,7 @@ export default function DisplayBoard({ params }: { params: Promise<{ code: strin
         if (!response.ok) return;
         
         const data = await response.json();
-        const game = data.currentGame;
+        const game = data.game;
 
         if (game) {
           setGameState({

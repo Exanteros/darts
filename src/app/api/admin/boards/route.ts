@@ -1,18 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { getSession } from '@/lib/session';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
+import { cookies } from 'next/headers';
 
 // GET /api/admin/boards - Alle Boards abrufen
 export async function GET() {
   try {
     const session = await getSession();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const isAdmin = session.role === 'ADMIN';
+    let allowedTournamentIds: string[] = [];
+
+    if (!isAdmin) {
+      const access = await prisma.tournamentAccess.findMany({
+        where: { userId: session.userId },
+        select: { tournamentId: true }
+      });
+
+      if (access.length === 0) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
+      allowedTournamentIds = access.map(a => a.tournamentId);
+    }
+
     const boards = await prisma.board.findMany({
+      where: isAdmin ? {} : {
+        tournamentId: { in: allowedTournamentIds }
+      },
       include: {
         tournament: true,
         games: {
@@ -64,32 +81,75 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
-    if (!session || session.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const isAdmin = session.role === 'ADMIN';
+    let allowedTournamentIds: string[] = [];
+
+    if (!isAdmin) {
+      const access = await prisma.tournamentAccess.findMany({
+        where: { userId: session.userId },
+        select: { tournamentId: true }
+      });
+
+      if (access.length === 0) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
+      allowedTournamentIds = access.map(a => a.tournamentId);
     }
 
     const body = await request.json();
     const { name, location, legSettings } = body;
 
-    // Finde das erste aktive Turnier oder erstelle ein Standard-Turnier
-    let tournament = await prisma.tournament.findFirst({
-      where: { status: 'ACTIVE' }
-    });
+    // Finde das passende Turnier
+    const cookieStore = await cookies();
+    const activeTournamentId = cookieStore.get('activeTournamentId')?.value;
+    
+    let tournament = null;
 
-    if (!tournament) {
-      tournament = await prisma.tournament.findFirst();
+    if (activeTournamentId) {
+      // Verify access
+      if (isAdmin || allowedTournamentIds.includes(activeTournamentId)) {
+        tournament = await prisma.tournament.findUnique({
+          where: { id: activeTournamentId }
+        });
+      }
     }
 
     if (!tournament) {
-      // Erstelle ein Standard-Turnier falls keines existiert
-      tournament = await prisma.tournament.create({
-        data: {
-          name: 'Darts Masters 2025',
-          description: 'Standard Turnier',
-          startDate: new Date(),
-          maxPlayers: 64,
+      // Finde das erste aktive Turnier oder erstelle ein Standard-Turnier (nur Admin)
+      // Filter by access
+      tournament = await prisma.tournament.findFirst({
+        where: {
+          ...(isAdmin ? {} : { id: { in: allowedTournamentIds } }),
+          status: 'ACTIVE'
         }
       });
+    }
+
+    if (!tournament) {
+      // Fallback to any tournament
+      tournament = await prisma.tournament.findFirst({
+        where: isAdmin ? {} : { id: { in: allowedTournamentIds } }
+      });
+    }
+
+    if (!tournament) {
+      if (isAdmin) {
+        // Erstelle ein Standard-Turnier falls keines existiert
+        tournament = await prisma.tournament.create({
+          data: {
+            name: 'Darts Masters 2025',
+            description: 'Standard Turnier',
+            startDate: new Date(),
+            maxPlayers: 64,
+          }
+        });
+      } else {
+        return NextResponse.json({ error: 'No tournament found' }, { status: 404 });
+      }
     }
 
     const board = await prisma.board.create({

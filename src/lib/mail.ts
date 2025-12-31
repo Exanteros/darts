@@ -193,6 +193,10 @@ export async function renderHtml(content: string, tournamentName?: string, isHtm
                         </p>
                         <div style="margin-top: 16px;">
                           <a href="${siteUrl}" style="color: ${colors.textMain}; text-decoration: none; font-size: 12px; font-weight: 500; margin: 0 8px;">Dashboard</a>
+                          <span style="color: ${colors.border};">|</span>
+                          <a href="${siteUrl}/impressum" style="color: ${colors.textMain}; text-decoration: none; font-size: 12px; font-weight: 500; margin: 0 8px;">Impressum</a>
+                          <span style="color: ${colors.border};">|</span>
+                          <a href="${siteUrl}/datenschutz" style="color: ${colors.textMain}; text-decoration: none; font-size: 12px; font-weight: 500; margin: 0 8px;">Datenschutz</a>
                         </div>
                       </td>
                     </tr>

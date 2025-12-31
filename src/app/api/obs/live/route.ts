@@ -32,8 +32,7 @@ export async function GET(request: NextRequest) {
         throws: {
           orderBy: {
             createdAt: 'desc'
-          },
-          take: 9 // Letzte 3 Würfe von beiden Spielern
+          }
         }
       },
       orderBy: {
@@ -44,18 +43,27 @@ export async function GET(request: NextRequest) {
     if (!activeGame) {
       return NextResponse.json({
         game: null,
+        mainBoardId: mainBoard?.id,
         message: mainBoard 
           ? `Kein aktives Spiel auf Hauptscheibe "${mainBoard.name}" gefunden`
           : 'Keine Hauptscheibe markiert oder kein aktives Spiel gefunden'
       });
     }
 
-    // Berechne Statistiken für beide Spieler
-    const player1Throws = activeGame.throws.filter(t => t.playerId === activeGame.player1Id);
-    const player2Throws = activeGame.throws.filter(t => t.playerId === activeGame.player2Id);
+    // Filter throws for current leg to calculate score
+    const currentLegThrows = activeGame.throws.filter(t => t.leg === activeGame.currentLeg);
+    const player1LegThrows = currentLegThrows.filter(t => t.playerId === activeGame.player1Id);
+    const player2LegThrows = currentLegThrows.filter(t => t.playerId === activeGame.player2Id);
 
-    const player1Stats = calculatePlayerStats(player1Throws, activeGame.player1Legs);
-    const player2Stats = calculatePlayerStats(player2Throws, activeGame.player2Legs);
+    const player1LegScore = player1LegThrows.reduce((sum, t) => sum + t.score, 0);
+    const player2LegScore = player2LegThrows.reduce((sum, t) => sum + t.score, 0);
+
+    // Calculate global stats (average etc)
+    const player1AllThrows = activeGame.throws.filter(t => t.playerId === activeGame.player1Id);
+    const player2AllThrows = activeGame.throws.filter(t => t.playerId === activeGame.player2Id);
+
+    const player1Stats = calculatePlayerStats(player1AllThrows, activeGame.player1Legs);
+    const player2Stats = calculatePlayerStats(player2AllThrows, activeGame.player2Legs);
 
     // Bestimme aktuellen Spieler aus currentThrow JSON-Feld oder fallback auf Berechnung
     let currentPlayer: 1 | 2 = 1;
@@ -94,8 +102,8 @@ export async function GET(request: NextRequest) {
       player2Id: activeGame.player2Id,
       player1Name: activeGame.player1?.playerName || 'Unbekannt',
       player2Name: activeGame.player2?.playerName || 'BYE',
-      player1Score: 501 - player1Stats.totalScore,
-      player2Score: 501 - player2Stats.totalScore,
+      player1Score: 501 - player1LegScore,
+      player2Score: 501 - player2LegScore,
       player1Legs: activeGame.player1Legs || 0,
       player2Legs: activeGame.player2Legs || 0,
       currentPlayer,
@@ -110,6 +118,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       game: gameData,
+      mainBoardId: mainBoard?.id,
       timestamp: new Date().toISOString()
     });
 

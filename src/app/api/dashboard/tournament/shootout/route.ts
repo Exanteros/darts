@@ -326,7 +326,8 @@ export async function GET() {
         id: tournament.id,
         name: tournament.name,
         status: tournament.status,
-        shootoutBoardId: tournament.shootoutBoardId
+        shootoutBoardId: tournament.shootoutBoardId,
+        checkoutMode: tournament.checkoutMode
       },
       shootoutResults
     });

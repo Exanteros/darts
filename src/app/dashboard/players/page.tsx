@@ -230,6 +230,12 @@ export default function PlayersPage() {
 
   const updatePaymentStatus = async (playerId: string, paid: boolean) => {
     try {
+      const updates: any = { paid };
+      // Wenn bezahlt, setze Status automatisch auf ACTIVE
+      if (paid) {
+        updates.status = 'ACTIVE';
+      }
+
       const response = await fetch('/api/admin/players', {
         method: 'PATCH',
         headers: {
@@ -237,7 +243,7 @@ export default function PlayersPage() {
         },
         body: JSON.stringify({
           playerId,
-          updates: { paid }
+          updates
         })
       });
 
@@ -421,7 +427,16 @@ export default function PlayersPage() {
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      <BulkOperations players={players} onUpdate={fetchPlayers} />
+                      <BulkOperations 
+                        players={players} 
+                        onUpdate={fetchPlayers} 
+                        totalCount={stats.total}
+                        filters={{ 
+                          search: searchTerm, 
+                          status: statusFilter !== 'all' ? statusFilter : '', 
+                          tournamentId: tournamentFilter !== 'all' ? tournamentFilter : '' 
+                        }}
+                      />
                       <Button variant="outline" onClick={exportToCSV}>
                         <Download className="h-4 w-4 mr-2" />
                         Export
@@ -448,15 +463,6 @@ export default function PlayersPage() {
                     </Card>
                     <Card>
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Registriert</CardTitle>
-                        <UserCheck className="h-4 w-4 text-muted-foreground" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold">{stats.REGISTERED || 0}</div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Bestätigt</CardTitle>
                         <UserCheck className="h-4 w-4 text-muted-foreground" />
                       </CardHeader>
@@ -471,6 +477,15 @@ export default function PlayersPage() {
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold">{stats.ACTIVE || 0}</div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Warteliste</CardTitle>
+                        <UserCheck className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{stats.WAITING_LIST || 0}</div>
                       </CardContent>
                     </Card>
                     <Card>
@@ -521,6 +536,7 @@ export default function PlayersPage() {
                             <SelectItem value="all">Alle Status</SelectItem>
                             <SelectItem value="REGISTERED">Registriert</SelectItem>
                             <SelectItem value="CONFIRMED">Bestätigt</SelectItem>
+                            <SelectItem value="WAITING_LIST">Warteliste</SelectItem>
                             <SelectItem value="ACTIVE">Aktiv</SelectItem>
                             <SelectItem value="ELIMINATED">Ausgeschieden</SelectItem>
                             <SelectItem value="WITHDRAWN">Zurückgezogen</SelectItem>
@@ -670,6 +686,7 @@ export default function PlayersPage() {
                                             <SelectContent>
                                               <SelectItem value="REGISTERED">Registriert</SelectItem>
                                               <SelectItem value="CONFIRMED">Bestätigt</SelectItem>
+                                              <SelectItem value="WAITING_LIST">Warteliste</SelectItem>
                                               <SelectItem value="ACTIVE">Aktiv</SelectItem>
                                               <SelectItem value="ELIMINATED">Ausgeschieden</SelectItem>
                                               <SelectItem value="WITHDRAWN">Zurückgezogen</SelectItem>

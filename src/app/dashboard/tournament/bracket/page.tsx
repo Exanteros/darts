@@ -3,6 +3,7 @@
 
 import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import { useTournamentEvents } from '@/hooks/useTournamentEvents';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import {
@@ -143,6 +144,16 @@ export default function TournamentBracket() {
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const tournamentId = tournament?.id || null;
   const { lastUpdate, isConnected, error } = useTournamentEvents(tournamentId);
+  
+  // WebSocket for game updates
+  const { sendMessage } = useWebSocket({
+    url: typeof window !== 'undefined' 
+      ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+          ? 'ws://localhost:3001'
+          : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/websocket`)
+      : 'ws://localhost:3001',
+  });
+
   const [shootoutResults, setShootoutResults] = useState<ShootoutResult[]>([]);
   const [bracketConfig, setBracketConfig] = useState<BracketConfig>({
     theme: 'dark',
@@ -800,6 +811,16 @@ export default function TournamentBracket() {
 
       alert(`Spiel gestartet!\n\n${data.game.player1} vs ${data.game.player2}\nScheibe: ${data.game.boardName}\n\nBesuchen Sie /note/scheibe/${data.game.boardAccessCode} um das Spiel zu verfolgen.`);
 
+      // Send WebSocket update to notify boards
+      if (game.boardId) {
+        sendMessage({
+          type: 'game-assigned',
+          boardId: game.boardId,
+          gameId: game.id
+        });
+        console.log('📤 Sent game-assigned event for board:', game.boardId);
+      }
+
       // Refresh the data
       const refreshResponse = await fetch('/api/dashboard/tournament/bracket');
       if (refreshResponse.ok) {
@@ -1157,19 +1178,19 @@ export default function TournamentBracket() {
       <div className="space-y-6">
         {/* Header */}
         <div className="px-4 lg:px-6 pt-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">🎯 Shootout Phase</h1>
               <p className="text-muted-foreground">
                 Verwalten Sie das 3-Dart-Shootout für die Setzlisten-Ermittlung
               </p>
             </div>
-            <div className="flex gap-2">
-              <Badge variant="outline">
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline" className="h-9">
                 {completedShootouts}/{totalPlayers} abgeschlossen
               </Badge>
               {isShootoutComplete && (
-                <Button onClick={finalizeShootout} disabled={shootoutLoading}>
+                <Button onClick={finalizeShootout} disabled={shootoutLoading} className="w-full sm:w-auto">
                   {shootoutLoading ? 'Erstelle Bracket...' : '🏆 Bracket erstellen'}
                 </Button>
               )}
@@ -1461,18 +1482,18 @@ export default function TournamentBracket() {
               </CardHeader>
               <CardContent>
                 <div className="border rounded-lg overflow-hidden">
-                  <div className="grid grid-cols-5 gap-4 p-4 bg-muted font-medium text-sm">
+                  <div className="grid grid-cols-3 gap-4 p-4 bg-muted font-medium text-sm md:grid-cols-5">
                     <div>Rang</div>
                     <div>Spieler</div>
                     <div>Score</div>
-                    <div>Würfe</div>
-                    <div>Status</div>
+                    <div className="hidden md:block">Würfe</div>
+                    <div className="hidden md:block">Status</div>
                   </div>
                   <div className="max-h-80 overflow-y-auto">
                     {shootoutResults
                       .sort((a, b) => (b.score || 0) - (a.score || 0))
                       .map((result, index) => (
-                        <div key={result.playerId} className="grid grid-cols-5 gap-4 p-4 border-t text-sm hover:bg-muted/50">
+                        <div key={result.playerId} className="grid grid-cols-3 gap-4 p-4 border-t text-sm hover:bg-muted/50 md:grid-cols-5">
                           <div className="font-medium">
                             {result.score > 0 ? (
                               <Badge variant={index < 3 ? "default" : "secondary"}>
@@ -1482,10 +1503,10 @@ export default function TournamentBracket() {
                           </div>
                           <div className="font-medium">{result.playerName}</div>
                           <div className="font-mono font-bold">{result.score || '-'}</div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="hidden text-xs text-muted-foreground md:block">
                             {result.throws ? result.throws.join(' + ') : '-'}
                           </div>
-                          <div>
+                          <div className="hidden md:block">
                             {currentShootoutPlayer === result.playerId && (shootoutStatus === 'active' || shootoutStatus === 'throwing') ? (
                               <Badge variant="default" className="bg-blue-500">
                                 <div className="flex items-center gap-1">
@@ -1989,8 +2010,8 @@ export default function TournamentBracket() {
 
         {/* Connection Status Indicator */}
         <div className="px-4 lg:px-6 py-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
               <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${isConnected
                   ? 'bg-green-50 text-green-700 border border-green-200'
                   : 'bg-red-50 text-red-700 border border-red-200'

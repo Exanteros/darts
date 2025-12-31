@@ -7,8 +7,18 @@ import { prisma } from '@/lib/prisma';
 export async function GET() {
   try {
     const session = await getSession();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const isAdmin = session.role === 'ADMIN';
+    if (!isAdmin) {
+      const access = await prisma.tournamentAccess.findFirst({
+        where: { userId: session.userId }
+      });
+      if (!access) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
     }
 
     const uploadsDir = join(process.cwd(), 'public', 'uploads', 'logos');
@@ -35,8 +45,18 @@ export async function GET() {
 export async function DELETE(request: NextRequest) {
   try {
     const session = await getSession();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const isAdmin = session.role === 'ADMIN';
+    if (!isAdmin) {
+      const access = await prisma.tournamentAccess.findFirst({
+        where: { userId: session.userId }
+      });
+      if (!access) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
     }
 
     const { imageUrl } = await request.json();

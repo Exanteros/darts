@@ -30,6 +30,34 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Check capacity
+    const tournament = await prisma.tournament.findUnique({
+      where: { id: tournamentId }
+    });
+
+    if (!tournament) {
+      return NextResponse.json({
+        success: false,
+        message: 'Turnier nicht gefunden'
+      }, { status: 404 });
+    }
+
+    const activePlayerCount = await prisma.tournamentPlayer.count({
+      where: {
+        tournamentId: tournamentId,
+        status: {
+          in: ['REGISTERED', 'CONFIRMED', 'ACTIVE']
+        }
+      }
+    });
+
+    if (activePlayerCount >= tournament.maxPlayers) {
+      return NextResponse.json({
+        success: false,
+        message: 'Turnier ist voll. Bitte aktualisieren Sie die Seite für die Warteliste.'
+      }, { status: 400 });
+    }
+
     // Hole Stripe-Schlüssel aus System-Einstellungen
     const systemSettings = await prisma.systemSettings.findFirst();
 

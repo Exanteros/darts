@@ -27,6 +27,7 @@ export async function GET(
             player1: true,
             player2: true,
             winner: true,
+            tournament: true,
             throws: {
               where: {
                 leg: {
@@ -73,18 +74,11 @@ export async function GET(
     const player1Throws = currentLegThrows.filter(t => t.playerId === currentGame.player1Id);
     const player2Throws = currentLegThrows.filter(t => t.playerId === currentGame.player2Id);
     
-    let player1TotalScore = player1Throws.reduce((sum, t) => sum + (t.dart1 + t.dart2 + t.dart3), 0);
-    let player2TotalScore = player2Throws.reduce((sum, t) => sum + (t.dart1 + t.dart2 + t.dart3), 0);
+    let player1TotalScore = player1Throws.reduce((sum, t) => sum + t.score, 0);
+    let player2TotalScore = player2Throws.reduce((sum, t) => sum + t.score, 0);
     
-    // Add current throw to the total if it exists
-    if (currentThrowData && currentThrowData.darts) {
-      const currentThrowScore = currentThrowData.score || currentThrowData.darts.reduce((sum: number, d: number) => sum + d, 0);
-      if (currentThrowData.player === 1) {
-        player1TotalScore += currentThrowScore;
-      } else if (currentThrowData.player === 2) {
-        player2TotalScore += currentThrowScore;
-      }
-    }
+    // REMOVED: Do not include currentThrow in the official score calculation.
+    // The score should only update when the throw is confirmed (committed to DB).
     
     const player1CurrentScore = 501 - player1TotalScore;
     const player2CurrentScore = 501 - player2TotalScore;
@@ -111,7 +105,7 @@ export async function GET(
         id: board.id,
         name: board.name
       },
-      currentGame: {
+      game: { // Changed from currentGame to game to match frontend expectation
         id: currentGame.id,
         status: currentGame.status,
         round: currentGame.round,
@@ -124,7 +118,10 @@ export async function GET(
         legsToWin: currentGame.legsToWin,
         currentLeg: currentGame.currentLeg,
         currentPlayer: currentPlayer,
-        winner: currentGame.winner?.playerName
+        winner: currentGame.winner?.playerName,
+        player1Id: currentGame.player1Id,
+        player2Id: currentGame.player2Id,
+        checkoutMode: currentGame.tournament.checkoutMode || 'DOUBLE_OUT'
       },
       currentThrow: currentThrowData
     });

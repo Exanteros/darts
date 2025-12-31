@@ -9,6 +9,7 @@ import { ArrowLeft, RotateCcw, Target, Trash2, CheckCircle, Trophy, Play, Users,
 import { useRouter } from "next/navigation";
 import { useTournamentEvents } from '@/hooks/useTournamentEvents';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useToast } from '@/hooks/use-toast';
 
 // --- STATE-DEFINITION ---
 
@@ -68,12 +69,14 @@ const initialGameState: GameState = {
 
 export default function ScoreEntry({ params }: { params: Promise<{ code: string }> }) {
   const router = useRouter();
+  const { toast } = useToast();
   const { code } = use(params);
   
   // Board State
   const [boardId, setBoardId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [boardError, setBoardError] = useState<string | null>(null);
+  const isProcessingRef = useRef(false);
 
   // Game State
   const [gameState, setGameState] = useState<GameState>(initialGameState);
@@ -85,6 +88,7 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
   const [shootoutBoardId, setShootoutBoardId] = useState<string | null>(null);
   const [tournamentId, setTournamentId] = useState<string | null>(null);
   const [currentGame, setCurrentGame] = useState<any>(null);
+  const [checkoutMode, setCheckoutMode] = useState<'DOUBLE_OUT' | 'SINGLE_OUT' | 'MASTER_OUT'>('DOUBLE_OUT');
   
   // Popup States
   const [showShootoutPopup, setShowShootoutPopup] = useState(false);
@@ -121,8 +125,28 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
         console.log('🔄 Game reset received');
         window.location.reload();
       }
+      if ((data.type === 'game-update' || data.type === 'game-assigned') && data.boardId === boardId) {
+         console.log('🔄 Game update received via WS');
+         checkForGameAssignment();
+      }
+      
+      if (data.type === 'throw-update' && data.boardId === boardId && data.gameData) {
+         // Wenn ein neues Leg beginnt (Score 501), erzwinge einen Sync mit dem Server
+         if (data.gameData.player1Score === 501 && data.gameData.player2Score === 501 && 
+            (data.gameData.player1Legs > 0 || data.gameData.player2Legs > 0)) {
+             console.log('🔄 Leg reset detected via WS, syncing...');
+             checkForGameAssignment();
+         }
+      }
     }
   });
+
+  // Subscribe to board updates
+  useEffect(() => {
+    if (boardId && wsConnected) {
+       sendGameUpdate({ type: 'subscribe', boardId });
+    }
+  }, [boardId, wsConnected, sendGameUpdate]);
   
   const dartboardNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
   const currentPlayerData = gameState[`player${gameState.currentPlayer}`];
@@ -155,6 +179,9 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
         if (data.tournament) {
           setTournamentStatus(data.tournament.status);
           setTournamentId(data.tournament.id);
+          if (data.tournament.checkoutMode) {
+            setCheckoutMode(data.tournament.checkoutMode);
+          }
           
           if (data.tournament.status === 'SHOOTOUT' && data.tournament.shootoutBoardId === boardId) {
             setGameState(prev => ({
@@ -321,24 +348,33 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
     }
   };
 
-  const checkForGameAssignment = async () => {
+  const checkForGameAssignment = async (forceSync = false) => {
     if (!boardId || tournamentStatus !== 'ACTIVE') return;
 
     try {
-      const response = await fetch(`/api/admin/boards/${boardId}`);
+      const response = await fetch(`/api/board/${code}/game`);
       const data = await response.json();
       
-      if (data.success && data.board.currentGame && !gameState.isShootout) {
-        const game = data.board.currentGame;
+      if (data.game && !gameState.isShootout) {
+        const game = data.game;
         if (game.status === 'FINISHED') return;
         
+        if (game.checkoutMode && game.checkoutMode !== checkoutMode) {
+          setCheckoutMode(game.checkoutMode);
+          toast({
+            title: "Modus aktualisiert",
+            description: `Neuer Checkout-Modus: ${game.checkoutMode === 'DOUBLE_OUT' ? 'Double Out' : game.checkoutMode === 'SINGLE_OUT' ? 'Single Out' : 'Master Out'}`,
+          });
+        }
+
         setCurrentGame(game);
         
         // Check if we need to update the local state
         // We update if:
         // 1. It's a different game (names don't match)
         // 2. OR our local state is "fresh" (501/0) but the server has progress
-        // 3. OR we explicitly want to force a sync (e.g. on load)
+        // 3. OR we explicitly want to force a sync (e.g. on load or undo)
+        // 4. BUT NOT if local state is ahead of server (race condition protection)
         
         const isFreshState = gameState.player1.score === 501 && gameState.player1.legs === 0 && 
                              gameState.player2.score === 501 && gameState.player2.legs === 0 &&
@@ -348,26 +384,40 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
                                   game.player2Score !== 501 || game.player2Legs > 0 ||
                                   (game.throws && game.throws.length > 0);
 
-        const isNewGame = gameState.player1.name !== game.player1 || gameState.player2.name !== game.player2;
+        // Use ID comparison if available, otherwise fallback to names (only for initial load)
+        const isNewGame = currentGame?.id ? currentGame.id !== game.id : (gameState.player1.name !== game.player1Name || gameState.player2.name !== game.player2Name);
+        
+        const localThrowsCount = gameState.throws.length;
+        const serverThrowsCount = game.throws ? game.throws.length : 0;
+        const isLocalAhead = localThrowsCount > serverThrowsCount;
 
-        if (isNewGame || (isFreshState && serverHasProgress)) {
+        if (forceSync || isNewGame || (isFreshState && serverHasProgress)) {
+          // Protection: Don't sync if local state is ahead, UNLESS it's a new game or forced
+          if (isLocalAhead && !forceSync && !isNewGame) {
+             console.log('🛡️ Ignoring sync: Local state is ahead of server', { local: localThrowsCount, server: serverThrowsCount });
+             return;
+          }
+
           console.log('🔄 Syncing game state from server:', {
             local: { p1: gameState.player1.score, p2: gameState.player2.score },
             server: { p1: game.player1Score, p2: game.player2Score },
-            reason: isNewGame ? 'new_game' : 'fresh_state_sync'
+            reason: forceSync ? 'force_sync' : isNewGame ? 'new_game' : 'fresh_state_sync',
+            isNewGame,
+            isFreshState,
+            serverHasProgress
           });
           
           setGameState(prev => ({
             ...prev,
             player1: { 
               ...prev.player1, 
-              name: game.player1, 
+              name: game.player1Name, 
               score: game.player1Score ?? 501,
               legs: game.player1Legs ?? 0
             },
             player2: { 
               ...prev.player2, 
-              name: game.player2, 
+              name: game.player2Name, 
               score: game.player2Score ?? 501,
               legs: game.player2Legs ?? 0
             },
@@ -439,6 +489,12 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
       console.error('Error finishing player shootout:', error);
     }
   };
+
+  useEffect(() => {
+    if (gameState.isShootout && gameState.gameStatus === 'finished') {
+      finishPlayerShootout();
+    }
+  }, [gameState.gameStatus, gameState.isShootout]);
 
   const startNextPlayerShootout = async (playerName: string, playerId: string) => {
     try {
@@ -538,7 +594,9 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
   // --- GAME ACTIONS ---
 
   const processThrow = async (dartsToProcess: ThrowDart[]) => {
-    if (gameState.gameStatus !== "active") return;
+    if (gameState.gameStatus !== "active" || isProcessingRef.current) return;
+    isProcessingRef.current = true;
+
     const throwTotal = dartsToProcess.reduce((sum, dart) => sum + dart.value, 0);
 
     if (gameState.isShootout) {
@@ -555,7 +613,6 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
         const totalDartsThrown = newState.shootoutThrows.filter(t => t.player === 1).reduce((sum, t) => sum + t.darts.length, 0);
         if (totalDartsThrown >= 3) {
           newState.gameStatus = "finished";
-          finishPlayerShootout();
         }
         return newState;
       });
@@ -564,19 +621,42 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
       const newScore = currentPlayerData.score - throwTotal;
       const lastDart = dartsToProcess[dartsToProcess.length - 1];
       
-      // Double Out Check: Must reach 0 exactly, and last dart must be a double (multiplier 2)
-      // Exception: Bullseye (50) is considered a double for checkout.
-      const isDoubleOut = lastDart.multiplier === 2 || lastDart.value === 50;
-      const isCheckout = newScore === 0 && isDoubleOut;
-      const isBust = newScore < 0 || (newScore === 1) || (newScore === 0 && !isDoubleOut);
+      let isCheckout = false;
+      let isBust = false;
+
+      if (newScore === 0) {
+          if (checkoutMode === 'DOUBLE_OUT') {
+              isCheckout = lastDart.multiplier === 2 || lastDart.value === 50;
+          } else if (checkoutMode === 'MASTER_OUT') {
+              isCheckout = lastDart.multiplier === 2 || lastDart.multiplier === 3 || lastDart.value === 50;
+          } else { // SINGLE_OUT
+              isCheckout = true;
+          }
+      }
+
+      if (newScore < 0) {
+          isBust = true;
+      } else if (newScore === 0 && !isCheckout) {
+          isBust = true;
+      } else if (newScore === 1 && (checkoutMode === 'DOUBLE_OUT' || checkoutMode === 'MASTER_OUT')) {
+          isBust = true;
+      }
 
       // Validation for 501: Enforce 3 darts unless checkout or bust
       if (dartsToProcess.length < 3 && !isCheckout && !isBust) {
+          isProcessingRef.current = false;
           return;
       }
 
       setGameState(prev => {
-        const newState = { ...prev };
+        // Create a deep copy of the state to avoid mutation
+        const newState = { 
+          ...prev,
+          player1: { ...prev.player1 },
+          player2: { ...prev.player2 },
+          throws: [...prev.throws]
+        };
+        
         const player = `player${prev.currentPlayer}` as "player1" | "player2";
 
         if (isBust) {
@@ -594,23 +674,6 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
               newState.player1.score = 501;
               newState.player2.score = 501;
               newState.currentLeg += 1;
-              // Sync leg win
-              if (currentGame?.id) {
-                fetch('/api/game/leg-won', {
-                  method: 'POST',
-                  headers: { 
-                    'Content-Type': 'application/json',
-                    'x-board-code': code
-                  },
-                  body: JSON.stringify({
-                    gameId: currentGame.id,
-                    winnerId: prev.currentPlayer === 1 ? currentGame.player1Id : currentGame.player2Id,
-                    player1Legs: newState.player1.legs,
-                    player2Legs: newState.player2.legs,
-                    newLeg: newState.currentLeg
-                  })
-                }).catch(console.error);
-              }
             }
           }
         }
@@ -644,11 +707,19 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
               dart1: dartsToProcess[0]?.value || 0,
               dart2: dartsToProcess[1]?.value || 0,
               dart3: dartsToProcess[2]?.value || 0,
-              score: isBust ? 0 : throwTotal
+              score: isBust ? 0 : throwTotal,
+              leg: gameState.currentLeg // Pass the leg explicitly to avoid race conditions
             })
           });
+
+          // Sync leg win if applicable - REMOVED: Backend handles this now to avoid race conditions
+          /* 
+          if (newScore === 0 && !isBust) {
+             // ... logic moved to backend ...
+          }
+          */
         } catch (error) {
-          console.error('Error syncing throw:', error);
+          console.error('Error syncing throw/leg:', error);
         }
       }
       
@@ -659,8 +730,18 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
         const newLegsPlayer1 = gameState.player1.legs + (gameState.currentPlayer === 1 && currentPlayerLegWon ? 1 : 0);
         const newLegsPlayer2 = gameState.player2.legs + (gameState.currentPlayer === 2 && currentPlayerLegWon ? 1 : 0);
         
+        const targetLegs = gameState.legsToWin || 2;
+        
         // Ist das Spiel zu Ende?
-        const isGameOver = newLegsPlayer1 >= gameState.legsToWin || newLegsPlayer2 >= gameState.legsToWin;
+        const isGameOver = newLegsPlayer1 >= targetLegs || newLegsPlayer2 >= targetLegs;
+        
+        console.log('📊 WS Update Calc:', {
+            p1Legs: newLegsPlayer1,
+            p2Legs: newLegsPlayer2,
+            target: targetLegs,
+            isGameOver,
+            currentPlayerLegWon
+        });
         
         // Berechne den NEUEN Score (nach Leg-Gewinn wird auf 501 zurückgesetzt)
         let newPlayer1Score, newPlayer2Score;
@@ -709,6 +790,7 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
     setCurrentThrow([]);
     setSelectedNumber(null);
     clearCurrentThrowDisplay();
+    isProcessingRef.current = false;
   };
 
   const submitThrow = () => processThrow(currentThrow);
@@ -724,8 +806,17 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
     const total = newThrow.reduce((s, d) => s + d.value, 0);
     const rem = currentPlayerData.score - total;
     const last = newThrow[newThrow.length - 1];
-    const isDoubleOut = last.multiplier === 2 || last.value === 50;
-    const isCheckout = rem === 0 && isDoubleOut;
+    
+    let isCheckout = false;
+    if (rem === 0) {
+        if (checkoutMode === 'DOUBLE_OUT') {
+            isCheckout = last.multiplier === 2 || last.value === 50;
+        } else if (checkoutMode === 'MASTER_OUT') {
+            isCheckout = last.multiplier === 2 || last.multiplier === 3 || last.value === 50; // Bullseye is double (50)
+        } else { // SINGLE_OUT
+            isCheckout = true;
+        }
+    }
     
     if (isCheckout && !gameState.isShootout) {
         processThrow(newThrow);
@@ -742,20 +833,78 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
     clearCurrentThrowDisplay();
   };
 
-  const undoLastThrow = () => {
+  const undoLastThrow = async () => {
     if (gameState.throws.length > 0) {
+      // Optimistic local undo
       const lastThrow = gameState.throws[gameState.throws.length - 1];
       setGameState(prev => {
         const newState = { ...prev };
         const player = `player${lastThrow.player}` as "player1" | "player2";
-        const pointsToRestore = lastThrow.remaining === newState[player].score ? 0 : lastThrow.total;
         
-        newState[player].score += pointsToRestore;
-        newState[player].totalDarts = Math.max(0, newState[player].totalDarts - lastThrow.darts.length);
-        newState.throws = newState.throws.slice(0, -1);
-        newState.currentPlayer = lastThrow.player;
+        // If it was a bust, score didn't change, so we restore 0. 
+        // If it wasn't a bust, we restore the total.
+        // Logic: If current score is same as remaining in throw, it was bust (or 0 score throw).
+        // Actually, we should check if it was a bust explicitly, but we don't store isBust in throw object in state (only in DB/WS).
+        // But we store 'remaining'.
+        // If remaining == prev.score (before throw), then it was bust.
+        // Wait, we don't have prev.score.
+        // We have current score.
+        // If current score == remaining, then it was NOT a bust (normal throw).
+        // Wait.
+        // Throw: { total: 60, remaining: 441 }
+        // Current Score: 441.
+        // So we add 60 -> 501.
+        
+        // If Bust: { total: 60, remaining: 501 } (score didn't change)
+        // Current Score: 501.
+        // We add 0.
+        
+        // So: if current score == remaining, we add total? No.
+        // If it was a bust, remaining IS the score before the throw (which is same as after).
+        // If it was valid, remaining IS the score after the throw.
+        
+        // Let's look at processThrow:
+        // remaining: isBust ? currentPlayerData.score : newScore
+        
+        // So if valid throw: remaining = newScore.
+        // So current score = remaining.
+        // So we add total.
+        
+        // If bust: remaining = oldScore.
+        // Current score = oldScore.
+        // So current score = remaining.
+        // So we add 0? No, we add 0 because score didn't change.
+        
+        // Wait, how do we know if it was a bust from the throw object?
+        // We don't explicitly.
+        // But we know: oldScore = remaining + (isBust ? 0 : total).
+        // And currentScore = remaining.
+        // So oldScore = currentScore + (isBust ? 0 : total).
+        
+        // We need to know if it was a bust to know if we should add total back.
+        // If (remaining + total) > score before throw? No.
+        
+        // Let's rely on the server for accurate Undo, but do optimistic update for UI responsiveness.
+        // For now, assume valid throw if we can't tell.
+        // Actually, we can just fetch the undo endpoint and force sync.
+        
         return newState;
       });
+
+      try {
+          await fetch('/api/game/undo', {
+              method: 'POST',
+              headers: { 
+                  'Content-Type': 'application/json',
+                  'x-board-code': code
+              },
+              body: JSON.stringify({ gameId: currentGame.id })
+          });
+          // Force sync after undo
+          setTimeout(() => checkForGameAssignment(true), 100);
+      } catch (e) {
+          console.error(e);
+      }
     }
   };
 
@@ -827,6 +976,7 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
           onResetClick={() => setShowResetConfirm(true)}
           isConnected={isConnected}
           lastUpdateTime={lastUpdateTime}
+          checkoutMode={checkoutMode}
         />
       </div>
 
@@ -962,9 +1112,10 @@ interface HeaderProps {
   onResetClick: () => void;
   isConnected: boolean;
   lastUpdateTime: Date | null;
+  checkoutMode: 'DOUBLE_OUT' | 'SINGLE_OUT' | 'MASTER_OUT';
 }
 
-const ScoreEntryHeader: FC<HeaderProps> = ({ boardId, gameState, onBackClick, onUndoClick, onResetClick, isConnected, lastUpdateTime }) => (
+const ScoreEntryHeader: FC<HeaderProps> = ({ boardId, gameState, onBackClick, onUndoClick, onResetClick, isConnected, lastUpdateTime, checkoutMode }) => (
   <div className="flex items-center justify-between px-3 py-2 bg-white border-b border-slate-200 shadow-sm">
     <div className="flex items-center gap-3">
       <Button variant="ghost" size="icon" onClick={onBackClick} className="h-9 w-9 -ml-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-full">
@@ -985,6 +1136,11 @@ const ScoreEntryHeader: FC<HeaderProps> = ({ boardId, gameState, onBackClick, on
     </div>
 
     <div className="flex items-center gap-2">
+       {!gameState.isShootout && (
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 h-5">
+            {checkoutMode === 'DOUBLE_OUT' ? 'DO' : checkoutMode === 'SINGLE_OUT' ? 'SO' : 'MO'}
+          </Badge>
+       )}
        {gameState.isShootout && (
           <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5 h-5">SHOOTOUT</Badge>
         )}
@@ -1446,9 +1602,9 @@ const ShootoutModals: FC<ShootoutModalsProps> = ({
         </DialogHeader>
         <div className="text-center py-6">
           <div className="flex items-center justify-center gap-4 text-2xl font-bold text-slate-900 mb-2">
-             <span>{currentGame?.player1}</span>
+             <span>{currentGame?.player1Name || currentGame?.player1}</span>
              <span className="text-slate-300 text-lg">vs</span>
-             <span>{currentGame?.player2}</span>
+             <span>{currentGame?.player2Name || currentGame?.player2}</span>
           </div>
           <p className="text-slate-500 mb-8 text-sm">Best of {currentGame?.legsToWin || 3} Legs</p>
           <Button onClick={startAssignedGame} className="w-full h-14 rounded-xl bg-slate-900 text-white text-lg">
@@ -1479,6 +1635,34 @@ interface GameOverModalProps {
 
 const GameOverModal: FC<GameOverModalProps> = ({ gameState, onBackClick, onNewGameClick }) => {
   if (gameState.gameStatus !== "finished") return null;
+
+  if (gameState.isShootout) {
+    return (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
+        <Card className="w-full max-w-md border-0 shadow-2xl bg-white rounded-3xl overflow-hidden">
+          <div className="bg-blue-600 p-8 text-center">
+             <Target className="h-16 w-16 text-white mx-auto mb-4 drop-shadow-lg" />
+             <h2 className="text-3xl font-bold text-white mb-1">Shootout Beendet!</h2>
+             <p className="text-blue-100 text-sm">Deine 3 Darts sind geworfen.</p>
+          </div>
+          <CardContent className="p-8 text-center">
+            <div className="mb-8">
+               <div className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-2">Ergebnis</div>
+               <div className="text-6xl font-bold text-slate-900">
+                 {gameState.player1.score}
+               </div>
+               <div className="mt-2 text-slate-500">Punkte</div>
+            </div>
+            <div className="flex gap-3">
+              <Button onClick={() => window.location.reload()} className="w-full h-14 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-lg shadow-lg shadow-blue-200">
+                Nächster Spieler
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">

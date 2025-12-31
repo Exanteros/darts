@@ -11,9 +11,19 @@ export async function POST(
   try {
     const session = await getSession();
     
-    // Check authentication and admin role
-    if (!session || session.role !== 'ADMIN') {
+    // Check authentication
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const isAdmin = session.role === 'ADMIN';
+    if (!isAdmin) {
+      const access = await prisma.tournamentAccess.findFirst({
+        where: { userId: session.userId }
+      });
+      if (!access) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
     }
 
   const { id: boardId } = await context.params;

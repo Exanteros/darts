@@ -52,6 +52,7 @@ export default function DartsScoreboardLive() {
   });
   const [previousScore1, setPreviousScore1] = useState(501);
   const [previousScore2, setPreviousScore2] = useState(501);
+  const [mainBoardId, setMainBoardId] = useState<string | null>(null);
 
   const shortenName = (fullName: string) => {
     const parts = fullName.split(' ');
@@ -77,6 +78,9 @@ export default function DartsScoreboardLive() {
       const response = await fetch(fetchUrl);
       if (response.ok) {
         const data = await response.json();
+        if (data.mainBoardId) {
+          setMainBoardId(data.mainBoardId);
+        }
         if (data.game) {
           // Es gibt ein aktives Spiel
           setCurrentGame(data.game);
@@ -164,6 +168,13 @@ export default function DartsScoreboardLive() {
       console.log('🔴 WebSocket getrennt');
     }
   });
+
+  useEffect(() => {
+    if (isConnected && mainBoardId) {
+      console.log('Subscribing to board:', mainBoardId);
+      sendMessage({ type: 'subscribe', boardId: mainBoardId });
+    }
+  }, [isConnected, mainBoardId, sendMessage]);
 
   useEffect(() => {
     // Initiales Laden beim Start

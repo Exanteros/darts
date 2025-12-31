@@ -54,11 +54,28 @@ export function useTournamentAccess() {
   const hasTournamentAccess = accessData?.hasAccess || false;
   const tournamentAccess = accessData?.tournamentAccess || [];
 
+  const checkPermission = (category: string, action: string) => {
+    if (isAdmin) return true;
+    return tournamentAccess.some(access => {
+      try {
+        const permissions = typeof access.permissions === 'string' 
+          ? JSON.parse(access.permissions || '{}') 
+          : access.permissions || {};
+        return permissions[category]?.[action] === true;
+      } catch (e) {
+        console.error('Error parsing permissions:', e);
+        return false;
+      }
+    });
+  };
+
   return {
     isAdmin,
     hasTournamentAccess,
     tournamentAccess,
     isLoading,
-    isAuthenticated: !!accessData
+    isAuthenticated: !!accessData,
+    checkPermission,
+    canViewLive: checkPermission('live', 'view')
   };
 }

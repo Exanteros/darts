@@ -10,18 +10,40 @@ export async function GET(request: NextRequest) {
   try {
     // Session-Prüfung
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id || session.user.role !== 'ADMIN') {
+    if (!session?.user?.id) {
       return NextResponse.json({
         success: false,
-        message: 'Nicht autorisiert'
+        message: 'Nicht authentifiziert'
       }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+    const isGlobalAdmin = session.user.role === 'ADMIN';
+    let allowedTournamentIds: string[] = [];
+
+    if (!isGlobalAdmin) {
+      const access = await prisma.tournamentAccess.findMany({
+        where: { userId },
+        select: { tournamentId: true }
+      });
+
+      if (access.length === 0) {
+        return NextResponse.json({
+          success: false,
+          message: 'Keine Berechtigung'
+        }, { status: 403 });
+      }
+      allowedTournamentIds = access.map(a => a.tournamentId);
     }
 
     const cookieStore = await cookies();
     const activeTournamentId = cookieStore.get('activeTournamentId')?.value;
 
-    // Hole alle Turniere mit ihren Spielern
+    // Hole alle Turniere mit ihren Spielern (gefiltert nach Berechtigung)
     const tournaments = await prisma.tournament.findMany({
+      where: isGlobalAdmin ? {} : {
+        id: { in: allowedTournamentIds }
+      },
       include: {
         _count: {
           select: {

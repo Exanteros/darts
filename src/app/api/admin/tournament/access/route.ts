@@ -11,9 +11,9 @@ export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session?.user) {
       return NextResponse.json(
-        { error: 'Nicht autorisiert' },
+        { error: 'Nicht authentifiziert' },
         { status: 401 }
       );
     }
@@ -26,6 +26,25 @@ export async function GET(request: Request) {
         { error: 'Tournament ID erforderlich' },
         { status: 400 }
       );
+    }
+
+    // Check permissions
+    if (session.user.role !== 'ADMIN') {
+      const hasAccess = await prisma.tournamentAccess.findUnique({
+        where: {
+          tournamentId_userId: {
+            tournamentId,
+            userId: session.user.id
+          }
+        }
+      });
+
+      if (!hasAccess || !['ADMIN', 'MANAGER'].includes(hasAccess.role)) {
+        return NextResponse.json(
+          { error: 'Nicht autorisiert' },
+          { status: 403 }
+        );
+      }
     }
 
     const accessGrants = await prisma.tournamentAccess.findMany({
@@ -59,9 +78,9 @@ export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session?.user) {
       return NextResponse.json(
-        { error: 'Nicht autorisiert' },
+        { error: 'Nicht authentifiziert' },
         { status: 401 }
       );
     }
@@ -74,6 +93,25 @@ export async function POST(request: Request) {
         { error: 'Tournament ID, User Email und Role erforderlich' },
         { status: 400 }
       );
+    }
+
+    // Check permissions
+    if (session.user.role !== 'ADMIN') {
+      const hasAccess = await prisma.tournamentAccess.findUnique({
+        where: {
+          tournamentId_userId: {
+            tournamentId,
+            userId: session.user.id
+          }
+        }
+      });
+
+      if (!hasAccess || hasAccess.role !== 'ADMIN') {
+        return NextResponse.json(
+          { error: 'Nicht autorisiert' },
+          { status: 403 }
+        );
+      }
     }
 
     // Find user by email

@@ -125,8 +125,10 @@ export default function TournamentRegistrationPage() {
     setLoading(true);
     setError(null);
 
-    // Check if tournament is free
-    if (selectedTournament.entryFee === 0) {
+    const isFull = selectedTournament._count.players >= selectedTournament.maxPlayers;
+
+    // Check if tournament is free OR FULL (Waiting list doesn't pay immediately)
+    if (selectedTournament.entryFee === 0 || isFull) {
       try {
         const res = await fetch('/api/tournament/register/public', {
           method: 'POST',
@@ -299,7 +301,7 @@ export default function TournamentRegistrationPage() {
             >
               <div className="text-center mb-8 space-y-2 shrink-0">
                 <Badge variant="outline" className="px-3 py-1 bg-white border-slate-200 text-slate-500 rounded-full text-xs">
-                  Saison 2025
+                  Saison 2026
                 </Badge>
                 <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-slate-900">
                   Wähle deine Challenge.
@@ -355,7 +357,7 @@ export default function TournamentRegistrationPage() {
                         <div className="flex items-center justify-between mt-4 pt-2">
                            <span className="text-2xl font-bold text-slate-900">{t.entryFee}€</span>
                            <span className="text-sm font-medium text-blue-600 flex items-center group-hover:translate-x-1 transition-transform">
-                             Anmelden <ArrowRight className="ml-1 h-4 w-4" />
+                             {t._count.players >= t.maxPlayers ? 'Warteliste' : 'Anmelden'} <ArrowRight className="ml-1 h-4 w-4" />
                            </span>
                         </div>
                       </div>
@@ -453,7 +455,10 @@ export default function TournamentRegistrationPage() {
                             Zurück
                           </Button>
                           <Button type="submit" disabled={loading} className="h-10 flex-[2] bg-slate-900 text-white hover:bg-black rounded-lg shadow-lg shadow-slate-900/20 text-sm font-medium">
-                             {loading ? <Loader2 className="animate-spin h-4 w-4" /> : (stripeEnabled ? "Weiter zur Zahlung" : "Weiter zur Bestätigung")}
+                             {loading ? <Loader2 className="animate-spin h-4 w-4" /> : (
+                               selectedTournament._count.players >= selectedTournament.maxPlayers ? "Auf Warteliste setzen" :
+                               (stripeEnabled ? "Weiter zur Zahlung" : "Weiter zur Bestätigung")
+                             )}
                           </Button>
                         </div>
                       </motion.form>

@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useIsMobile } from "@/hooks/use-mobile"
 import {
   closestCenter,
   DndContext,
@@ -56,7 +57,6 @@ import { toast } from "sonner"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
 
-import { useIsMobile } from "@/hooks/use-mobile"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -447,6 +447,7 @@ export function DataTable({
   data: z.infer<typeof schema>[]
 }) {
   const [data, setData] = React.useState(() => initialData)
+  const isMobile = useIsMobile()
   
   React.useEffect(() => {
     setData(initialData);
@@ -455,6 +456,25 @@ export function DataTable({
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
+
+  React.useEffect(() => {
+    if (isMobile) {
+      setColumnVisibility({
+        drag: false,
+        select: false,
+        type: false,
+        target: false,
+        limit: false,
+        reviewer: false,
+        header: true,
+        status: true,
+        actions: true
+      })
+    } else {
+      setColumnVisibility({})
+    }
+  }, [isMobile])
+
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   )
@@ -538,18 +558,18 @@ export function DataTable({
       className="w-full flex-col justify-start gap-6"
       onValueChange={handleTabChange}
     >
-      <div className="flex items-center justify-between px-4 lg:px-6">
-        <TabsList className="**:data-[slot=badge]:bg-muted-foreground/30 hidden **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1 @4xl/main:flex">
-          <TabsTrigger value="all">Alle Turniere</TabsTrigger>
-          <TabsTrigger value="active">
+      <div className="flex flex-col gap-4 px-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
+        <TabsList className="flex w-full justify-start overflow-x-auto pb-2 lg:w-auto lg:pb-0 **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1">
+          <TabsTrigger value="all" className="whitespace-nowrap">Alle Turniere</TabsTrigger>
+          <TabsTrigger value="active" className="whitespace-nowrap">
             Laufend <Badge variant="secondary">{data.filter(d => d.status.includes('Runde')).length}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="upcoming">
+          <TabsTrigger value="upcoming" className="whitespace-nowrap">
             Geplant <Badge variant="secondary">{data.filter(d => d.status.includes('Anmeldung')).length}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="finished">Beendet</TabsTrigger>
+          <TabsTrigger value="finished" className="whitespace-nowrap">Beendet</TabsTrigger>
         </TabsList>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2 lg:justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">

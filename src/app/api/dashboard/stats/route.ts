@@ -9,15 +9,36 @@ export async function GET(request: NextRequest) {
   try {
     // Session-Prüfung
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id || session.user.role !== 'ADMIN') {
+    if (!session?.user?.id) {
       return NextResponse.json({
         success: false,
-        message: 'Nicht autorisiert'
+        message: 'Nicht authentifiziert'
       }, { status: 401 });
+    }
+
+    const isAdmin = session.user.role === 'ADMIN';
+    let allowedTournamentIds: string[] = [];
+
+    if (!isAdmin) {
+      const access = await prisma.tournamentAccess.findMany({
+        where: { userId: session.user.id },
+        select: { tournamentId: true }
+      });
+
+      if (access.length === 0) {
+        return NextResponse.json({
+          success: false,
+          message: 'Nicht autorisiert'
+        }, { status: 403 });
+      }
+      allowedTournamentIds = access.map(a => a.tournamentId);
     }
 
     // Hole Statistiken für die SectionCards
     const tournaments = await prisma.tournament.findMany({
+      where: isAdmin ? {} : {
+        id: { in: allowedTournamentIds }
+      },
       include: {
         _count: {
           select: {

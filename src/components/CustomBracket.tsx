@@ -3,6 +3,7 @@
 import React from 'react';
 import { Target, CheckCircle, Clock } from 'lucide-react';
 import { Draggable, Droppable } from '@hello-pangea/dnd';
+import { useIsMobile } from "@/hooks/use-mobile"
 
 interface BracketPlayer {
   id: string;
@@ -33,6 +34,7 @@ export const CustomBracket: React.FC<CustomBracketProps> = ({
   isDark = false,
   onMatchClick
 }) => {
+  const isMobile = useIsMobile()
   // Organize matches by rounds
   const rounds = matches.reduce((acc, match) => {
     if (!acc[match.round]) {
@@ -55,9 +57,9 @@ export const CustomBracket: React.FC<CustomBracketProps> = ({
     >
       {/* Tournament Bracket */}
       <div
-        className="flex gap-16 p-8 bg-background"
+        className="flex gap-8 sm:gap-16 p-4 sm:p-8 bg-background"
         style={{
-          minWidth: `${totalRounds * 400}px`,
+          minWidth: `${totalRounds * (isMobile ? 300 : 400)}px`,
         }}
       >
         {roundNumbers.map((roundNum, roundIndex) => {
@@ -68,7 +70,7 @@ export const CustomBracket: React.FC<CustomBracketProps> = ({
               key={roundNum}
               className="flex flex-col"
               style={{
-                minWidth: '320px',
+                minWidth: isMobile ? '260px' : '320px',
               }}
             >
               {/* Round Header */}

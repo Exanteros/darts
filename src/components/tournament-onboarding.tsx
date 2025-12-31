@@ -207,7 +207,7 @@ export function TournamentOnboarding({ onComplete }: TournamentOnboardingProps) 
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6 pt-4">
+                <div className="grid grid-cols-1 gap-6 pt-4 sm:grid-cols-2">
                    <div className="space-y-2">
                      <Label className="text-slate-700">Max. Spieler</Label>
                      <div className="relative">
@@ -235,7 +235,7 @@ export function TournamentOnboarding({ onComplete }: TournamentOnboardingProps) 
                      </div>
                    </div>
 
-                   <div className="col-span-2 space-y-2">
+                   <div className="col-span-1 space-y-2 sm:col-span-2">
                      <Label className="text-slate-700">Startdatum</Label>
                      <div className="relative">
                         <Calendar className="absolute left-3 top-3.5 h-5 w-5 text-slate-400" />
@@ -281,7 +281,7 @@ export function TournamentOnboarding({ onComplete }: TournamentOnboardingProps) 
                      <Badge className="bg-slate-900 hover:bg-slate-800">Draft</Badge>
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
                      <div>
                         <p className="text-slate-400 mb-1">Spieler</p>
                         <p className="font-semibold text-slate-900">{formData.maxPlayers}</p>

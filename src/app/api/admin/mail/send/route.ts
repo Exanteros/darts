@@ -4,14 +4,30 @@ import { sendMail, renderHtml } from '@/lib/mail';
 import sanitizeHtml from 'sanitize-html';
 import { marked } from 'marked';
 import { getSession } from '@/lib/session';
+import { cookies } from 'next/headers';
 
 const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const isAdmin = session.role === 'ADMIN';
+    let allowedTournamentIds: string[] = [];
+
+    if (!isAdmin) {
+      const access = await prisma.tournamentAccess.findMany({
+        where: { userId: session.user.id },
+        select: { tournamentId: true }
+      });
+
+      if (access.length === 0) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
+      allowedTournamentIds = access.map(a => a.tournamentId);
     }
 
     const body = await request.json();
@@ -19,6 +35,11 @@ export async function POST(request: NextRequest) {
 
     if (!subject || !message) {
       return NextResponse.json({ error: 'Subject and message are required' }, { status: 400 });
+    }
+
+    // Restrict recipient types for non-admins
+    if (!isAdmin && (recipientType === 'all' || recipientType === 'admins')) {
+      return NextResponse.json({ error: 'Unauthorized recipient type' }, { status: 403 });
     }
 
   let recipients: { email: string; name: string | null }[] = [];
@@ -37,22 +58,33 @@ export async function POST(request: NextRequest) {
       recipients = admins;
     } else if (recipientType === 'active') {
       // Find active tournament
-      activeTournament = await prisma.tournament.findFirst({
-        where: { status: 'ACTIVE' }
-      });
+      // Use activeTournamentId from cookie if available
+      const cookieStore = await cookies();
+      const activeTournamentId = cookieStore.get('activeTournamentId')?.value;
+
+      if (activeTournamentId) {
+        activeTournament = await prisma.tournament.findUnique({
+          where: { id: activeTournamentId }
+        });
+      }
+
+      if (!activeTournament) {
+        activeTournament = await prisma.tournament.findFirst({
+          where: { status: 'ACTIVE' }
+        });
+      }
 
       if (activeTournament) {
+        // Check access
+        if (!isAdmin && !allowedTournamentIds.includes(activeTournament.id)) {
+             return NextResponse.json({ error: 'Unauthorized for this tournament' }, { status: 403 });
+        }
+
         const players = await prisma.tournamentPlayer.findMany({
           where: { tournamentId: activeTournament.id },
           include: { user: true }
         });
         recipients = players.map(p => ({ email: p.user.email, name: p.user.name }));
-      } else {
-        // Fallback: if no active tournament, maybe get players from upcoming?
-        // For now, return empty or handle as error? 
-        // Let's just return empty list and a warning in the response if needed, 
-        // but for now just empty list is fine, or maybe all players from all tournaments?
-        // Let's stick to "Active Tournament" players.
       }
     }
 

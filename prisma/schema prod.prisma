@@ -41,7 +41,6 @@ model Tournament {
   location    String?  // Veranstaltungsort (z.B. "Sportheim Puschendorf")
   street      String?  // Straße und Hausnummer (z.B. "Waldstraße 1")
   shootoutBoardId String? // ID der Scheibe für Shootout
-  checkoutMode String  @default("DOUBLE_OUT") // SINGLE_OUT, DOUBLE_OUT, MASTER_OUT
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -260,7 +259,6 @@ enum PlayerStatus {
   ACTIVE
   ELIMINATED
   WITHDRAWN
-  WAITING_LIST
 }
 
 enum GameStatus {

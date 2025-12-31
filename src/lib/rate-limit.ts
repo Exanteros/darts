@@ -10,7 +10,26 @@ function getRedisClient(): Redis | null {
       // Silent fail in dev/build if not configured
       return null;
     }
-    redis = new Redis(redisUrl);
+    redis = new Redis(redisUrl, {
+      // Don't retry indefinitely in dev if connection fails
+      maxRetriesPerRequest: 1,
+      retryStrategy: (times) => {
+        if (process.env.NODE_ENV === 'development' && times > 3) {
+          return null; // Stop retrying
+        }
+        return Math.min(times * 50, 2000);
+      }
+    });
+    
+    // Handle connection errors to prevent app crash
+    redis.on('error', (err) => {
+      // Only log once or if verbose
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Redis connection error (Rate Limiting disabled):', err.message);
+      } else {
+        console.error('Redis connection error:', err);
+      }
+    });
   }
   return redis;
 }
@@ -26,6 +45,11 @@ export async function checkRateLimit(
   limit: number,
   windowMs: number
 ): Promise<RateLimitResult> {
+  // Always allow in development
+  if (process.env.NODE_ENV === 'development') {
+    return { allowed: true };
+  }
+
   try {
     const redis = getRedisClient();
     

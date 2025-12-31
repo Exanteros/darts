@@ -17,16 +17,32 @@ export async function GET(request: NextRequest) {
     }
 
     const isAdmin = session.user.role === 'ADMIN';
+    let allowedTournamentIds: string[] = [];
 
     if (!isAdmin) {
-      return NextResponse.json({
-        success: false,
-        message: 'Administrator-Berechtigung erforderlich'
-      }, { status: 403 });
+      // Prüfe auf Turnier-spezifische Berechtigungen
+      const access = await prisma.tournamentAccess.findMany({
+        where: { 
+          userId: session.user.id,
+          role: { in: ['ADMIN', 'MANAGER'] } // Nur Admins und Manager dürfen Turniere sehen/verwalten
+        },
+        select: { tournamentId: true }
+      });
+
+      if (access.length === 0) {
+        return NextResponse.json({
+          success: false,
+          message: 'Keine Berechtigung'
+        }, { status: 403 });
+      }
+      allowedTournamentIds = access.map(a => a.tournamentId);
     }
 
     // Hole alle Turniere mit Spieler-Statistiken
     const tournaments = await prisma.tournament.findMany({
+      where: isAdmin ? {} : {
+        id: { in: allowedTournamentIds }
+      },
       include: {
         _count: {
           select: {

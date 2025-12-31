@@ -6,8 +6,18 @@ export async function GET() {
   try {
     const session = await getSession();
     
-    if (!session || session.role !== 'ADMIN') {
+    if (!session) {
       return NextResponse.json({ error: 'Nicht autorisiert' }, { status: 401 });
+    }
+
+    const isAdmin = session.role === 'ADMIN';
+    if (!isAdmin) {
+      const access = await prisma.tournamentAccess.findFirst({
+        where: { userId: session.userId }
+      });
+      if (!access) {
+        return NextResponse.json({ error: 'Nicht autorisiert' }, { status: 403 });
+      }
     }
 
     // Hole die Bracket-Konfiguration aus der Datenbank
@@ -52,8 +62,18 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     
-    if (!session || session.role !== 'ADMIN') {
+    if (!session) {
       return NextResponse.json({ error: 'Nicht autorisiert' }, { status: 401 });
+    }
+
+    const isAdmin = session.role === 'ADMIN';
+    if (!isAdmin) {
+      const access = await prisma.tournamentAccess.findFirst({
+        where: { userId: session.userId }
+      });
+      if (!access) {
+        return NextResponse.json({ error: 'Nicht autorisiert' }, { status: 403 });
+      }
     }
 
     const data = await request.json();

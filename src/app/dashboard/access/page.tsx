@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useUserCheck } from '@/hooks/useUserCheck';
+import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -40,7 +40,7 @@ interface Tournament {
 }
 
 export default function TournamentAccessPage() {
-  const { isAdmin, isLoading, isAuthenticated } = useUserCheck();
+  const { isAdmin, hasTournamentAccess, isLoading, isAuthenticated } = useTournamentAccess();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [selectedTournamentId, setSelectedTournamentId] = useState<string>("");
   const [accessGrants, setAccessGrants] = useState<AccessGrant[]>([]);
@@ -211,7 +211,7 @@ export default function TournamentAccessPage() {
   }
 
   // Authentication check
-  if (!isAuthenticated || !isAdmin) {
+  if (!isAuthenticated || (!isAdmin && !hasTournamentAccess)) {
     return null;
   }
 

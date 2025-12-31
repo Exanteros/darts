@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { blurUserData } from '@/lib/utils';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,8 +17,16 @@ export async function GET(request: NextRequest) {
     }
 
     const isAdmin = session.user.role === 'ADMIN';
+    let hasTournamentAccess = false;
 
     if (!isAdmin) {
+      const access = await (prisma as any).tournamentAccess.findFirst({
+        where: { userId: session.user.id }
+      });
+      hasTournamentAccess = !!access;
+    }
+
+    if (!isAdmin && !hasTournamentAccess) {
       return NextResponse.json({
         success: false,
         isAdmin: false,
@@ -27,7 +36,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      isAdmin: true,
+      isAdmin: isAdmin,
+      hasTournamentAccess: hasTournamentAccess,
       user: blurUserData({
         id: session.user.id,
         email: session.user.email,

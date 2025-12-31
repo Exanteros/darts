@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 interface UseWebSocketOptions {
   url: string;
@@ -22,6 +22,17 @@ export function useWebSocket({
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Refs for callbacks to ensure we always use the latest version without reconnecting
+  const onMessageRef = useRef(onMessage);
+  const onConnectRef = useRef(onConnect);
+  const onDisconnectRef = useRef(onDisconnect);
+
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+    onConnectRef.current = onConnect;
+    onDisconnectRef.current = onDisconnect;
+  }, [onMessage, onConnect, onDisconnect]);
 
   const connect = () => {
     try {
@@ -30,13 +41,13 @@ export function useWebSocket({
       ws.onopen = () => {
         console.log('✅ WebSocket connected');
         setIsConnected(true);
-        onConnect?.();
+        onConnectRef.current?.();
       };
 
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          onMessage?.(data);
+          onMessageRef.current?.(data);
         } catch (error) {
           console.error('❌ Error parsing WebSocket message:', error);
         }
@@ -45,7 +56,7 @@ export function useWebSocket({
       ws.onclose = () => {
         console.log('❌ WebSocket disconnected');
         setIsConnected(false);
-        onDisconnect?.();
+        onDisconnectRef.current?.();
         wsRef.current = null;
 
         // Auto-reconnect
@@ -67,13 +78,13 @@ export function useWebSocket({
     }
   };
 
-  const sendMessage = (data: any) => {
+  const sendMessage = useCallback((data: any) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(data));
     } else {
       console.warn('⚠️ WebSocket not connected, message not sent');
     }
-  };
+  }, []);
 
   const disconnect = () => {
     if (reconnectTimeoutRef.current) {

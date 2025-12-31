@@ -19,10 +19,13 @@ interface Player {
 interface BulkOperationsProps {
   players: Player[];
   onUpdate: () => void;
+  totalCount?: number;
+  filters?: Record<string, string>;
 }
 
-export function BulkOperations({ players, onUpdate }: BulkOperationsProps) {
+export function BulkOperations({ players, onUpdate, totalCount = 0, filters = {} }: BulkOperationsProps) {
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
+  const [selectAllGlobal, setSelectAllGlobal] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [operation, setOperation] = useState<string>('');
   const [newStatus, setNewStatus] = useState<string>('');
@@ -34,7 +37,12 @@ export function BulkOperations({ players, onUpdate }: BulkOperationsProps) {
       setSelectedPlayers(players.map(p => p.id));
     } else {
       setSelectedPlayers([]);
+      setSelectAllGlobal(false);
     }
+  };
+
+  const handleSelectAllGlobal = () => {
+    setSelectAllGlobal(true);
   };
 
   const handleSelectPlayer = (playerId: string, checked: boolean) => {
@@ -42,11 +50,14 @@ export function BulkOperations({ players, onUpdate }: BulkOperationsProps) {
       setSelectedPlayers(prev => [...prev, playerId]);
     } else {
       setSelectedPlayers(prev => prev.filter(id => id !== playerId));
+      setSelectAllGlobal(false);
     }
   };
 
   const handleBulkUpdate = async () => {
-    if (selectedPlayers.length === 0) {
+    let targetPlayerIds = selectedPlayers;
+
+    if (targetPlayerIds.length === 0 && !selectAllGlobal) {
       toast({
         title: 'Keine Spieler ausgewählt',
         description: 'Bitte wählen Sie mindestens einen Spieler aus.',
@@ -56,6 +67,19 @@ export function BulkOperations({ players, onUpdate }: BulkOperationsProps) {
     }
 
     try {
+      // Wenn global ausgewählt, hole alle IDs
+      if (selectAllGlobal) {
+        const params = new URLSearchParams({
+          limit: '10000',
+          ...filters
+        });
+        const res = await fetch(`/api/admin/players?${params}`);
+        const data = await res.json();
+        if (data.success) {
+          targetPlayerIds = data.players.map((p: any) => p.id);
+        }
+      }
+
       const updates: any = {};
 
       if (operation === 'status' && newStatus) {
@@ -64,6 +88,10 @@ export function BulkOperations({ players, onUpdate }: BulkOperationsProps) {
 
       if (operation === 'payment' && newPaidStatus !== null) {
         updates.paid = newPaidStatus;
+        // Automatisch auf ACTIVE setzen wenn bezahlt (wie bei Einzel-Update)
+        if (newPaidStatus === true) {
+          updates.status = 'ACTIVE';
+        }
       }
 
       if (Object.keys(updates).length === 0) {
@@ -76,7 +104,7 @@ export function BulkOperations({ players, onUpdate }: BulkOperationsProps) {
       }
 
       // Bulk Update durchführen
-      const promises = selectedPlayers.map(playerId =>
+      const promises = targetPlayerIds.map(playerId =>
         fetch('/api/admin/players', {
           method: 'PATCH',
           headers: {
@@ -93,10 +121,11 @@ export function BulkOperations({ players, onUpdate }: BulkOperationsProps) {
 
       toast({
         title: 'Erfolg',
-        description: `${selectedPlayers.length} Spieler wurden aktualisiert.`
+        description: `${targetPlayerIds.length} Spieler wurden aktualisiert.`
       });
 
       setSelectedPlayers([]);
+      setSelectAllGlobal(false);
       setIsOpen(false);
       onUpdate();
 
@@ -148,6 +177,7 @@ export function BulkOperations({ players, onUpdate }: BulkOperationsProps) {
                 <SelectContent>
                   <SelectItem value="REGISTERED">Registriert</SelectItem>
                   <SelectItem value="CONFIRMED">Bestätigt</SelectItem>
+                  <SelectItem value="WAITING_LIST">Warteliste</SelectItem>
                   <SelectItem value="ACTIVE">Aktiv</SelectItem>
                   <SelectItem value="ELIMINATED">Ausgeschieden</SelectItem>
                   <SelectItem value="WITHDRAWN">Zurückgezogen</SelectItem>
@@ -170,16 +200,34 @@ export function BulkOperations({ players, onUpdate }: BulkOperationsProps) {
 
           {/* Spieler auswählen */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label>Spieler auswählen ({selectedPlayers.length} von {players.length})</Label>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleSelectAll(selectedPlayers.length !== players.length)}
-              >
-                {selectedPlayers.length === players.length ? 'Alle abwählen' : 'Alle auswählen'}
-              </Button>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <Label>Spieler auswählen ({selectAllGlobal ? totalCount : selectedPlayers.length} von {totalCount || players.length})</Label>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSelectAll(selectedPlayers.length !== players.length)}
+                >
+                  {selectedPlayers.length === players.length ? 'Alle auf Seite abwählen' : 'Alle auf Seite auswählen'}
+                </Button>
+                
+                {selectedPlayers.length === players.length && totalCount > players.length && !selectAllGlobal && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleSelectAllGlobal}
+                  >
+                    Alle {totalCount} Spieler auswählen
+                  </Button>
+                )}
+              </div>
             </div>
+            
+            {selectAllGlobal && (
+              <div className="bg-muted p-2 rounded text-sm text-center">
+                Alle <strong>{totalCount}</strong> Spieler im Filter sind ausgewählt.
+              </div>
+            )}
 
             <div className="max-h-60 overflow-y-auto border rounded-lg p-4 space-y-2">
               {players.map((player) => (

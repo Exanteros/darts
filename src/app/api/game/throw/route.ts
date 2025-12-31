@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { Throw, GameStatus } from '@prisma/client';
+import { Throw, GameStatus, Prisma } from '@prisma/client';
 
 import { verifyBoardAccess } from '@/lib/board-auth';
 
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     // Note: We don't return 401 immediately because board access might be valid without session
 
     const body = await request.json();
-    const { gameId, playerId, dart1, dart2, dart3, score } = body;
+    const { gameId, playerId, dart1, dart2, dart3, score, leg } = body;
 
     if (!gameId || !playerId) {
       return NextResponse.json({
@@ -38,7 +38,8 @@ export async function POST(request: NextRequest) {
       }, { status: 404 });
     }
 
-    if (game.status !== 'ACTIVE') {
+    // Allow throws for finished games if it's the winning throw (race condition handling)
+    if (game.status !== 'ACTIVE' && game.status !== 'FINISHED') {
       return NextResponse.json({
         success: false,
         message: 'Spiel ist nicht aktiv'
@@ -67,10 +68,13 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
+    // Use provided leg or fallback to current game leg
+    const targetLeg = leg !== undefined ? leg : game.currentLeg;
+
     const throwData = {
       gameId,
       playerId,
-      leg: game.currentLeg,
+      leg: targetLeg,
       dart1: dart1 || 0,
       dart2: dart2 || 0,
       dart3: dart3 || 0,
@@ -82,101 +86,59 @@ export async function POST(request: NextRequest) {
       data: throwData
     });
 
-    // Berechne neue Legs-Scores
+    // Berechne neue Legs-Scores für das aktuelle Leg
     const allThrows = await prisma.throw.findMany({
-      where: { gameId: gameId }
+      where: { gameId: gameId, leg: targetLeg }
     });
 
-    const player1Throws = allThrows.filter(t => t.playerId === game.player1Id && t.leg === game.currentLeg);
-    const player2Throws = allThrows.filter(t => t.playerId === game.player2Id && t.leg === game.currentLeg);
+    const player1Throws = allThrows.filter(t => t.playerId === game.player1Id);
+    const player2Throws = allThrows.filter(t => t.playerId === game.player2Id);
 
     const player1Score = player1Throws.reduce((sum, t) => sum + t.score, 0);
     const player2Score = player2Throws.reduce((sum, t) => sum + t.score, 0);
 
-    // Prüfe ob ein Spieler gewonnen hat
+    // Check for Leg Win
+    // Assuming 501 game
+    const POINTS_TO_WIN = 501;
+    let legWon = false;
     let winnerId = null;
-    let nextLeg = game.currentLeg;
+    let updatedGame = game;
 
-    if (player1Score >= 501 && player2Score >= 501) {
-      // Beide haben das Leg beendet - nächstes Leg
-      nextLeg = game.currentLeg + 1;
-    } else if (player1Score >= 501) {
-      // Spieler 1 hat gewonnen
-      const newPlayer1Legs = game.player1Legs + 1;
-      if (newPlayer1Legs >= game.legsToWin) {
-        winnerId = game.player1Id;
-      }
-    } else if (player2Score >= 501) {
-      // Spieler 2 hat gewonnen
-      const newPlayer2Legs = game.player2Legs + 1;
-      if (newPlayer2Legs >= game.legsToWin) {
-        winnerId = game.player2Id;
-      }
-    }
-
-    // Update game status
-    const gameUpdate: {
-      currentLeg: number;
-      winnerId?: string | null;
-      status?: GameStatus;
-      finishedAt?: Date;
-    } = {
-      currentLeg: nextLeg
-    };
-
-    if (winnerId) {
-      gameUpdate.winnerId = winnerId;
-      gameUpdate.status = 'FINISHED';
-      gameUpdate.finishedAt = new Date();
-    }
-
-    const updatedGame = await prisma.game.update({
-      where: { id: gameId },
-      data: gameUpdate,
-      include: {
-        player1: {
-          include: {
-            user: {
-              select: {
-                name: true,
-                email: true
-              }
-            }
-          }
-        },
-        player2: {
-          include: {
-            user: {
-              select: {
-                name: true,
-                email: true
-              }
-            }
-          }
-        },
-        winner: {
-          include: {
-            user: {
-              select: {
-                name: true,
-                email: true
-              }
-            }
-          }
+    if (game.currentLeg === targetLeg) {
+        if (playerId === game.player1Id && player1Score === POINTS_TO_WIN) {
+            legWon = true;
+            winnerId = game.player1Id;
+        } else if (playerId === game.player2Id && player2Score === POINTS_TO_WIN) {
+            legWon = true;
+            winnerId = game.player2Id;
         }
-      }
+    }
+
+    // Always update game to clear currentThrow and update legs if won
+    updatedGame = await prisma.game.update({
+        where: { id: gameId },
+        data: {
+            currentThrow: Prisma.JsonNull,
+            ...(legWon && winnerId ? {
+                player1Legs: { increment: winnerId === game.player1Id ? 1 : 0 },
+                player2Legs: { increment: winnerId === game.player2Id ? 1 : 0 },
+                currentLeg: { increment: 1 }
+            } : {})
+        }
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Wurf erfolgreich registriert',
+      message: legWon ? 'Wurf erfolgreich registriert und Leg beendet' : 'Wurf erfolgreich registriert',
       data: {
         throw: throwResult,
         game: updatedGame,
         scores: {
           player1: player1Score,
           player2: player2Score
-        }
+        },
+        legWon,
+        winnerId
       }
     });
 
