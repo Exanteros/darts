@@ -2,70 +2,46 @@ import nodemailer from 'nodemailer';
 import { prisma } from '@/lib/prisma';
 
 /* -------------------------------------------------------------------------- */
-/* CONFIGURATION                               */
+/* CONFIGURATION                                                              */
 /* -------------------------------------------------------------------------- */
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+  secure: process.env.SMTP_SECURE === 'true',
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
   tls: {
-    // Do not fail on invalid certs
     rejectUnauthorized: false
   }
 });
 
-// SMTP Logging & Verification Logic
+// SMTP Logging
 if (process.env.SMTP_HOST && process.env.SMTP_USER) {
-  console.log('📧 SMTP Configuration:', {
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    secure: process.env.SMTP_SECURE,
-    user: process.env.SMTP_USER,
-    from: process.env.SMTP_FROM
-  });
-}
-
-if (
-  process.env.SMTP_HOST &&
-  process.env.SMTP_USER &&
-  !String(process.env.SMTP_HOST).includes('example.com')
-) {
-  transporter.verify().then(() => {
-    console.log('✅ SMTP transporter verified');
-  }).catch((err) => {
-    console.warn('❌ SMTP transporter verification failed:', err);
-  });
-} else if (process.env.SMTP_HOST && process.env.SMTP_USER) {
-  // Log skipped verification (Original Logic restored)
-  console.log('ℹ️ SMTP configured but verification skipped. Conditions met for skip.');
+  if (!String(process.env.SMTP_HOST).includes('example.com')) {
+    transporter.verify().then(() => {
+      console.log('✅ SMTP transporter verified');
+    }).catch((err) => {
+      console.warn('❌ SMTP transporter verification failed:', err);
+    });
+  }
 }
 
 /* -------------------------------------------------------------------------- */
-/* CORE LOGIC                                 */
+/* CORE LOGIC                                                                 */
 /* -------------------------------------------------------------------------- */
 
 export async function sendMail({ to, subject, text, html }: { to: string, subject: string, text: string, html?: string }) {
-  console.log(`📧 Attempting to send email to: ${to}`);
-
-  // If SMTP is not configured, fallback to simulation
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
-    console.log(`\n--- [MAIL SIMULATION (No SMTP Config)] ---`);
-    console.log(`To: ${to}`);
-    console.log(`Subject: ${subject}`);
-    console.log(`Body: \n${text}`);
-    if (html) console.log(`HTML Body included.`);
-    console.log(`------------------------------------------\n`);
+    console.log(`\n--- [MAIL SIMULATION] ---\nTo: ${to}\nSubject: ${subject}\nBody: ${text}\n-------------------------\n`);
     return true;
   }
 
   try {
     const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || '"Darts Turnier" <noreply@example.com>',
+      from: process.env.SMTP_FROM || '"Darts Masters" <noreply@example.com>',
       to,
       subject,
       text,
@@ -80,12 +56,11 @@ export async function sendMail({ to, subject, text, html }: { to: string, subjec
 }
 
 /**
- * Renders High-End SaaS "Bento" Style HTML
+ * Renders High-End Email Style passend zum Website-Design
  */
 export async function renderHtml(content: string, tournamentName?: string, isHtml: boolean = false) {
   const logo = process.env.SMTP_LOGO_URL || `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/vercel.svg`;
   
-  // Hole Tournament-Name dynamisch aus DB falls nicht übergeben (Original Logic)
   let brandName = tournamentName;
   if (!brandName) {
     try {
@@ -99,61 +74,48 @@ export async function renderHtml(content: string, tournamentName?: string, isHtm
     }
   }
   
-  // Design Tokens - Greyscale / Bento Theme
+  // Design Tokens abgestimmt auf deine Website (Slate/Blue/Black)
   const colors = {
-    bg: '#fafafa',        
-    card: '#ffffff',      
-    textMain: '#111111',  
-    textBody: '#555555',  
-    textMuted: '#999999', 
-    border: '#eaeaea',    
-    panel: '#f4f4f5',     
-    brand: '#1a365d',     // Dein Blau
+    bg: '#fcfcfc',        
+    cardBg: '#ffffff',
+    textMain: '#0f172a',  // slate-900
+    textBody: '#475569',  // slate-600
+    textMuted: '#94a3b8', // slate-400
+    border: '#f1f5f9',    // slate-100
+    accent: '#3b82f6',    // blue-500
+    dark: '#020617',      // slate-950 (Website Header/Button Stil)
   };
 
   const siteUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-  
   let htmlContent = content;
 
   if (!isHtml) {
-    // Markdown Parser angepasst auf Bento Style
     htmlContent = content
-      .replace(/\n\n/g, '</p><p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.7; color: #555555;">')
+      .replace(/\n\n/g, '</p><p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #475569;">')
       .replace(/\n/g, '<br/>')
-      .replace(/\*\*([^*]+)\*\*/g, '<strong style="color: #000000; font-weight: 600;">$1</strong>')
-      .replace(/\*([^*]+)\*/g, '<em style="font-family: Georgia, serif; color: #666; font-style: italic;">$1</em>')
+      .replace(/\*\*([^*]+)\*\*/g, `<strong style="color: ${colors.textMain}; font-weight: 600;">$1</strong>`)
       
-      // H1: Massive & Tight
-      .replace(/^# (.+)$/gm, `<h1 style="color: #000000; margin: 0 0 24px 0; font-size: 32px; line-height: 1.1; font-weight: 700; letter-spacing: -0.03em;">$1</h1>`)
-      // H2: Eyebrow Style (Small, Uppercase)
-      .replace(/^## (.+)$/gm, `<h2 style="color: #888888; margin: 32px 0 12px 0; font-size: 11px; line-height: 1.4; font-weight: 600; text-transform: uppercase; letter-spacing: 0.15em;">$1</h2>`)
-      // H3: Standard Subhead
-      .replace(/^### (.+)$/gm, `<h3 style="color: #111111; margin: 24px 0 12px 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em;">$1</h3>`)
+      // H1: Groß und fett wie auf der Hero-Page
+      .replace(/^# (.+)$/gm, `<h1 style="color: ${colors.textMain}; margin: 0 0 16px 0; font-size: 28px; line-height: 1.2; font-weight: 800; letter-spacing: -0.02em;">$1</h1>`)
+      // H2: Kleiner Badge-Stil
+      .replace(/^## (.+)$/gm, `<h2 style="color: ${colors.accent}; margin: 24px 0 8px 0; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">$1</h2>`)
       
-      // Blockquote -> Bento Tile
+      // Blockquote -> Bento-Tile Look
       .replace(/^> (.+)$/gm, `
-        <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
-          <tr>
-            <td style="background-color: ${colors.panel}; border-radius: 8px; padding: 20px; border: 1px solid ${colors.border};">
-              <p style="margin: 0; color: #333; font-size: 14px; font-weight: 500; line-height: 1.6;">$1</p>
-            </td>
-          </tr>
-        </table>
+        <div style="margin: 24px 0; padding: 16px; background-color: #f8fafc; border: 1px solid ${colors.border}; border-radius: 12px;">
+          <p style="margin: 0; color: ${colors.textMain}; font-size: 14px; font-weight: 500;">$1</p>
+        </div>
       `)
       
-      // Button
+      // Button -> Black Shimmer Style
       .replace(/\[([^\]]+)\]\(([^)]+)\)/g, `
-        <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="margin: 32px 0;">
-          <tr>
-            <td align="center">
-              <a href="$2" target="_blank" style="display: block; width: 100%; background-color: ${colors.brand}; color: #ffffff; font-size: 14px; font-weight: 600; line-height: 1.5; padding: 14px 24px; text-decoration: none; border-radius: 8px; text-align: center; box-sizing: border-box;">$1</a>
-            </td>
-          </tr>
-        </table>
+        <div style="margin: 32px 0; text-align: center;">
+          <a href="$2" target="_blank" style="display: inline-block; background-color: ${colors.dark}; color: #ffffff; font-size: 15px; font-weight: 600; padding: 14px 32px; text-decoration: none; border-radius: 9999px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">$1</a>
+        </div>
       `);
       
     if (!htmlContent.startsWith('<')) {
-      htmlContent = `<p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.7; color: #555555;">${htmlContent}</p>`;
+      htmlContent = `<p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: ${colors.textBody};">${htmlContent}</p>`;
     }
   }
   
@@ -163,50 +125,53 @@ export async function renderHtml(content: string, tournamentName?: string, isHtm
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>${brandName}</title>
-      <style>
-        body { margin: 0; padding: 0; width: 100% !important; -webkit-text-size-adjust: 100%; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-      </style>
     </head>
-    <body style="margin: 0; padding: 0; background-color: ${colors.bg}; color: ${colors.textMain};">
-      <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: ${colors.bg};">
+    <body style="margin: 0; padding: 0; background-color: ${colors.bg}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+      <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0">
         <tr>
-          <td align="center" style="padding: 40px 12px;">
-            <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="width: 100%; max-width: 520px; background-color: ${colors.card}; border: 1px solid ${colors.border}; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+          <td align="center" style="padding: 40px 16px;">
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="width: 100%; max-width: 600px; background-color: ${colors.cardBg}; border: 1px solid ${colors.border}; border-radius: 24px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+              
               <tr>
-                <td style="padding: 40px 40px 0 40px;">
-                   <img src="${logo}" alt="Logo" width="32" height="32" style="display: block; border-radius: 6px; width: 32px; height: 32px; background-color: #eee;" />
+                <td style="padding: 32px 40px 0 40px;">
+                   <table width="100%">
+                    <tr>
+                      <td>
+                        <div style="background-color: ${colors.dark}; width: 32px; height: 32px; border-radius: 8px; display: inline-block; text-align: center; vertical-align: middle;">
+                          <img src="${logo}" alt="🎯" width="20" height="20" style="margin-top: 6px;" />
+                        </div>
+                        <span style="margin-left: 8px; font-weight: 700; color: ${colors.textMain}; font-size: 18px; vertical-align: middle;">Darts Masters</span>
+                      </td>
+                    </tr>
+                   </table>
                 </td>
               </tr>
+
               <tr>
-                <td style="padding: 32px 40px 40px 40px;">
+                <td style="padding: 40px;">
                   ${htmlContent}
                 </td>
               </tr>
+
               <tr>
-                <td style="background-color: ${colors.panel}; padding: 24px 40px; border-top: 1px solid ${colors.border};">
-                  <table role="presentation" width="100%">
+                <td style="padding: 0 40px 40px 40px;">
+                  <hr style="border: 0; border-top: 1px solid ${colors.border}; margin: 0 0 24px 0;" />
+                  <table width="100%">
                     <tr>
-                      <td align="center">
-                        <p style="margin: 0; font-size: 12px; color: ${colors.textMuted}; line-height: 1.5;">
-                          <strong>${brandName}</strong>
-                        </p>
-                        <div style="margin-top: 16px;">
-                          <a href="${siteUrl}" style="color: ${colors.textMain}; text-decoration: none; font-size: 12px; font-weight: 500; margin: 0 8px;">Dashboard</a>
-                          <span style="color: ${colors.border};">|</span>
-                          <a href="${siteUrl}/impressum" style="color: ${colors.textMain}; text-decoration: none; font-size: 12px; font-weight: 500; margin: 0 8px;">Impressum</a>
-                          <span style="color: ${colors.border};">|</span>
-                          <a href="${siteUrl}/datenschutz" style="color: ${colors.textMain}; text-decoration: none; font-size: 12px; font-weight: 500; margin: 0 8px;">Datenschutz</a>
-                        </div>
+                      <td align="center" style="font-size: 12px; color: ${colors.textMuted}; line-height: 1.5;">
+                        <p style="margin: 0 0 12px 0; font-weight: 600; color: ${colors.textMain};">${brandName}</p>
+                        <a href="${siteUrl}" style="color: ${colors.accent}; text-decoration: none; font-weight: 500;">Dashboard</a>
+                        <span style="margin: 0 8px; color: #e2e8f0;">•</span>
+                        <a href="${siteUrl}/impressum" style="color: ${colors.textMuted}; text-decoration: none;">Impressum</a>
+                        <span style="margin: 0 8px; color: #e2e8f0;">•</span>
+                        <a href="${siteUrl}/datenschutz" style="color: ${colors.textMuted}; text-decoration: none;">Datenschutz</a>
+                        <p style="margin: 16px 0 0 0; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #cbd5e1;">Puschendorf 2026</p>
                       </td>
                     </tr>
                   </table>
                 </td>
               </tr>
             </table>
-            <div style="margin-top: 24px; text-align: center;">
-              <p style="font-size: 11px; color: #cccccc; text-transform: uppercase; letter-spacing: 0.5px;">Powered by Darts Manager</p>
-            </div>
           </td>
         </tr>
       </table>
@@ -216,71 +181,41 @@ export async function renderHtml(content: string, tournamentName?: string, isHtm
 
 export async function sendWelcomeEmail(email: string, name: string) {
   try {
-    const template = await prisma.emailTemplate.findUnique({
-      where: { id: 'registration' }
-    });
-
-    let subject = template?.subject || "Willkommen beim Darts Turnier! 🎯";
+    const template = await prisma.emailTemplate.findUnique({ where: { id: 'registration' } });
+    let subject = template?.subject || "Willkommen beim Darts Masters! 🎯";
     
-    // Bento-Style Default Content
     let content = template?.content || 
 `# Willkommen ${name}!
 
 ## Status
 > Erfolgreich registriert
 
-Vielen Dank für deine Registrierung beim Darts Turnier.
-Wir freuen uns sehr, dich dabei zu haben!
+Vielen Dank für deine Registrierung beim Darts Masters. Wir freuen uns sehr, dich dabei zu haben!
 
 [Zum Dashboard](${process.env.NEXTAUTH_URL || 'http://localhost:3000'})`;
 
-    // Ersetze Platzhalter
     content = content.replace(/{name}/g, name);
     subject = subject.replace(/{name}/g, name);
 
     const html = await renderHtml(content);
-    // Plain Text Strip
     const text = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1: $2').replace(/[#*>]/g, ''); 
     
     return sendMail({ to: email, subject, text, html });
   } catch (error) {
-    console.error('Error loading email template, using fallback:', error);
-    const subject = "Willkommen beim Darts Turnier! 🎯";
-    const text = `Hallo ${name},\nvielen Dank für deine Registrierung.`;
-    const html = await renderHtml(`# Hallo ${name}\n\nWillkommen!`, undefined);
-    return sendMail({ to: email, subject, text, html });
+    console.error('Email error:', error);
+    return false;
   }
 }
 
 export async function sendTournamentRegistrationEmail(email: string, name: string, tournamentName: string, status: string = 'CONFIRMED') {
   const isWaitingList = status === 'WAITING_LIST';
-  const subject = isWaitingList 
-    ? `Warteliste: ${tournamentName}` 
-    : `Anmeldung bestätigt: ${tournamentName}`;
+  const subject = isWaitingList ? `Warteliste: ${tournamentName}` : `Anmeldung bestätigt: ${tournamentName}`;
     
-  const textRaw = isWaitingList
-    ? `# Warteliste
+  const content = isWaitingList
+    ? `# Warteliste\n\n## Turnier\n> ${tournamentName}\n\nHallo ${name},\ndas Turnier ist leider bereits voll. Du wurdest auf die **Warteliste** gesetzt.`
+    : `# Anmeldung Bestätigt\n\n## Turnier\n> ${tournamentName}\n\nHallo ${name},\ndeine Anmeldung wurde erfolgreich bestätigt.\n\nGut Darts!`;
 
-## Turnier
-> ${tournamentName}
-
-Hallo ${name},
-das Turnier ist leider bereits voll. Du wurdest auf die **Warteliste** gesetzt.
-
-Wir informieren dich sofort, sobald ein Platz frei wird!
-
-Gut Darts!`
-    : `# Anmeldung Bestätigt
-
-## Turnier
-> ${tournamentName}
-
-Hallo ${name},
-deine Anmeldung wurde erfolgreich bestätigt.
-
-Gut Darts!`;
-
-  const html = await renderHtml(textRaw, tournamentName);
-  const text = textRaw.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1: $2').replace(/[#*>]/g, '');
+  const html = await renderHtml(content, tournamentName);
+  const text = content.replace(/[#*>]/g, '');
   return sendMail({ to: email, subject, text, html });
 }

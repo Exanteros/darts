@@ -123,6 +123,11 @@ export default function PlayersPage() {
   const [tournamentFilter, setTournamentFilter] = useState<string>('all');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [promoteDialogOpen, setPromoteDialogOpen] = useState(false);
+  const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
+  const [waitingListCandidates, setWaitingListCandidates] = useState<Player[]>([]);
+  const [selectedPromotePlayerId, setSelectedPromotePlayerId] = useState<string>('none');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const { toast } = useToast();
@@ -273,9 +278,38 @@ export default function PlayersPage() {
     }
   };
 
-  const deletePlayer = async (playerId: string) => {
+  const handleDeleteRequest = async (player: Player) => {
+    setPlayerToDelete(player);
+    
+    // Fetch waiting list for this tournament
     try {
-      const response = await fetch(`/api/admin/players?playerId=${playerId}`, {
+      const response = await fetch(`/api/admin/players?tournamentId=${player.tournament.id}&status=WAITING_LIST&limit=100`);
+      const data = await response.json();
+      
+      if (data.success && data.players.length > 0) {
+        setWaitingListCandidates(data.players);
+        setSelectedPromotePlayerId('none');
+        setPromoteDialogOpen(true);
+      } else {
+        setDeleteDialogOpen(true);
+      }
+    } catch (error) {
+      console.error('Error fetching waiting list:', error);
+      // Fallback to simple delete if fetch fails
+      setDeleteDialogOpen(true);
+    }
+  };
+
+  const confirmDelete = async (promotePlayerId?: string) => {
+    if (!playerToDelete) return;
+    
+    try {
+      let url = `/api/admin/players?playerId=${playerToDelete.id}`;
+      if (promotePlayerId && promotePlayerId !== 'none') {
+        url += `&promotePlayerId=${promotePlayerId}`;
+      }
+      
+      const response = await fetch(url, {
         method: 'DELETE'
       });
 
@@ -284,7 +318,7 @@ export default function PlayersPage() {
       if (data.success) {
         toast({
           title: 'Erfolg',
-          description: 'Spieler wurde aus dem Turnier entfernt'
+          description: data.message || 'Spieler wurde entfernt'
         });
         fetchPlayers();
       } else {
@@ -301,6 +335,12 @@ export default function PlayersPage() {
         description: 'Netzwerkfehler beim Entfernen',
         variant: 'destructive'
       });
+    } finally {
+      setDeleteDialogOpen(false);
+      setPromoteDialogOpen(false);
+      setPlayerToDelete(null);
+      setWaitingListCandidates([]);
+      setSelectedPromotePlayerId('none');
     }
   };
 
@@ -657,71 +697,17 @@ export default function PlayersPage() {
                                         </div>
                                       </TableCell>
                                       <TableCell>
-                                        <div className="text-sm">
-                                          {new Date(player.registeredAt).toLocaleDateString('de-DE')}
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center justify-end gap-2">
                                           <Button
                                             variant="outline"
                                             size="sm"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              setSelectedPlayer(player);
-                                              setEditDialogOpen(true);
+                                              handleDeleteRequest(player);
                                             }}
                                           >
-                                            <Edit className="h-4 w-4" />
+                                            <Trash2 className="h-4 w-4 text-red-600" />
                                           </Button>
-                                          <Select
-                                            value={player.status}
-                                            onValueChange={(value) => updatePlayerStatus(player.id, value)}
-                                          >
-                                            <SelectTrigger
-                                              className="w-32"
-                                              onClick={(e) => e.stopPropagation()}
-                                            >
-                                              <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                              <SelectItem value="REGISTERED">Registriert</SelectItem>
-                                              <SelectItem value="CONFIRMED">Bestätigt</SelectItem>
-                                              <SelectItem value="WAITING_LIST">Warteliste</SelectItem>
-                                              <SelectItem value="ACTIVE">Aktiv</SelectItem>
-                                              <SelectItem value="ELIMINATED">Ausgeschieden</SelectItem>
-                                              <SelectItem value="WITHDRAWN">Zurückgezogen</SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                          <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                              <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={(e) => e.stopPropagation()}
-                                              >
-                                                <Trash2 className="h-4 w-4 text-red-600" />
-                                              </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                              <AlertDialogHeader>
-                                                <AlertDialogTitle>Spieler entfernen</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                  Sind Sie sicher, dass Sie {player.playerName} aus dem Turnier entfernen möchten?
-                                                  Diese Aktion kann nicht rückgängig gemacht werden.
-                                                </AlertDialogDescription>
-                                              </AlertDialogHeader>
-                                              <AlertDialogFooter>
-                                                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                                                <AlertDialogAction
-                                                  onClick={() => deletePlayer(player.id)}
-                                                  className="bg-red-600 hover:bg-red-700"
-                                                >
-                                                  Entfernen
-                                                </AlertDialogAction>
-                                              </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                          </AlertDialog>
                                         </div>
                                       </TableCell>
                                     </TableRow>
@@ -792,6 +778,75 @@ export default function PlayersPage() {
                               seed: e.target.value ? parseInt(e.target.value) : undefined
                             })}
                           />
+
+                {/* Simple Delete Dialog */}
+                <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Spieler entfernen</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Sind Sie sicher, dass Sie {playerToDelete?.playerName} aus dem Turnier entfernen möchten?
+                        Diese Aktion kann nicht rückgängig gemacht werden.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => confirmDelete()}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        Entfernen
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                {/* Promote Dialog */}
+                <Dialog open={promoteDialogOpen} onOpenChange={setPromoteDialogOpen}>
+                  <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                      <DialogTitle>Spieler entfernen & Nachrücker wählen</DialogTitle>
+                      <div className="text-sm text-muted-foreground mt-2">
+                        Sie entfernen <strong>{playerToDelete?.playerName}</strong>.
+                        Es befinden sich <strong>{waitingListCandidates.length}</strong> Spieler auf der Warteliste.
+                      </div>
+                    </DialogHeader>
+                    
+                    <div className="py-4 space-y-4">
+                      <div className="space-y-2">
+                        <Label>Nachrücker auswählen (Optional)</Label>
+                        <Select value={selectedPromotePlayerId} onValueChange={setSelectedPromotePlayerId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Wählen Sie einen Nachrücker..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">-- Niemanden nachrücken lassen --</SelectItem>
+                            {waitingListCandidates.map(candidate => (
+                              <SelectItem key={candidate.id} value={candidate.id}>
+                                {candidate.playerName} ({new Date(candidate.registeredAt).toLocaleDateString()})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Der ausgewählte Spieler erhält automatisch den Status "Bestätigt".
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setPromoteDialogOpen(false)}>
+                        Abbrechen
+                      </Button>
+                      <Button 
+                        variant="destructive"
+                        onClick={() => confirmDelete(selectedPromotePlayerId)}
+                      >
+                        {selectedPromotePlayerId !== 'none' ? 'Entfernen & Nachrücken' : 'Nur Entfernen'}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
                         </div>
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" onClick={() => setEditDialogOpen(false)}>

@@ -260,6 +260,7 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const playerId = searchParams.get('playerId');
+    const promotePlayerId = searchParams.get('promotePlayerId');
 
     if (!playerId) {
       return NextResponse.json(
@@ -268,14 +269,30 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Spieler aus Turnier entfernen
-    await prisma.tournamentPlayer.delete({
-      where: { id: playerId }
+    // Transaktion starten: Spieler löschen und ggf. Nachrücker befördern
+    await prisma.$transaction(async (tx) => {
+      // 1. Spieler löschen
+      await tx.tournamentPlayer.delete({
+        where: { id: playerId }
+      });
+
+      // 2. Nachrücker befördern (falls angegeben)
+      if (promotePlayerId) {
+        await tx.tournamentPlayer.update({
+          where: { id: promotePlayerId },
+          data: { 
+            status: 'CONFIRMED',
+            // Optional: Man könnte hier auch eine Benachrichtigung auslösen
+          }
+        });
+      }
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Spieler erfolgreich entfernt'
+      message: promotePlayerId 
+        ? 'Spieler entfernt und Nachrücker befördert' 
+        : 'Spieler erfolgreich entfernt'
     });
 
   } catch (error) {
