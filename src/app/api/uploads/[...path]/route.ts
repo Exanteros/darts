@@ -13,12 +13,15 @@ export async function GET(
     
     // Security check: prevent directory traversal
     if (fileName.includes('..')) {
+      console.warn(`[Uploads API] Blocked directory traversal attempt: ${fileName}`);
       return new NextResponse('Invalid path', { status: 400 });
     }
 
     const filePath = join(process.cwd(), 'public', 'uploads', fileName);
+    console.log(`[Uploads API] Serving file: ${filePath}`);
 
     if (!existsSync(filePath)) {
+      console.warn(`[Uploads API] File not found: ${filePath}`);
       return new NextResponse('File not found', { status: 404 });
     }
 

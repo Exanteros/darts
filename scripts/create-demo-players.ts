@@ -22,7 +22,7 @@ async function main() {
     console.log('ℹ️ No active tournament found. Creating one...');
     tournament = await prisma.tournament.create({
       data: {
-        name: 'Demo Tournament 2025',
+        name: 'Demo Tournament 2026',
         description: 'A test tournament with 32 players',
         startDate: new Date(),
         status: 'REGISTRATION_OPEN',

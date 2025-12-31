@@ -51,13 +51,13 @@ async function main() {
 
   // Erstelle ein Beispiel-Turnier (optional, auskommentiert für Onboarding-Test)
   // const tournament = await prisma.tournament.upsert({
-  //   where: { id: 'darts-masters-2025' },
+  //   where: { id: 'darts-masters-2026' },
   //   update: {},
   //   create: {
-  //     id: 'darts-masters-2025',
-  //     name: 'Darts Masters Puschendorf 2025',
-  //     description: 'Das professionelle Darts-Turnier für 64 Spieler im Februar 2025. Single-Elimination Format mit Live-Scoring.',
-  //     startDate: new Date('2025-02-15T10:00:00Z'),
+  //     id: 'darts-masters-2026',
+  //     name: 'Darts Masters Puschendorf 2026',
+  //     description: 'Das professionelle Darts-Turnier für 64 Spieler im Februar 2026. Single-Elimination Format mit Live-Scoring.',
+  //     startDate: new Date('2026-02-15T10:00:00Z'),
   //     maxPlayers: 64,
   //     entryFee: 25.00,
   //     status: 'REGISTRATION_OPEN'

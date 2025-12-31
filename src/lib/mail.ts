@@ -59,7 +59,32 @@ export async function sendMail({ to, subject, text, html }: { to: string, subjec
  * Renders High-End Email Style passend zum Website-Design
  */
 export async function renderHtml(content: string, tournamentName?: string, isHtml: boolean = false) {
-  const logo = process.env.SMTP_LOGO_URL || `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/vercel.svg`;
+  // 1. Versuche Logo aus den globalen Einstellungen zu laden
+  let logo = process.env.SMTP_LOGO_URL;
+  
+  if (!logo) {
+    try {
+      const settings = await prisma.tournamentSettings.findUnique({
+        where: { id: 'default' }
+      });
+      if (settings?.mainLogo) {
+        logo = settings.mainLogo;
+      }
+    } catch (e) {
+      console.error('Error fetching tournament settings for email logo:', e);
+    }
+  }
+
+  // Fallback
+  if (!logo) {
+    logo = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/vercel.svg`;
+  }
+
+  // Ensure absolute URL for email clients
+  if (logo && logo.startsWith('/')) {
+    const baseUrl = process.env.NEXTAUTH_URL || 'https://dartsturnier-puschendorf.de';
+    logo = `${baseUrl}${logo}`;
+  }
   
   let brandName = tournamentName;
   if (!brandName) {

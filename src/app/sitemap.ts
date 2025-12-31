@@ -1,7 +1,8 @@
 import { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXTAUTH_URL || 'https://dartsturnier-puschendorf.de';
+  // Use explicit production URL for sitemap to avoid localhost issues
+  const baseUrl = 'https://pudo-dartsmasters.de';
 
   return [
     {

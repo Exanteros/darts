@@ -807,7 +807,7 @@ function Footer() {
               <span className="font-bold">Darts Masters</span>
             </div>
             <p className="text-sm text-slate-500 leading-relaxed max-w-[200px]">
-              Puschendorf 2025. <br/>
+              Puschendorf 2026. <br/>
               High-End Darts Entertainment.
             </p>
           </div>
@@ -832,7 +832,7 @@ function Footer() {
           {/* Sektion 4: Ort & Zeit (Bricht auf Mobile in die nächste Reihe um) */}
           <div className="col-span-1">
             <h4 className="font-semibold text-slate-900 mb-4">Ort & Zeit</h4>
-            <p className="text-sm text-slate-500 mb-2">Februar 2025</p>
+            <p className="text-sm text-slate-500 mb-2">Februar 2026</p>
             <p className="text-sm text-slate-500">Puschendorf, DE</p>
           </div>
         </div>
@@ -841,7 +841,7 @@ function Footer() {
         
         {/* Copyright Sektion */}
         <div className="flex flex-col sm:flex-row justify-between items-center text-xs text-slate-400">
-          <p className="order-2 sm:order-1 mt-4 sm:mt-0">© 2025 Darts Masters. Built with love and passion.</p>
+          <p className="order-2 sm:order-1 mt-4 sm:mt-0">© 2026 Darts Masters. Built with love and passion.</p>
           <div className="flex gap-4 order-1 sm:order-2">
             {/* Social Media Icons/Zusätzliche Links hier, falls vorhanden */}
           </div>

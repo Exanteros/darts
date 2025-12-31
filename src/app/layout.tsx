@@ -28,10 +28,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
   title: {
-    default: "Darts Masters Puschendorf 2025 | Das Darts-Event des Jahres",
+    default: "Darts Masters Puschendorf 2026 | Das Darts-Event des Jahres",
     template: "%s | Darts Masters Puschendorf"
   },
-  description: "Melde dich an für das Darts Masters Puschendorf 2025. Das professionelle Darts-Turnier für 64 Spieler mit Live-Scoring, Statistiken und spannenden Matches.",
+  description: "Melde dich an für das Darts Masters Puschendorf 2026. Das professionelle Darts-Turnier für 64 Spieler mit Live-Scoring, Statistiken und spannenden Matches.",
   keywords: ["Darts", "Turnier", "Puschendorf", "Darts Masters", "E-Darts", "Steeldarts", "Turnierbaum", "Live Score", "Sportevent", "Franken"],
   authors: [{ name: "Darts Masters Team" }],
   creator: "Darts Masters Team",
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "de_DE",
     url: baseUrl,
-    title: "Darts Masters Puschendorf 2025",
+    title: "Darts Masters Puschendorf 2026",
     description: "Das größte Darts-Event der Region. 64 Spieler, ein Ziel. Sei dabei!",
     siteName: "Darts Masters Puschendorf",
     images: [
@@ -64,13 +64,13 @@ export const metadata: Metadata = {
         url: "/LogoFW-Pudo2013-.png",
         width: 1200,
         height: 630,
-        alt: "Darts Masters Puschendorf 2025 Banner",
+        alt: "Darts Masters Puschendorf 2026 Banner",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Darts Masters Puschendorf 2025",
+    title: "Darts Masters Puschendorf 2026",
     description: "Das größte Darts-Event der Region. 64 Spieler, ein Ziel.",
     images: ["/LogoFW-Pudo2013-.png"],
   },
@@ -93,10 +93,10 @@ export default function RootLayout({
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SportsEvent",
-    "name": "Darts Masters Puschendorf 2025",
+    "name": "Darts Masters Puschendorf 2026",
     "description": "Professionelles Darts-Turnier für 64 Spieler im K.O.-System.",
-    "startDate": "2025-02-15T10:00:00+01:00",
-    "endDate": "2025-02-15T22:00:00+01:00",
+    "startDate": "2026-02-15T10:00:00+01:00",
+    "endDate": "2026-02-15T22:00:00+01:00",
     "eventStatus": "https://schema.org/EventScheduled",
     "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
     "location": {
