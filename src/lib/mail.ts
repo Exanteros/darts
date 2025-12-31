@@ -252,10 +252,25 @@ Wir freuen uns sehr, dich dabei zu haben!
   }
 }
 
-export async function sendTournamentRegistrationEmail(email: string, name: string, tournamentName: string) {
-  const subject = `Anmeldung bestätigt: ${tournamentName}`;
-  const textRaw = 
-`# Anmeldung Bestätigt
+export async function sendTournamentRegistrationEmail(email: string, name: string, tournamentName: string, status: string = 'CONFIRMED') {
+  const isWaitingList = status === 'WAITING_LIST';
+  const subject = isWaitingList 
+    ? `Warteliste: ${tournamentName}` 
+    : `Anmeldung bestätigt: ${tournamentName}`;
+    
+  const textRaw = isWaitingList
+    ? `# Warteliste
+
+## Turnier
+> ${tournamentName}
+
+Hallo ${name},
+das Turnier ist leider bereits voll. Du wurdest auf die **Warteliste** gesetzt.
+
+Wir informieren dich sofort, sobald ein Platz frei wird!
+
+Gut Darts!`
+    : `# Anmeldung Bestätigt
 
 ## Turnier
 > ${tournamentName}

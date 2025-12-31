@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
 
     // Versende Bestätigungs-E-Mail an den Spieler (wenn möglich)
     try {
-      await sendTournamentRegistrationEmail(user.email, registration.playerName, tournament.name);
+      await sendTournamentRegistrationEmail(user.email, registration.playerName, tournament.name, registration.status);
     } catch (mailError) {
       console.error('Fehler beim Senden der Bestätigungs-E-Mail:', mailError);
       // Wir lassen die Registrierung trotzdem erfolgreich durchlaufen,

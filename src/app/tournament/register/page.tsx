@@ -78,6 +78,7 @@ export default function TournamentRegistrationPage() {
   const [clientSecret, setClientSecret] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isWaitingListSuccess, setIsWaitingListSuccess] = useState(false);
 
   // Stripe
   const [stripePromise, setStripePromise] = useState<Promise<any> | null>(null);
@@ -143,6 +144,12 @@ export default function TournamentRegistrationPage() {
         const data = await res.json();
         
         if (data.success) {
+          // Check if waiting list
+          if (data.message && data.message.includes('Warteliste')) {
+             setIsWaitingListSuccess(true);
+          } else {
+             setIsWaitingListSuccess(false);
+          }
           setStep('SUCCESS');
         } else {
           setError(data.message || "Fehler bei der Anmeldung");
@@ -550,12 +557,17 @@ export default function TournamentRegistrationPage() {
               animate={{ opacity: 1, scale: 1 }}
               className="flex flex-col items-center justify-center h-full"
             >
-              <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center text-white mb-6 shadow-2xl shadow-green-500/40">
-                <CheckCircle2 className="h-10 w-10" />
+              <div className={cn("w-20 h-20 rounded-full flex items-center justify-center text-white mb-6 shadow-2xl", isWaitingListSuccess ? "bg-amber-500 shadow-amber-500/40" : "bg-green-500 shadow-green-500/40")}>
+                {isWaitingListSuccess ? <Users className="h-10 w-10" /> : <CheckCircle2 className="h-10 w-10" />}
               </div>
-              <h1 className="text-3xl font-extrabold text-slate-900 mb-3 text-center">Du bist dabei!</h1>
+              <h1 className="text-3xl font-extrabold text-slate-900 mb-3 text-center">
+                {isWaitingListSuccess ? "Du bist auf der Warteliste!" : "Du bist dabei!"}
+              </h1>
               <p className="text-slate-500 text-base mb-8 max-w-md text-center leading-relaxed">
-                Deine Anmeldung für <strong>{selectedTournament?.name}</strong> war erfolgreich. Wir haben dir eine Bestätigung an {email} gesendet.
+                {isWaitingListSuccess 
+                  ? <span>Du wurdest erfolgreich auf die Warteliste für <strong>{selectedTournament?.name}</strong> gesetzt. Wir informieren dich, sobald ein Platz frei wird.</span>
+                  : <span>Deine Anmeldung für <strong>{selectedTournament?.name}</strong> war erfolgreich. Wir haben dir eine Bestätigung an {email} gesendet.</span>
+                }
               </p>
               
               <div className="flex gap-3">
@@ -569,6 +581,7 @@ export default function TournamentRegistrationPage() {
                   setError(null); 
                   setLoading(false);
                   setClientSecret("");
+                  setIsWaitingListSuccess(false);
                 }} className="h-10 px-6 rounded-full border-slate-200 text-sm">
                   Weitere Anmeldung
                 </Button>

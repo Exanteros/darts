@@ -74,15 +74,15 @@ export async function GET() {
 
     // Transform to match UI expectations
     const transformedSettings = {
-      id: activeTournament?.id || settings!.id, // Use tournament ID if available, else default settings ID
+      id: activeTournament?.id || settings?.id || 'default', // Use tournament ID if available, else default settings ID
       name: activeTournament?.name || '',
       description: activeTournament?.description || '',
       startDate: activeTournament?.startDate ? new Date(activeTournament.startDate).toISOString().split('T')[0] : undefined,
       endDate: activeTournament?.endDate ? new Date(activeTournament.endDate).toISOString().split('T')[0] : undefined,
       status: activeTournament?.status || 'UPCOMING',
-      maxPlayers: activeTournament?.maxPlayers || (settings as any).defaultMaxPlayers,
-      entryFee: activeTournament?.entryFee || (settings as any).defaultEntryFee,
-      gameMode: (activeTournament as any)?.gameMode || '501',
+      maxPlayers: activeTournament?.maxPlayers || (settings as any)?.defaultMaxPlayers || 64,
+      entryFee: activeTournament?.entryFee || (settings as any)?.defaultEntryFee || 0,
+      // gameMode removed as it is not in the schema
       checkoutMode: (activeTournament as any)?.checkoutMode || 'DOUBLE_OUT',
       location: (activeTournament as any)?.location || '',
       street: (activeTournament as any)?.street || '',
@@ -90,19 +90,19 @@ export async function GET() {
         round1to3: 2,
         semifinalsAndFinal: 3
       },
-      allowLateRegistration: (settings as any).allowLateRegistration,
-      autoStartGames: (settings as any).autoStartGames,
-      showLiveScores: (settings as any).showLiveScores,
-      enableStatistics: (settings as any).enableStatistics,
-      stripeEnabled: (settings as any).stripeEnabled || false,
-      stripePublishableKey: (settings as any).stripePublishableKey || '',
-      stripeSecretKey: (settings as any).stripeSecretKey || '',
-      stripeWebhookSecret: (settings as any).stripeWebhookSecret || '',
-      mainLogo: (settings as any).mainLogo || '',
-      sponsorLogos: (settings as any).sponsorLogos && typeof (settings as any).sponsorLogos === 'string' ? JSON.parse((settings as any).sponsorLogos) : [],
-      backgroundImage: (settings as any).backgroundImage || '',
-      createdAt: settings!.createdAt,
-      updatedAt: settings!.updatedAt,
+      allowLateRegistration: (settings as any)?.allowLateRegistration ?? true,
+      autoStartGames: (settings as any)?.autoStartGames ?? false,
+      showLiveScores: (settings as any)?.showLiveScores ?? true,
+      enableStatistics: (settings as any)?.enableStatistics ?? true,
+      stripeEnabled: (settings as any)?.stripeEnabled || false,
+      stripePublishableKey: (settings as any)?.stripePublishableKey || '',
+      stripeSecretKey: (settings as any)?.stripeSecretKey || '',
+      stripeWebhookSecret: (settings as any)?.stripeWebhookSecret || '',
+      mainLogo: (settings as any)?.mainLogo || '',
+      sponsorLogos: (settings as any)?.sponsorLogos && typeof (settings as any).sponsorLogos === 'string' ? JSON.parse((settings as any).sponsorLogos) : [],
+      backgroundImage: (settings as any)?.backgroundImage || '',
+      createdAt: settings?.createdAt || new Date(),
+      updatedAt: settings?.updatedAt || new Date(),
     };
 
     console.log('Returning settings for user:', session.email);
@@ -292,15 +292,15 @@ export async function PUT(request: NextRequest) {
 
     // Transform to match UI expectations
     const transformedSettings = {
-      id: settings.id,
+      id: settings?.id || 'default',
       name: tournament?.name || data.name || '',
       description: tournament?.description || data.description || '',
       startDate: tournament?.startDate ? new Date(tournament.startDate).toISOString().split('T')[0] : data.startDate,
       endDate: tournament?.endDate ? new Date(tournament.endDate).toISOString().split('T')[0] : data.endDate,
       status: tournament?.status || data.status || 'UPCOMING',
-      maxPlayers: tournament?.maxPlayers || (settings as any).defaultMaxPlayers,
-      entryFee: tournament?.entryFee || (settings as any).defaultEntryFee,
-      gameMode: (tournament as any)?.gameMode || data.gameMode || '501',
+      maxPlayers: tournament?.maxPlayers || (settings as any)?.defaultMaxPlayers || 64,
+      entryFee: tournament?.entryFee || (settings as any)?.defaultEntryFee || 0,
+      // gameMode removed
       checkoutMode: tournament?.checkoutMode || data.checkoutMode || 'DOUBLE_OUT',
       location: tournament?.location || data.location || '',
       street: tournament?.street || data.street || '',
@@ -308,19 +308,19 @@ export async function PUT(request: NextRequest) {
         round1to3: 2,
         semifinalsAndFinal: 3
       },
-      allowLateRegistration: (settings as any).allowLateRegistration,
-      autoStartGames: (settings as any).autoStartGames,
-      showLiveScores: (settings as any).showLiveScores,
-      enableStatistics: (settings as any).enableStatistics,
-      stripeEnabled: (settings as any).stripeEnabled,
-      stripePublishableKey: (settings as any).stripePublishableKey || '',
-      stripeSecretKey: (settings as any).stripeSecretKey || '',
-      stripeWebhookSecret: (settings as any).stripeWebhookSecret || '',
-      mainLogo: (settings as any).mainLogo || '',
-      sponsorLogos: (settings as any).sponsorLogos && typeof (settings as any).sponsorLogos === 'string' ? JSON.parse((settings as any).sponsorLogos) : [],
-      backgroundImage: (settings as any).backgroundImage || '',
-      createdAt: settings.createdAt,
-      updatedAt: settings.updatedAt,
+      allowLateRegistration: (settings as any)?.allowLateRegistration ?? true,
+      autoStartGames: (settings as any)?.autoStartGames ?? false,
+      showLiveScores: (settings as any)?.showLiveScores ?? true,
+      enableStatistics: (settings as any)?.enableStatistics ?? true,
+      stripeEnabled: (settings as any)?.stripeEnabled ?? false,
+      stripePublishableKey: (settings as any)?.stripePublishableKey || '',
+      stripeSecretKey: (settings as any)?.stripeSecretKey || '',
+      stripeWebhookSecret: (settings as any)?.stripeWebhookSecret || '',
+      mainLogo: (settings as any)?.mainLogo || '',
+      sponsorLogos: (settings as any)?.sponsorLogos && typeof (settings as any).sponsorLogos === 'string' ? JSON.parse((settings as any).sponsorLogos) : [],
+      backgroundImage: (settings as any)?.backgroundImage || '',
+      createdAt: settings?.createdAt || new Date(),
+      updatedAt: settings?.updatedAt || new Date(),
     };
 
     return NextResponse.json(transformedSettings);

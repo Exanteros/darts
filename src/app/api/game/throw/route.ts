@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Always update game to clear currentThrow and update legs if won
-    updatedGame = await prisma.game.update({
+    const updatedGameResult = await prisma.game.update({
         where: { id: gameId },
         data: {
             currentThrow: Prisma.JsonNull,
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
       message: legWon ? 'Wurf erfolgreich registriert und Leg beendet' : 'Wurf erfolgreich registriert',
       data: {
         throw: throwResult,
-        game: updatedGame,
+        game: updatedGameResult,
         scores: {
           player1: player1Score,
           player2: player2Score
