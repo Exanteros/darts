@@ -5,11 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, RotateCcw, Target, Trash2, CheckCircle, Trophy, Play, Users, Activity, Loader2, RefreshCw } from "lucide-react";
+import { ArrowLeft, RotateCcw, Target, Trash2, CheckCircle, Trophy, Play, Users, Activity, Loader2, RefreshCw, Settings, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTournamentEvents } from '@/hooks/useTournamentEvents';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 // --- STATE-DEFINITION ---
 
@@ -104,6 +108,28 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
   const [shownGamePopups, setShownGamePopups] = useState<Set<string>>(new Set());
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   
+  // Practice Mode State
+  const [showPracticeSetup, setShowPracticeSetup] = useState(false);
+  const [practiceSessionActive, setPracticeSessionActive] = useState(false);
+  const [practiceConfig, setPracticeConfig] = useState({
+    player1Name: "Gast 1",
+    player2Name: "Gast 2",
+    startingScore: 501,
+    legsToWin: 3
+    // checkoutMode state is not managed here, we use global checkoutMode
+  });
+
+  // Derived state for practice mode
+  const isPracticeMode = !currentGame && !gameState.isShootout && (tournamentStatus === 'ACTIVE' || tournamentStatus === 'UPCOMING' || !tournamentStatus);
+
+  useEffect(() => {
+    // Wenn wir im Practice-Modus sind, aber noch keine Session gestartet wurde,
+    // zeige das Setup-Popup an (damit "Warte auf Match..." nicht ewig bleibt ohne Aktion)
+    if (isPracticeMode && !practiceSessionActive && !loading && !boardError) {
+        setShowPracticeSetup(true);
+    }
+  }, [isPracticeMode, practiceSessionActive, loading, boardError]);
+
   // Utils
   const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -676,6 +702,11 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
             } else {
               newState.player1.score = 501;
               newState.player2.score = 501;
+              // Reset scores to startingScore if in practice mode, else 501 (which is usually the same)
+              if (isPracticeMode) {
+                  newState.player1.score = practiceConfig.startingScore;
+                  newState.player2.score = practiceConfig.startingScore;
+              }
               newState.currentLeg += 1;
             }
           }
@@ -748,10 +779,12 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
         
         // Berechne den NEUEN Score (nach Leg-Gewinn wird auf 501 zurückgesetzt)
         let newPlayer1Score, newPlayer2Score;
+        const startScore = isPracticeMode ? practiceConfig.startingScore : 501;
+        
         if (currentPlayerLegWon && !isGameOver) {
-          // Leg gewonnen, aber Spiel geht weiter -> beide auf 501
-          newPlayer1Score = 501;
-          newPlayer2Score = 501;
+          // Leg gewonnen, aber Spiel geht weiter -> beide auf Start-Score
+          newPlayer1Score = startScore;
+          newPlayer2Score = startScore;
         } else {
           // Normaler Wurf: Aktualisiere nur den Score des aktuellen Spielers
           newPlayer1Score = gameState.currentPlayer === 1 
@@ -912,20 +945,95 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
   };
 
   const resetGame = async () => {
-    if (!currentGame?.id) return;
-    try {
-      await fetch('/api/game/reset', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-board-code': code
-        },
-        body: JSON.stringify({ gameId: currentGame.id })
-      });
-      setShowResetConfirm(false);
-    } catch (error) {
-      console.error('Error resetting game:', error);
+    // If we have a backend game, use the API
+    if (currentGame?.id) {
+        try {
+          await fetch('/api/game/reset', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-board-code': code
+            },
+            body: JSON.stringify({ gameId: currentGame.id })
+          });
+          setShowResetConfirm(false);
+        } catch (error) {
+          console.error('Error resetting game:', error);
+        }
+    } else {
+        // Practice Mode Reset
+        setGameState(prev => ({
+            ...initialGameState,
+            player1: { ...initialGameState.player1, name: practiceConfig.player1Name, score: practiceConfig.startingScore },
+            player2: { ...initialGameState.player2, name: practiceConfig.player2Name, score: practiceConfig.startingScore },
+            legsToWin: practiceConfig.legsToWin,
+            currentPlayer: 1,
+            gameStatus: 'active',
+            isShootout: false
+        }));
+        
+        // Broadcast reset to display (using practice-start to reset full state)
+        if (boardId && wsConnected) {
+            sendGameUpdate({ 
+                type: 'throw-update', 
+                boardId,
+                isPractice: true,
+                practiceConfig: practiceConfig,
+                gameData: {
+                    player1Score: practiceConfig.startingScore,
+                    player2Score: practiceConfig.startingScore,
+                    player1Legs: 0,
+                    player2Legs: 0,
+                    currentPlayer: 1,
+                    currentLeg: 1
+                },
+                throw: null
+            });
+        }
+        
+        // Do NOT change checkoutMode, explicitly keep it in sync with tournament rules if needed, 
+        // but here we just don't touch it.
+        toast({ title: "Spiel zurückgesetzt" });
+        setShowResetConfirm(false);
     }
+  };
+
+  const applyPracticeSettings = (newConfig: typeof practiceConfig) => {
+    setPracticeConfig(newConfig);
+    setPracticeSessionActive(true);
+    
+    setGameState(prev => ({
+        ...initialGameState,
+        player1: { ...initialGameState.player1, name: newConfig.player1Name, score: newConfig.startingScore },
+        player2: { ...initialGameState.player2, name: newConfig.player2Name, score: newConfig.startingScore },
+        legsToWin: newConfig.legsToWin,
+        currentPlayer: 1,
+        gameStatus: 'active',
+        isShootout: false
+    }));
+    
+    // Broadcast via WebSocket to Display
+    if (boardId && wsConnected) {
+        sendGameUpdate({ 
+            type: 'throw-update', 
+            boardId,
+            isPractice: true,
+            practiceConfig: newConfig,
+            gameData: {
+                player1Score: newConfig.startingScore,
+                player2Score: newConfig.startingScore,
+                player1Legs: 0,
+                player2Legs: 0,
+                currentPlayer: 1,
+                currentLeg: 1
+            },
+            throw: null
+        });
+    }
+
+    // Do NOT apply checkoutMode from config
+    setShowPracticeSetup(false);
+    toast({ title: "Einstellungen übernommen", description: "Neues Spiel gestartet" });
   };
 
   // --- RENDER ---
@@ -980,6 +1088,8 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
           isConnected={isConnected}
           lastUpdateTime={lastUpdateTime}
           checkoutMode={checkoutMode}
+          isPracticeMode={isPracticeMode}
+          onSettingsClick={() => setShowPracticeSetup(true)}
         />
       </div>
 
@@ -1099,11 +1209,133 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
       <GameOverModal
         gameState={gameState}
         onBackClick={() => router.push("/")}
-        onNewGameClick={() => window.location.reload()}
+        onNewGameClick={() => isPracticeMode ? resetGame() : window.location.reload()}
+      />
+      
+      <PracticeSetupDialog
+        open={showPracticeSetup}
+        onOpenChange={setShowPracticeSetup}
+        defaultConfig={practiceConfig}
+        onSave={applyPracticeSettings}
       />
     </div>
   );
 }
+
+interface PracticeSetupDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  defaultConfig: {
+    player1Name: string;
+    player2Name: string;
+    startingScore: number;
+    legsToWin: number;
+  };
+  onSave: (config: {
+    player1Name: string;
+    player2Name: string;
+    startingScore: number;
+    legsToWin: number;
+  }) => void;
+}
+
+const PracticeSetupDialog: FC<PracticeSetupDialogProps> = ({ open, onOpenChange, defaultConfig, onSave }) => {
+  const [localConfig, setLocalConfig] = useState(defaultConfig);
+
+  useEffect(() => {
+    if (open) setLocalConfig(defaultConfig);
+  }, [open, defaultConfig]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(localConfig);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md bg-white rounded-2xl border-slate-200">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5 text-slate-600" /> Einstellungen (Trainings-Modus)
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-2">
+          
+          <div className="grid grid-cols-2 gap-3">
+             <div className="space-y-1">
+               <Label htmlFor="p1">Spieler 1</Label>
+               <Input 
+                 id="p1" 
+                 value={localConfig.player1Name} 
+                 onChange={e => setLocalConfig({...localConfig, player1Name: e.target.value})}
+               />
+             </div>
+             <div className="space-y-1">
+               <Label htmlFor="p2">Spieler 2</Label>
+               <Input 
+                 id="p2" 
+                 value={localConfig.player2Name} 
+                 onChange={e => setLocalConfig({...localConfig, player2Name: e.target.value})}
+               />
+             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Start-Punkte</Label>
+              <div className="flex bg-slate-100 p-1 rounded-lg">
+                {[301, 501, 701].map(score => (
+                  <button
+                    key={score}
+                    type="button"
+                    onClick={() => setLocalConfig({...localConfig, startingScore: score})}
+                    className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-all ${
+                        localConfig.startingScore === score ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    {score}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <div className="space-y-1">
+              <Label>Legs to Win</Label>
+              <div className="flex bg-slate-100 p-1 rounded-lg">
+                {[1, 2, 3, 5].map(legs => (
+                  <button
+                    key={legs}
+                    type="button"
+                    onClick={() => setLocalConfig({...localConfig, legsToWin: legs})}
+                    className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-all ${
+                        localConfig.legsToWin === legs ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    {legs}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+             <Label>Checkout Modus</Label>
+             <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-sm text-slate-500 text-center">
+                Der Checkout-Modus wird automatisch von den globalen Turniereinstellungen übernommen.
+             </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Abbrechen</Button>
+            <Button type="submit" className="bg-slate-900 text-white">
+               <Play className="w-4 h-4 mr-2" /> Spiel starten
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 // --- SUB-COMPONENTS (Ausgelagert für bessere Übersicht) ---
 
@@ -1116,9 +1348,14 @@ interface HeaderProps {
   isConnected: boolean;
   lastUpdateTime: Date | null;
   checkoutMode: 'DOUBLE_OUT' | 'SINGLE_OUT' | 'MASTER_OUT';
+  isPracticeMode?: boolean;
+  onSettingsClick?: () => void;
 }
 
-const ScoreEntryHeader: FC<HeaderProps> = ({ boardId, gameState, onBackClick, onUndoClick, onResetClick, isConnected, lastUpdateTime, checkoutMode }) => (
+const ScoreEntryHeader: FC<HeaderProps> = ({ 
+    boardId, gameState, onBackClick, onUndoClick, onResetClick, isConnected, lastUpdateTime, checkoutMode, 
+    isPracticeMode, onSettingsClick 
+}) => (
   <div className="flex items-center justify-between px-3 py-2 bg-white border-b border-slate-200 shadow-sm">
     <div className="flex items-center gap-3">
       <Button variant="ghost" size="icon" onClick={onBackClick} className="h-9 w-9 -ml-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-full">
@@ -1139,6 +1376,13 @@ const ScoreEntryHeader: FC<HeaderProps> = ({ boardId, gameState, onBackClick, on
     </div>
 
     <div className="flex items-center gap-2">
+       {/* Practice Mode Indicator */}
+       {isPracticeMode && (
+         <Badge variant="outline" className="hidden sm:inline-flex text-[10px] px-2 py-0.5 h-6 border-blue-200 bg-blue-50 text-blue-700 font-medium">
+           Freies Spiel
+         </Badge>
+       )}
+
        {!gameState.isShootout && (
           <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 h-5">
             {checkoutMode === 'DOUBLE_OUT' ? 'DO' : checkoutMode === 'SINGLE_OUT' ? 'SO' : 'MO'}
@@ -1150,6 +1394,14 @@ const ScoreEntryHeader: FC<HeaderProps> = ({ boardId, gameState, onBackClick, on
       <div className="flex items-center bg-slate-100 rounded-lg px-2 py-1 h-8 border border-slate-200">
         <span className="text-xs font-semibold text-slate-600">Runde {gameState.currentLeg}</span>
       </div>
+      
+      {/* Settings Button (Only in Practice Mode) */}
+      {isPracticeMode && (
+        <Button variant="outline" onClick={onSettingsClick} size="icon" className="h-8 w-8 border-slate-200 text-slate-600 hover:bg-slate-50" title="Einstellungen">
+            <Settings className="h-4 w-4" />
+        </Button>
+      )}
+
       <Button variant="outline" onClick={onUndoClick} disabled={gameState.throws.length === 0} size="icon" className="h-8 w-8 border-slate-200 text-slate-600 hover:bg-slate-50">
         <RotateCcw className="h-4 w-4" />
       </Button>

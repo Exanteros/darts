@@ -94,7 +94,35 @@ export default function DisplayBoard({ params }: { params: Promise<{ code: strin
       }
 
       if (data.type === 'throw-update' && data.gameData) {
-        // Wenn ein neues Leg beginnt (Score 501), erzwinge einen Refresh vom Server
+        // SPECIAL CASE: Practice Mode Init or Reset
+        // We use 'throw-update' with 'isPractice' flag to bypass server whitelist
+        if (data.isPractice && data.practiceConfig) {
+             console.log('🎮 Display: Practice Update received', data.practiceConfig);
+             setGameState({
+                player1: { 
+                    name: data.practiceConfig.player1Name || "Spieler 1", 
+                    score: data.gameData.player1Score, 
+                    legs: data.gameData.player1Legs, 
+                    totalDarts: 0, 
+                    average: 0 
+                },
+                player2: { 
+                    name: data.practiceConfig.player2Name || "Spieler 2", 
+                    score: data.gameData.player2Score, 
+                    legs: data.gameData.player2Legs, 
+                    totalDarts: 0, 
+                    average: 0 
+                },
+                currentPlayer: data.gameData.currentPlayer,
+                currentLeg: data.gameData.currentLeg,
+                legsToWin: data.practiceConfig.legsToWin || 3,
+                throws: [],
+                gameStatus: 'active'
+             });
+             return; // Skip standard logic
+        }
+
+        // Standard Logic: Wenn ein neues Leg beginnt (Score 501), erzwinge einen Refresh vom Server
         // um sicherzustellen, dass alles synchron ist
         if (data.gameData.player1Score === 501 && data.gameData.player2Score === 501 && 
            (data.gameData.player1Legs > 0 || data.gameData.player2Legs > 0)) {
@@ -103,16 +131,26 @@ export default function DisplayBoard({ params }: { params: Promise<{ code: strin
 
         // Aktualisiere Game State direkt aus WebSocket-Daten
         setGameState(prev => {
-          if (!prev) return prev;
+          // Auch wenn wir bisher keinen State hatten ("Practice Mode"), übernehmen wir die Daten
+          const currentState = prev || {
+              player1: { name: 'Player 1', score: 501, legs: 0, totalDarts: 0, average: 0 },
+              player2: { name: 'Player 2', score: 501, legs: 0, totalDarts: 0, average: 0 },
+              currentPlayer: 1,
+              currentLeg: 1,
+              legsToWin: 3,
+              throws: [],
+              gameStatus: 'active'
+          };
+
           return {
-            ...prev,
+            ...currentState,
             player1: {
-              ...prev.player1,
+              ...currentState.player1,
               score: data.gameData.player1Score,
               legs: data.gameData.player1Legs
             },
             player2: {
-              ...prev.player2,
+              ...currentState.player2,
               score: data.gameData.player2Score,
               legs: data.gameData.player2Legs
             },
