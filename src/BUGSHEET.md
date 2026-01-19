@@ -2,5 +2,5 @@ Legs aufpassen <=>
 Punktezählen kaputtgegangen!
 
 
-Datenbank migrieren, wie???
+löschen funktioniert nicht in players
 

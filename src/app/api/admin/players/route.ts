@@ -125,6 +125,18 @@ export async function GET(request: NextRequest) {
       return acc;
     }, {} as Record<string, number>);
 
+    // Wenn nach einem spezifischen Turnier gefiltert wird, maxPlayers holen
+    let tournamentDetails = null;
+    if (tournamentId) {
+      const tournament = await prisma.tournament.findUnique({
+        where: { id: tournamentId },
+        select: { maxPlayers: true, name: true }
+      });
+      if (tournament) {
+        tournamentDetails = tournament;
+      }
+    }
+
     return NextResponse.json({
       success: true,
       players,
@@ -137,7 +149,8 @@ export async function GET(request: NextRequest) {
       stats: {
         total: totalCount,
         ...statusStats
-      }
+      },
+      tournament: tournamentDetails
     });
 
   } catch (error) {
@@ -244,6 +257,107 @@ export async function PATCH(request: NextRequest) {
       { error: 'Interner Serverfehler' },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Nicht autorisiert' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { name, email, tournamentId } = body;
+
+    const isGlobalAdmin = session.user.role === 'ADMIN';
+
+    // Permission Check
+    if (!isGlobalAdmin) {
+       // Check if user has create permission for this tournament
+       const access = await prisma.tournamentAccess.findUnique({
+          where: {
+             tournamentId_userId: {
+                tournamentId: tournamentId,
+                userId: session.user.id
+             }
+          }
+       });
+       
+       const permissions = JSON.parse(access?.permissions || '{}');
+       if (!permissions.players?.create) {
+          return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 });
+       }
+    }
+
+    // 1. User finden oder erstellen
+    let user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+       // Create dummy user
+       const randomPassword = Math.random().toString(36).slice(-10);
+       const hashedPassword = await import('bcryptjs').then(bcrypt => bcrypt.hash(randomPassword, 10)); // Dynamic import to avoid top-level overhead if not needed
+       
+       user = await prisma.user.create({
+          data: {
+             name,
+             email,
+             password: hashedPassword,
+             role: 'USER'
+          }
+       });
+    }
+
+    // 2. Check if already in tournament
+    const existingPlayer = await prisma.tournamentPlayer.findFirst({
+       where: {
+          tournamentId,
+          userId: user.id
+       }
+    });
+
+    if (existingPlayer) {
+       return NextResponse.json({ error: 'Spieler ist bereits in diesem Turnier registriert' }, { status: 400 });
+    }
+
+    // 3. Add to tournament
+    // Determine status: If tournament full -> WAITING_LIST, else CONFIRMED
+    const tournament = await prisma.tournament.findUnique({
+       where: { id: tournamentId },
+       include: { 
+          _count: { select: { players: { where: { status: { in: ['REGISTERED', 'CONFIRMED', 'ACTIVE'] } } } } }
+       }
+    });
+
+    if (!tournament) return NextResponse.json({ error: 'Turnier nicht gefunden' }, { status: 404 });
+
+    const activeCount = tournament._count.players;
+    let status = 'CONFIRMED';
+    
+    // If we manually add, we probably want to force CONFIRMED usually, unless explicitly full?
+    // But logically, if full, it goes to waiting list unless we override.
+    // Let's default to CONFIRMED for manual additions regardless of limit?
+    // User says "Neuen Spieler anlegen" in context of "Filling gaps" or manual mgmt.
+    // I'll stick to 'CONFIRMED' as default for manual admin add, but let's be safe.
+    // Actually, usually admin updates status manually if needed.
+    
+    const newPlayer = await prisma.tournamentPlayer.create({
+       data: {
+          tournamentId,
+          userId: user.id,
+          playerName: name, // Default to user name provided
+          status: 'CONFIRMED',
+          registeredAt: new Date(),
+          paid: false
+       }
+    });
+
+    return NextResponse.json({ success: true, player: newPlayer });
+
+  } catch (error) {
+     console.error('Error creating player:', error);
+     return NextResponse.json({ error: 'Interner Serverfehler' }, { status: 500 });
   }
 }
 

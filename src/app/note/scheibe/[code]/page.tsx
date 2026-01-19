@@ -235,7 +235,7 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
   useEffect(() => {
     const cleanup = startStatusInterval();
     return cleanup;
-  }, [currentShootoutPlayer, tournamentStatus, shootoutBoardId, boardId, showWaitingPopup, showGameStartPopup, gameState.isShootout]);
+  }, [currentShootoutPlayer, tournamentStatus, shootoutBoardId, boardId, showWaitingPopup, showGameStartPopup, gameState.isShootout, gameState, currentGame]);
 
   // 4. Update Time & Connection
   useEffect(() => {
@@ -309,11 +309,14 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
         setCurrentShootoutPlayer(data.currentPlayer.id);
         setNextPlayerName(data.currentPlayer.playerName);
         
-        if (gameState.player1.name !== data.currentPlayer.playerName) {
+        // Reset state if player changed OR if we are not in shootout mode yet (e.g. retry)
+        if (gameState.player1.name !== data.currentPlayer.playerName || !gameState.isShootout) {
           setGameState(prev => ({
             ...prev,
             isShootout: true,
-            player1: { ...prev.player1, name: data.currentPlayer.playerName, score: 0 }
+            gameStatus: 'active',
+            player1: { ...prev.player1, name: data.currentPlayer.playerName, score: 0 },
+            shootoutThrows: [] // Ensure throws are empty
           }));
         }
       } else if (data.status === 'throwing' && data.currentPlayer) {
@@ -327,10 +330,13 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
           setShowShootoutPopup(true);
         }
         
-        if (gameState.player1.name !== data.currentPlayer.playerName) {
+        if (gameState.player1.name !== data.currentPlayer.playerName || !gameState.isShootout) {
           setGameState(prev => ({
             ...prev,
-            player1: { ...prev.player1, name: data.currentPlayer.playerName, score: 0 }
+            isShootout: true,
+            gameStatus: 'active',
+            player1: { ...prev.player1, name: data.currentPlayer.playerName, score: 0 },
+            shootoutThrows: [] // Ensure throws are empty
           }));
         }
       } else if (data.status === 'waiting_for_admin') {
@@ -478,13 +484,7 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
       
       setTimeout(() => checkForShootoutStatusOnly(), 500);
       setHasReloadedForNewPlayer(false);
-      setGameState(prev => ({
-        ...prev,
-        isShootout: false,
-        player1: { name: '', score: 0, legs: 0, totalDarts: 0, average: 0 },
-        player2: { name: '', score: 0, legs: 0, totalDarts: 0, average: 0 },
-        shootoutThrows: []
-      }));
+      // State reset removed to keep the Result Modal open until next player starts
     } catch (error) {
       console.error('Error finishing player shootout:', error);
     }
@@ -601,7 +601,10 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
 
     if (gameState.isShootout) {
       setGameState(prev => {
-        const newState = { ...prev };
+        const newState = { 
+            ...prev,
+            shootoutThrows: [...prev.shootoutThrows] // Kopie erstellen, um Mutation zu vermeiden
+        };
         newState.shootoutThrows.push({ player: prev.currentPlayer, darts: dartsToProcess.map(d => d.value), total: throwTotal });
         const player = `player${prev.currentPlayer}` as "player1" | "player2";
         newState[player] = {
@@ -1640,21 +1643,24 @@ const GameOverModal: FC<GameOverModalProps> = ({ gameState, onBackClick, onNewGa
     return (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
         <Card className="w-full max-w-md border-0 shadow-2xl bg-white rounded-3xl overflow-hidden">
-          <div className="bg-blue-600 p-8 text-center">
+          <div className="bg-slate-900 p-8 text-center">
              <Target className="h-16 w-16 text-white mx-auto mb-4 drop-shadow-lg" />
              <h2 className="text-3xl font-bold text-white mb-1">Shootout Beendet!</h2>
-             <p className="text-blue-100 text-sm">Deine 3 Darts sind geworfen.</p>
+             <p className="text-slate-400 text-sm">Deine 3 Darts sind geworfen.</p>
           </div>
           <CardContent className="p-8 text-center">
             <div className="mb-8">
-               <div className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-2">Ergebnis</div>
-               <div className="text-6xl font-bold text-slate-900">
+               <div className="text-sm font-semibold text-slate-500 uppercase tracking-widest mb-2">Ergebnis</div>
+               <div className="text-7xl font-bold text-slate-900 tracking-tighter">
                  {gameState.player1.score}
                </div>
-               <div className="mt-2 text-slate-500">Punkte</div>
+               <div className="mt-2 font-medium text-slate-500">Punkte</div>
             </div>
             <div className="flex gap-3">
-              <Button onClick={() => window.location.reload()} className="w-full h-14 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-lg shadow-lg shadow-blue-200">
+              <Button 
+                onClick={() => window.location.reload()} 
+                className="w-full h-14 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-lg shadow-md shadow-slate-900/10 active:scale-[0.98] transition-all touch-manipulation"
+              >
                 Nächster Spieler
               </Button>
             </div>

@@ -370,7 +370,9 @@ export default function TournamentBracket() {
   }, [currentShootoutPlayer, tournament?.status, tournament?.players, shownPopups, shootoutStatus, shootoutResults]);
 
   // Start shootout for single player - NEW SEQUENTIAL WORKFLOW
-  const startShootout = async () => {
+  const startShootout = async (arg?: string | any) => {
+    const overrideUserId = typeof arg === 'string' ? arg : undefined;
+    
     const boardToUse = lockedInBoard || selectedShootoutBoard;
 
     if (!boardToUse) {
@@ -378,9 +380,18 @@ export default function TournamentBracket() {
       return;
     }
 
-    if (selectedPlayers.length !== 1) {
+    // Determine which user to start
+    const userIdToStart = overrideUserId || selectedPlayers[0];
+    const isSingleSelection = !!overrideUserId || selectedPlayers.length === 1;
+
+    if (!isSingleSelection) {
       alert('Bitte wählen Sie genau einen Spieler aus');
       return;
+    }
+    
+    if (!userIdToStart) {
+        alert('Kein Spieler ausgewählt');
+        return;
     }
 
     try {
@@ -393,7 +404,7 @@ export default function TournamentBracket() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'start_single',
-          selectedPlayers: selectedPlayers,
+          selectedPlayers: [userIdToStart],
           boardId: boardToUse
         })
       });
@@ -403,8 +414,7 @@ export default function TournamentBracket() {
       }
 
       // Step 2: Select player and set status to "player_selected"
-      const selectedPlayerId = selectedPlayers[0];
-      const player = tournament?.players?.find(p => p.userId === selectedPlayerId);
+      const player = tournament?.players?.find(p => p.userId === userIdToStart);
 
       if (!player) {
         throw new Error('Spieler nicht gefunden');
@@ -424,7 +434,11 @@ export default function TournamentBracket() {
       }
 
       // Success - Admin panel shows "Shootout Player X is running"
-      setSelectedPlayers([]);
+      // Only clear selection if we used the selection
+      if (!overrideUserId) {
+          setSelectedPlayers([]);
+      }
+      
       setCurrentShootoutPlayer(player.id);
       setShootoutStatus('player_selected');
 
@@ -446,6 +460,20 @@ export default function TournamentBracket() {
     } finally {
       setShootoutLoading(false);
     }
+  };
+
+  // Helper to retry shootout for a specific player from the list
+  const startSingleShootout = async (tournamentPlayerId: string) => {
+      const player = tournament?.players?.find(p => p.id === tournamentPlayerId);
+      if (player) {
+          // If a board is already locked, this works fine.
+          // If not detailed, startShootout checks for board.
+          await startShootout(player.userId);
+      } else {
+          // If player not found in active list, try to find in full list or handle error
+           console.error('Player not found for ID:', tournamentPlayerId);
+           alert('Spielerdaten konnten nicht gefunden werden via ID: ' + tournamentPlayerId);
+      }
   };
 
   // Start shootout for selected games
@@ -1335,6 +1363,19 @@ export default function TournamentBracket() {
                 </TabsList>
 
                 <TabsContent value="players" className="space-y-4">
+                  {(tournament?.players?.filter(p => p.status === 'ACTIVE').length === 0) && (
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-3 text-yellow-800 mb-4">
+                      <ShieldAlert className="h-5 w-5 shrink-0" />
+                      <div>
+                        <p className="font-semibold">Keine aktiven Spieler verfügbar</p>
+                        <p className="text-sm mt-1">
+                          Um das Shootout zu starten, müssen sich Spieler im Status <Badge variant="outline" className="text-yellow-800 border-yellow-600">Aktiv</Badge> befinden.
+                          Bitte ändern Sie den Status der entsprechenden Spieler in der <a href="/dashboard/players" className="underline font-medium hover:text-yellow-900">Spielerverwaltung</a>.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center">
                     <h4 className="text-lg font-medium">Spieler auswählen ({tournament?.players?.length || 0} verfügbar)</h4>
                     <div className="flex gap-2">
@@ -1482,18 +1523,19 @@ export default function TournamentBracket() {
               </CardHeader>
               <CardContent>
                 <div className="border rounded-lg overflow-hidden">
-                  <div className="grid grid-cols-3 gap-4 p-4 bg-muted font-medium text-sm md:grid-cols-5">
+                  <div className="grid grid-cols-3 gap-4 p-4 bg-muted font-medium text-sm md:grid-cols-6">
                     <div>Rang</div>
                     <div>Spieler</div>
                     <div>Score</div>
                     <div className="hidden md:block">Würfe</div>
                     <div className="hidden md:block">Status</div>
+                    <div>Aktionen</div>
                   </div>
                   <div className="max-h-80 overflow-y-auto">
                     {shootoutResults
                       .sort((a, b) => (b.score || 0) - (a.score || 0))
                       .map((result, index) => (
-                        <div key={result.playerId} className="grid grid-cols-3 gap-4 p-4 border-t text-sm hover:bg-muted/50 md:grid-cols-5">
+                        <div key={result.playerId} className="grid grid-cols-3 gap-4 p-4 border-t text-sm hover:bg-muted/50 md:grid-cols-6 items-center">
                           <div className="font-medium">
                             {result.score > 0 ? (
                               <Badge variant={index < 3 ? "default" : "secondary"}>
@@ -1518,6 +1560,20 @@ export default function TournamentBracket() {
                               <Badge variant={result.score > 0 ? "default" : "secondary"}>
                                 {result.score > 0 ? "Abgeschlossen" : "Ausstehend"}
                               </Badge>
+                            )}
+                          </div>
+                          <div>
+                            {result.score > 0 && (
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-8 px-2 text-xs"
+                                    onClick={() => startSingleShootout(result.playerId)}
+                                    title="Shootout wiederholen"
+                                >
+                                    <RotateCcw className="h-3 w-3 mr-1" />
+                                    Wiederholen
+                                </Button>
                             )}
                           </div>
                         </div>

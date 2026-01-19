@@ -41,12 +41,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No active tournament found' }, { status: 404 });
     }
 
-    // Get all registered players (excluding withdrawn)
+    // Get all registered players (excluding withdrawn and waiting list)
     const players = await prisma.tournamentPlayer.findMany({
       where: {
         tournamentId: tournament.id,
         status: {
-          not: 'WITHDRAWN'
+          notIn: ['WITHDRAWN', 'WAITING_LIST']
         }
       },
       select: {

@@ -170,19 +170,54 @@ export function BulkOperations({ players, onUpdate, totalCount = 0, filters = {}
             </Select>
 
             {operation === 'status' && (
-              <Select value={newStatus} onValueChange={setNewStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Neuer Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="REGISTERED">Registriert</SelectItem>
-                  <SelectItem value="CONFIRMED">Bestätigt</SelectItem>
-                  <SelectItem value="WAITING_LIST">Warteliste</SelectItem>
-                  <SelectItem value="ACTIVE">Aktiv</SelectItem>
-                  <SelectItem value="ELIMINATED">Ausgeschieden</SelectItem>
-                  <SelectItem value="WITHDRAWN">Zurückgezogen</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-3">
+                 <Button 
+                    variant={newStatus === 'ACTIVE' ? 'default' : 'outline'} 
+                    size="lg"
+                    className={`w-full justify-start h-14 text-lg transition-all ${newStatus === 'ACTIVE' ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+                    onClick={() => setNewStatus('ACTIVE')}
+                 >
+                    <div className="flex items-center gap-3 w-full">
+                       <div className={`h-4 w-4 rounded-full ${newStatus === 'ACTIVE' ? 'bg-white' : 'bg-green-500'}`} />
+                       <div className="flex flex-col items-start">
+                          <span>Aktiv setzen</span>
+                          <span className="text-xs opacity-80 font-normal">Bereit für Spiel/Shootout</span>
+                       </div>
+                       {newStatus === 'ACTIVE' && <Settings className="ml-auto h-5 w-5" />}
+                    </div>
+                 </Button>
+
+                 <div className="grid grid-cols-2 gap-2">
+                    <Button 
+                        variant={newStatus === 'CONFIRMED' ? 'default' : 'outline'} 
+                        className="w-full"
+                        onClick={() => setNewStatus('CONFIRMED')}
+                    >
+                        Bestätigt
+                    </Button>
+                    <Button 
+                        variant={newStatus === 'REGISTERED' ? 'default' : 'outline'} 
+                        className="w-full"
+                        onClick={() => setNewStatus('REGISTERED')}
+                    >
+                        Registriert
+                    </Button>
+                    <Button 
+                        variant={newStatus === 'WAITING_LIST' ? 'default' : 'outline'} 
+                        className="w-full"
+                        onClick={() => setNewStatus('WAITING_LIST')}
+                    >
+                        Warteliste
+                    </Button>
+                     <Button 
+                        variant={newStatus === 'WITHDRAWN' ? 'default' : 'outline'} 
+                        className="w-full"
+                        onClick={() => setNewStatus('WITHDRAWN')}
+                    >
+                        Zurückgezogen
+                    </Button>
+                 </div>
+              </div>
             )}
 
             {operation === 'payment' && (
@@ -249,15 +284,17 @@ export function BulkOperations({ players, onUpdate, totalCount = 0, filters = {}
           </div>
 
           {/* Aktionen */}
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsOpen(false)}>
-              Abbrechen
-            </Button>
+          <div className="flex flex-col gap-3 pt-4 border-t mt-4">
             <Button
+              size="lg"
+              className="w-full text-base font-semibold h-12"
               onClick={handleBulkUpdate}
-              disabled={selectedPlayers.length === 0 || !operation}
+              disabled={selectedPlayers.length === 0 || !operation || (operation === 'status' && !newStatus)}
             >
-              {selectedPlayers.length} Spieler aktualisieren
+              {selectedPlayers.length > 0 ? `${selectedPlayers.length} Spieler aktualisieren` : 'Bitte Spieler auswählen'}
+            </Button>
+             <Button variant="ghost" className="w-full" onClick={() => setIsOpen(false)}>
+              Abbrechen
             </Button>
           </div>
         </div>

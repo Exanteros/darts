@@ -53,6 +53,15 @@ export async function POST(request: NextRequest) {
             data: { status: 'ACTIVE' }
           });
         }
+      } else {
+        // Automatisch alle gültigen Spieler (nicht Warteliste) auf ACTIVE setzen
+        await prisma.tournamentPlayer.updateMany({
+          where: { 
+            tournamentId: tournament.id,
+            status: { in: ['REGISTERED', 'CONFIRMED'] }
+          },
+          data: { status: 'ACTIVE' }
+        });
       }
 
       return NextResponse.json({

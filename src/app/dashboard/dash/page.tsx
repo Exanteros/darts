@@ -1185,6 +1185,19 @@ export default function TournamentBracket() {
                 </TabsList>
 
                 <TabsContent value="players" className="space-y-4">
+                  {(tournament?.players?.filter(p => !['WAITING_LIST', 'WITHDRAWN'].includes(p.status)).length === 0) && (
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-3 text-yellow-800 mb-4">
+                      <IconInfoCircle className="h-5 w-5 shrink-0" />
+                      <div>
+                        <p className="font-semibold">Keine aktiven Spieler verfügbar</p>
+                        <p className="text-sm mt-1">
+                          Um das Shootout zu starten, müssen sich Spieler im Status <Badge variant="outline" className="text-yellow-800 border-yellow-600">Aktiv</Badge>, <Badge variant="outline" className="text-yellow-800 border-yellow-600">Registriert</Badge> oder <Badge variant="outline" className="text-yellow-800 border-yellow-600">Bestätigt</Badge> befinden.
+                          Bitte ändern Sie den Status der entsprechenden Spieler in der <a href="/dashboard/players" className="underline font-medium hover:text-yellow-900">Spielerverwaltung</a>.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center">
                     <h4 className="text-lg font-medium">Spieler auswählen ({tournament?.players?.length || 0} verfügbar)</h4>
                     <div className="flex gap-2">

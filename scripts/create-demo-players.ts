@@ -36,7 +36,7 @@ async function main() {
 
   // 2. Create 32 Players
   const passwordHash = await bcrypt.hash('demo123', 10);
-  const playersToCreate = 32;
+  const playersToCreate = 64;
 
   console.log(`👥 Creating ${playersToCreate} demo players...`);
 

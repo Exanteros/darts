@@ -22,6 +22,17 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import {
   Search,
@@ -42,7 +53,9 @@ import {
   Mail,
   User,
   Activity,
-  Settings
+  Settings,
+  MoreHorizontal,
+  Plus
 } from 'lucide-react';
 import {
   PieChart,
@@ -120,7 +133,8 @@ export default function PlayersPage() {
   const [updating, setUpdating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [tournamentFilter, setTournamentFilter] = useState<string>('all');
+  const [tournamentFilter, setTournamentFilter] = useState<string>(''); // Default empty, wait for load
+  const [availableTournaments, setAvailableTournaments] = useState<{id: string, name: string}[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -128,9 +142,70 @@ export default function PlayersPage() {
   const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
   const [waitingListCandidates, setWaitingListCandidates] = useState<Player[]>([]);
   const [selectedPromotePlayerId, setSelectedPromotePlayerId] = useState<string>('none');
+  const [addPlayerDialogOpen, setAddPlayerDialogOpen] = useState(false);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [newPlayerName, setNewPlayerName] = useState('');
+  const [newPlayerEmail, setNewPlayerEmail] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [currentTournament, setCurrentTournament] = useState<{maxPlayers: number, name: string} | null>(null);
   const { toast } = useToast();
+
+  const handleCreatePlayer = async () => {
+    if (!newPlayerName || !newPlayerEmail || !currentTournament) {
+      toast({
+        title: "Fehler",
+        description: "Bitte Name und E-Mail ausfüllen.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/players', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: newPlayerName,
+          email: newPlayerEmail,
+          tournamentId: tournamentFilter
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: "Erfolg",
+          description: "Spieler wurde angelegt und hinzugefügt."
+        });
+        setAddPlayerDialogOpen(false);
+        setIsCreatingNew(false);
+        setNewPlayerName('');
+        setNewPlayerEmail('');
+        fetchPlayers();
+      } else {
+        toast({
+          title: "Fehler",
+          description: data.error || "Fehler beim Anlegen",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Netzwerkfehler",
+        variant: "destructive"
+      });
+    }
+  };
+
+
+  // Berechne Stats für Header (unabhängig von Pagination)
+  const activeStatsCount = (stats.REGISTERED || 0) + (stats.CONFIRMED || 0) + (stats.ACTIVE || 0) + (stats.ELIMINATED || 0);
+  const waitingStatsCount = stats.WAITING_LIST || 0;
 
   // Prüfe Berechtigung für Spieler-Verwaltung
   const canViewPlayers = isAdmin || tournamentAccess.some(access => {
@@ -154,7 +229,29 @@ export default function PlayersPage() {
   });
 
   useEffect(() => {
-    if (isAuthenticated && canViewPlayers) {
+    const fetchTournaments = async () => {
+      try {
+        const response = await fetch('/api/admin/tournaments');
+        const data = await response.json();
+        // API returns { tournaments: [...] } on success
+        if (data.tournaments && Array.isArray(data.tournaments)) {
+          setAvailableTournaments(data.tournaments);
+          if (data.tournaments.length > 0 && !tournamentFilter) {
+            setTournamentFilter(data.tournaments[0].id);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching tournaments:', error);
+      }
+    };
+
+    if (isAuthenticated) {
+      fetchTournaments();
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated && canViewPlayers && tournamentFilter) {
       fetchPlayers();
     }
   }, [isAuthenticated, canViewPlayers, searchTerm, statusFilter, tournamentFilter, currentPage]);
@@ -162,13 +259,18 @@ export default function PlayersPage() {
   const fetchPlayers = async () => {
     try {
       setLoading(true);
+      if (!tournamentFilter) return; // Wait for tournament selection
+
+      // Increased limit when tournament filter is active to show "Full View" including gaps
+      const limit = '100'; // Always 100 since we force tournament selection now
       const params = new URLSearchParams({
         page: currentPage.toString(),
-        limit: '20'
+        limit: limit
       });
 
       if (searchTerm) params.append('search', searchTerm);
       if (statusFilter !== 'all') params.append('status', statusFilter);
+      params.append('tournamentId', tournamentFilter);
 
       const response = await fetch(`/api/admin/players?${params}`);
       const data = await response.json();
@@ -177,6 +279,7 @@ export default function PlayersPage() {
         setPlayers(data.players);
         setStats(data.stats);
         setTotalPages(data.pagination.totalPages);
+        setCurrentTournament(data.tournament || null);
       } else {
         toast({
           title: 'Fehler',
@@ -280,24 +383,7 @@ export default function PlayersPage() {
 
   const handleDeleteRequest = async (player: Player) => {
     setPlayerToDelete(player);
-    
-    // Fetch waiting list for this tournament
-    try {
-      const response = await fetch(`/api/admin/players?tournamentId=${player.tournament.id}&status=WAITING_LIST&limit=100`);
-      const data = await response.json();
-      
-      if (data.success && data.players.length > 0) {
-        setWaitingListCandidates(data.players);
-        setSelectedPromotePlayerId('none');
-        setPromoteDialogOpen(true);
-      } else {
-        setDeleteDialogOpen(true);
-      }
-    } catch (error) {
-      console.error('Error fetching waiting list:', error);
-      // Fallback to simple delete if fetch fails
-      setDeleteDialogOpen(true);
-    }
+    setDeleteDialogOpen(true);
   };
 
   const confirmDelete = async (promotePlayerId?: string) => {
@@ -585,11 +671,12 @@ export default function PlayersPage() {
                         </Select>
                         <Select value={tournamentFilter} onValueChange={setTournamentFilter}>
                           <SelectTrigger className="w-full md:w-48">
-                            <SelectValue placeholder="Turnier filtern" />
+                            <SelectValue placeholder="Turnier wählen" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">Alle Turniere</SelectItem>
-                            {/* Hier würden die verfügbaren Turniere geladen */}
+                            {availableTournaments.map(t => (
+                              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <div className="flex gap-2">
@@ -618,6 +705,7 @@ export default function PlayersPage() {
                     </TabsList>
 
                     <TabsContent value="players" className="space-y-4">
+                      
                       <Card>
                         <CardHeader>
                           <CardTitle>Spieler ({stats.total})</CardTitle>
@@ -643,75 +731,215 @@ export default function PlayersPage() {
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                  {players.map((player) => (
-                                    <TableRow
-                                      key={player.id}
-                                      className="hover:bg-muted/50 transition-colors"
-                                    >
-                                      <TableCell>
-                                        <div>
-                                          <div className="font-medium">{player.playerName}</div>
-                                          <div className="text-sm text-muted-foreground">
-                                            {player.user.name} ({player.user.email})
-                                          </div>
-                                          {player.seed && (
+                                  {(() => {
+                                    const renderRow = (player: Player) => (
+                                      <TableRow
+                                        key={player.id}
+                                        className="hover:bg-muted/50 transition-colors"
+                                      >
+                                        <TableCell>
+                                          <div>
+                                            <div className="font-medium">{player.playerName}</div>
                                             <div className="text-sm text-muted-foreground">
-                                              Seed: {player.seed}
+                                              {player.user.name} ({player.user.email})
                                             </div>
-                                          )}
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <div>
-                                          <div className="font-medium">{player.tournament.name}</div>
-                                          <div className="text-sm text-muted-foreground">
-                                            {player.tournament.status}
+                                            {player.seed && (
+                                              <div className="text-sm text-muted-foreground">
+                                                Seed: {player.seed}
+                                              </div>
+                                            )}
                                           </div>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        {getStatusBadge(player.status)}
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="flex items-center gap-2">
-                                          <Checkbox
-                                            checked={player.paid}
-                                            onCheckedChange={(checked) =>
-                                              updatePaymentStatus(player.id, checked as boolean)
-                                            }
-                                            onClick={(e) => e.stopPropagation()}
-                                          />
-                                          {player.paid ? (
-                                            <DollarSign className="h-4 w-4 text-green-600" />
-                                          ) : (
-                                            <DollarSign className="h-4 w-4 text-red-600" />
-                                          )}
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="text-sm">
-                                          {player._count.gamesAsPlayer1 + player._count.gamesAsPlayer2} Spiele
-                                        </div>
-                                        <div className="text-sm text-muted-foreground">
-                                          {player._count.throws} Würfe
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="flex items-center justify-end gap-2">
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleDeleteRequest(player);
-                                            }}
-                                          >
-                                            <Trash2 className="h-4 w-4 text-red-600" />
-                                          </Button>
-                                        </div>
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
+                                        </TableCell>
+                                        <TableCell>
+                                          <div>
+                                            <div className="font-medium">{player.tournament.name}</div>
+                                            <div className="text-sm text-muted-foreground">
+                                              {player.tournament.status}
+                                            </div>
+                                          </div>
+                                        </TableCell>
+                                        <TableCell>
+                                          {getStatusBadge(player.status)}
+                                        </TableCell>
+                                        <TableCell>
+                                          <div className="flex items-center gap-2">
+                                            <Checkbox
+                                              checked={player.paid}
+                                              onCheckedChange={(checked) =>
+                                                updatePaymentStatus(player.id, checked as boolean)
+                                              }
+                                              onClick={(e) => e.stopPropagation()}
+                                            />
+                                            {player.paid ? (
+                                              <DollarSign className="h-4 w-4 text-green-600" />
+                                            ) : (
+                                              <DollarSign className="h-4 w-4 text-red-600" />
+                                            )}
+                                          </div>
+                                        </TableCell>
+                                        <TableCell>
+                                          <div className="text-sm">
+                                            {player._count.gamesAsPlayer1 + player._count.gamesAsPlayer2} Spiele
+                                          </div>
+                                          <div className="text-sm text-muted-foreground">
+                                            {player._count.throws} Würfe
+                                          </div>
+                                        </TableCell>
+                                        <TableCell>
+                                          <div className="text-sm">
+                                            {new Date(player.registeredAt).toLocaleDateString('de-DE')}
+                                          </div>
+                                          <div className="text-sm text-muted-foreground">
+                                            {new Date(player.registeredAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                                          </div>
+                                        </TableCell>
+                                        <TableCell>
+                                          <div className="flex items-center justify-end gap-2">
+                                            <DropdownMenu>
+                                              <DropdownMenuTrigger asChild>
+                                                <Button variant="outline" size="sm">
+                                                  <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                              </DropdownMenuTrigger>
+                                              <DropdownMenuContent align="end">
+                                                <DropdownMenuItem
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedPlayer(player);
+                                                    setEditDialogOpen(true);
+                                                  }}
+                                                >
+                                                  <Edit className="h-4 w-4 mr-2" />
+                                                  Bearbeiten
+                                                </DropdownMenuItem>
+
+                                                <DropdownMenuSub>
+                                                  <DropdownMenuSubTrigger>
+                                                    <Activity className="h-4 w-4 mr-2" />
+                                                    Status ändern
+                                                  </DropdownMenuSubTrigger>
+                                                  <DropdownMenuPortal>
+                                                    <DropdownMenuSubContent>
+                                                      <DropdownMenuItem onClick={() => updatePlayerStatus(player.id, 'REGISTERED')}>
+                                                        Registriert
+                                                      </DropdownMenuItem>
+                                                      <DropdownMenuItem onClick={() => updatePlayerStatus(player.id, 'CONFIRMED')}>
+                                                        Bestätigt
+                                                      </DropdownMenuItem>
+                                                      <DropdownMenuItem onClick={() => updatePlayerStatus(player.id, 'ACTIVE')}>
+                                                        Aktiv
+                                                      </DropdownMenuItem>
+                                                      <DropdownMenuItem onClick={() => updatePlayerStatus(player.id, 'WAITING_LIST')}>
+                                                        Warteliste
+                                                      </DropdownMenuItem>
+                                                      <DropdownMenuSeparator />
+                                                      <DropdownMenuItem onClick={() => updatePlayerStatus(player.id, 'ELIMINATED')}>
+                                                        Ausgeschieden
+                                                      </DropdownMenuItem>
+                                                      <DropdownMenuItem onClick={() => updatePlayerStatus(player.id, 'WITHDRAWN')}>
+                                                        Zurückgezogen
+                                                      </DropdownMenuItem>
+                                                    </DropdownMenuSubContent>
+                                                  </DropdownMenuPortal>
+                                                </DropdownMenuSub>
+
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setDeleteDialogOpen(true);
+                                                    setPlayerToDelete(player);
+                                                  }}
+                                                  className="text-red-600"
+                                                >
+                                                  <Trash2 className="h-4 w-4 mr-2" />
+                                                  Löschen
+                                                </DropdownMenuItem>
+                                              </DropdownMenuContent>
+                                            </DropdownMenu>
+                                          </div>
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+
+                                    if (!currentTournament) return players.map(renderRow);
+
+                                    const activePlayers = players.filter(p => !['WAITING_LIST', 'WITHDRAWN'].includes(p.status));
+                                    const waitingPlayers = players.filter(p => p.status === 'WAITING_LIST');
+                                    const max = currentTournament.maxPlayers;
+                                    const rows = [];
+
+                                    // 1. WARTELISTE (Minimalistisch)
+                                    if (waitingPlayers.length > 0) {
+                                       rows.push(
+                                        <TableRow key="header-waiting" className="bg-orange-50/50 hover:bg-orange-50">
+                                          <TableCell colSpan={7} className="py-2 px-6 border-b border-orange-100">
+                                            <div className="flex items-center gap-2">
+                                              <div className="h-2 w-2 rounded-full bg-orange-400"></div>
+                                              <span className="font-semibold text-sm text-orange-900">Warteliste</span>
+                                              <span className="text-xs text-orange-700/70">({waitingPlayers.length} wartend)</span>
+                                            </div>
+                                          </TableCell>
+                                        </TableRow>
+                                      );
+                                      
+                                      waitingPlayers.forEach(p => rows.push(renderRow(p)));
+                                      
+                                      // Kleiner Spacer statt riesiger Divider
+                                      rows.push(
+                                        <TableRow key="spacer-waiting-active" className="h-4 border-0">
+                                            <TableCell colSpan={7} className="p-0 border-0"></TableCell>
+                                        </TableRow>
+                                      );
+                                    }
+
+                                    // 2. HAUPTFELD HEADER (Minimalistisch)
+                                    rows.push(
+                                        <TableRow key="header-active" className="bg-muted/30 hover:bg-muted/40">
+                                          <TableCell colSpan={7} className="py-2 px-6 border-y">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                  <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                                                  <span className="font-semibold text-sm">Turnierfeld</span>
+                                                  <span className="text-xs text-muted-foreground">({activePlayers.length} / {max} belegt)</span>
+                                                </div>
+                                            </div>
+                                          </TableCell>
+                                        </TableRow>
+                                    );
+
+                                    // 3. Platzhalter (Schlanker)
+                                    if (waitingPlayers.length > 0 && activePlayers.length < max) {
+                                      const slotsToFill = max - activePlayers.length;
+                                      for (let i = 0; i < slotsToFill; i++) {
+                                        rows.push(
+                                          <TableRow key={`placeholder-${i}`} className="bg-yellow-50/30 border-dashed border-b border-yellow-200">
+                                            <TableCell colSpan={7} className="py-2 px-6">
+                                              <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2 text-yellow-700/80">
+                                                    <span className="text-sm italic">Offener Platz #{activePlayers.length + 1 + i}</span>
+                                                </div>
+                                                <Button 
+                                                  variant="ghost" 
+                                                  size="sm"
+                                                  className="h-7 text-xs text-yellow-800 hover:text-yellow-900 hover:bg-yellow-100"
+                                                  onClick={() => setAddPlayerDialogOpen(true)}
+                                                >
+                                                  <Plus className="mr-1 h-3 w-3" />
+                                                  Nachrücken
+                                                </Button>
+                                              </div>
+                                            </TableCell>
+                                          </TableRow>
+                                        );
+                                      }
+                                    }
+
+                                    // 5. Aktive Spieler
+                                    activePlayers.forEach(p => rows.push(renderRow(p)));
+
+                                    return rows;
+                                  })()}
                                 </TableBody>
                               </Table>
                             </div>
@@ -778,75 +1006,6 @@ export default function PlayersPage() {
                               seed: e.target.value ? parseInt(e.target.value) : undefined
                             })}
                           />
-
-                {/* Simple Delete Dialog */}
-                <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Spieler entfernen</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Sind Sie sicher, dass Sie {playerToDelete?.playerName} aus dem Turnier entfernen möchten?
-                        Diese Aktion kann nicht rückgängig gemacht werden.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => confirmDelete()}
-                        className="bg-red-600 hover:bg-red-700"
-                      >
-                        Entfernen
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-
-                {/* Promote Dialog */}
-                <Dialog open={promoteDialogOpen} onOpenChange={setPromoteDialogOpen}>
-                  <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                      <DialogTitle>Spieler entfernen & Nachrücker wählen</DialogTitle>
-                      <div className="text-sm text-muted-foreground mt-2">
-                        Sie entfernen <strong>{playerToDelete?.playerName}</strong>.
-                        Es befinden sich <strong>{waitingListCandidates.length}</strong> Spieler auf der Warteliste.
-                      </div>
-                    </DialogHeader>
-                    
-                    <div className="py-4 space-y-4">
-                      <div className="space-y-2">
-                        <Label>Nachrücker auswählen (Optional)</Label>
-                        <Select value={selectedPromotePlayerId} onValueChange={setSelectedPromotePlayerId}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Wählen Sie einen Nachrücker..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">-- Niemanden nachrücken lassen --</SelectItem>
-                            {waitingListCandidates.map(candidate => (
-                              <SelectItem key={candidate.id} value={candidate.id}>
-                                {candidate.playerName} ({new Date(candidate.registeredAt).toLocaleDateString()})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground">
-                          Der ausgewählte Spieler erhält automatisch den Status "Bestätigt".
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setPromoteDialogOpen(false)}>
-                        Abbrechen
-                      </Button>
-                      <Button 
-                        variant="destructive"
-                        onClick={() => confirmDelete(selectedPromotePlayerId)}
-                      >
-                        {selectedPromotePlayerId !== 'none' ? 'Entfernen & Nachrücken' : 'Nur Entfernen'}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
                         </div>
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
@@ -869,6 +1028,164 @@ export default function PlayersPage() {
             {/* Slide-out Stats Panel - Entfernt */}
 
             {/* Overlay für Panel */}
+            {/* Simple Delete Dialog */}
+            {playerToDelete && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4 shadow-xl z-50">
+                  <h3 className="text-lg font-semibold mb-4 text-black">Spieler entfernen</h3>
+                  <p className="mb-4 text-black">
+                    Sind Sie sicher, dass Sie <strong>{playerToDelete.playerName}</strong> entfernen möchten?
+                  </p>
+                  <div className="flex justify-end gap-2">
+                    <button 
+                      className="px-4 py-2 bg-gray-200 text-black rounded hover:bg-gray-300"
+                      onClick={() => {
+                        setDeleteDialogOpen(false);
+                        setPlayerToDelete(null);
+                      }}
+                    >
+                      Abbrechen
+                    </button>
+                    <button 
+                      className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                      onClick={() => {
+                        confirmDelete();
+                        setDeleteDialogOpen(false);
+                        setPlayerToDelete(null);
+                      }}
+                    >
+                      Entfernen
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Promote Dialog */}
+            <Dialog open={promoteDialogOpen} onOpenChange={setPromoteDialogOpen}>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Spieler entfernen & Nachrücker wählen</DialogTitle>
+                  <div className="text-sm text-muted-foreground mt-2">
+                    Sie entfernen <strong>{playerToDelete?.playerName}</strong>.
+                    Es befinden sich <strong>{waitingListCandidates.length}</strong> Spieler auf der Warteliste.
+                  </div>
+                </DialogHeader>
+                
+                <div className="py-4 space-y-4">
+                  <div className="space-y-2">
+                    <Label>Nachrücker auswählen (Optional)</Label>
+                    <Select value={selectedPromotePlayerId} onValueChange={setSelectedPromotePlayerId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Wählen Sie einen Nachrücker..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">-- Niemanden nachrücken lassen --</SelectItem>
+                        {waitingListCandidates.map(candidate => (
+                          <SelectItem key={candidate.id} value={candidate.id}>
+                            {candidate.playerName} ({new Date(candidate.registeredAt).toLocaleDateString()})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Der ausgewählte Spieler erhält automatisch den Status "Bestätigt".
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setPromoteDialogOpen(false)}>
+                    Abbrechen
+                  </Button>
+                  <Button 
+                    variant="destructive"
+                    onClick={() => confirmDelete(selectedPromotePlayerId)}
+                  >
+                    {selectedPromotePlayerId !== 'none' ? 'Entfernen & Nachrücken' : 'Nur Entfernen'}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={addPlayerDialogOpen} onOpenChange={(open) => {
+              setAddPlayerDialogOpen(open);
+              if (!open) setIsCreatingNew(false); // Reset on close
+            }}>
+              <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                  <DialogTitle>{isCreatingNew ? 'Neuen Spieler anlegen' : 'Spieler hinzufügen'}</DialogTitle>
+                </DialogHeader>
+                
+                {isCreatingNew ? (
+                  <div className="py-4 space-y-4">
+                     <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Name</Label>
+                          <Input 
+                            value={newPlayerName} 
+                            onChange={(e) => setNewPlayerName(e.target.value)}
+                            placeholder="Max Mustermann"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>E-Mail</Label>
+                          <Input 
+                            value={newPlayerEmail} 
+                            onChange={(e) => setNewPlayerEmail(e.target.value)} 
+                            placeholder="max@beispiel.de"
+                            type="email"
+                          />
+                        </div>
+                     </div>
+                     <div className="flex justify-end gap-2 pt-4">
+                        <Button variant="outline" onClick={() => setIsCreatingNew(false)}>Zurück</Button>
+                        <Button onClick={handleCreatePlayer}>Spieler anlegen</Button>
+                     </div>
+                  </div>
+                ) : (
+                  <div className="py-4 space-y-4">
+                    <div className="space-y-2">
+                      <Label>Aus Warteliste nachrücken lassen</Label>
+                      <Select onValueChange={(val) => {
+                        updatePlayerStatus(val, 'CONFIRMED');
+                        setAddPlayerDialogOpen(false);
+                      }}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Kandidat aus Warteliste wählen..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {players.filter(p => p.status === 'WAITING_LIST').length > 0 ? (
+                             players.filter(p => p.status === 'WAITING_LIST').map(candidate => (
+                              <SelectItem key={candidate.id} value={candidate.id}>
+                                {candidate.playerName} ({new Date(candidate.registeredAt).toLocaleDateString()})
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <div className="p-2 text-sm text-muted-foreground text-center">Keine Spieler auf der Warteliste</div>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="relative py-2">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">Oder neuen Spieler erstellen</span>
+                      </div>
+                    </div>
+
+                    <Button className="w-full h-12" variant="outline" onClick={() => setIsCreatingNew(true)}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Neuen Spieler manuell anlegen
+                    </Button>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
+
             {false && (
               <div
                 className="fixed inset-0 bg-black/20 z-40"
