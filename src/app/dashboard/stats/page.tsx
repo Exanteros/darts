@@ -110,6 +110,7 @@ export default function StatsPage() {
   if (authLoading || (loading && !stats)) {
     return (
       <SidebarProvider
+        className="font-sans"
         style={
           {
             "--sidebar-width": "calc(var(--spacing) * 72)",
@@ -138,6 +139,7 @@ export default function StatsPage() {
   if (!stats && !loading) {
     return (
       <SidebarProvider
+        className="font-sans"
         style={
           {
             "--sidebar-width": "calc(var(--spacing) * 72)",
@@ -165,6 +167,7 @@ export default function StatsPage() {
 
   return (
     <SidebarProvider
+      className="font-sans"
       style={
         {
           "--sidebar-width": "calc(var(--spacing) * 72)",
