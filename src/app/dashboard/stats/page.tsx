@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTournamentAccess } from '@/hooks/useTournamentAccess';
+import { useTournamentAccess } from "@/hooks/useTournamentAccess";
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import {
@@ -9,9 +9,10 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Trophy, Target, TrendingUp, Calendar, Award, Zap, BarChart3 } from "lucide-react";
+import { Users, Trophy, Target, TrendingUp, Calendar, Award, Zap, BarChart3, Activity, Timer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { StatsChart } from "@/components/stats-chart";
+import { Separator } from "@/components/ui/separator";
 
 interface ChartData {
   name: string;
@@ -65,14 +66,18 @@ interface TournamentStats {
 }
 
 export default function StatsPage() {
-  const { isAdmin, hasTournamentAccess, tournamentAccess, isLoading, isAuthenticated } = useTournamentAccess();
+  const { isAdmin, hasTournamentAccess, tournamentAccess, isLoading: authLoading, isAuthenticated } = useTournamentAccess();
   const [stats, setStats] = useState<TournamentStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Prüfe Berechtigung für Statistiken
   const canViewStats = isAdmin || tournamentAccess.some(access => {
-    const permissions = JSON.parse(access.permissions || '{}');
-    return permissions.dashboard?.viewStats === true;
+    try {
+      const permissions = JSON.parse(access.permissions || "{}");
+      return permissions.dashboard?.viewStats === true;
+    } catch {
+      return false;
+    }
   });
 
   useEffect(() => {
@@ -87,20 +92,22 @@ export default function StatsPage() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/dashboard/stats/detailed');
+      const response = await fetch("/api/dashboard/stats/detailed");
       if (response.ok) {
         const data = await response.json();
         setStats(data);
+      } else {
+         console.error("Failed to fetch stats:", response.statusText);
       }
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      console.error("Error fetching stats:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Zeige Ladezustand während der Authentifizierung
-  if (isLoading) {
+  // Zeige Ladezustand während der Authentifizierung oder beim ersten Laden
+  if (authLoading || (loading && !stats)) {
     return (
       <SidebarProvider
         style={
@@ -113,21 +120,22 @@ export default function StatsPage() {
         <AppSidebar variant="inset" />
         <SidebarInset>
           <SiteHeader />
-          <div className="flex flex-1 flex-col items-center justify-center">
-            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">Überprüfe Berechtigung...</p>
+          <div className="flex flex-1 flex-col items-center justify-center h-full">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <p className="mt-4 text-sm text-muted-foreground">Lade Statistiken...</p>
           </div>
         </SidebarInset>
       </SidebarProvider>
     );
   }
 
-  // Zeige Statistiken für berechtigte Benutzer
-  if (!isAuthenticated || !canViewStats) {
-    return null;
+  // Für nicht authentifizierte oder nicht berechtigte Benutzer
+  if (!isAuthenticated && !authLoading) {
+     return null;
   }
-
-  if (loading) {
+  
+  // Wenn keine Daten vorhanden sind (aber geladen wurde)
+  if (!stats && !loading) {
     return (
       <SidebarProvider
         style={
@@ -140,33 +148,14 @@ export default function StatsPage() {
         <AppSidebar variant="inset" />
         <SidebarInset>
           <SiteHeader />
-          <div className="flex flex-1 flex-col items-center justify-center">
-            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">Lade Statistiken...</p>
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
-    );
-  }
-
-  if (!stats) {
-    return (
-      <SidebarProvider
-        style={
-          {
-            "--sidebar-width": "calc(var(--spacing) * 72)",
-            "--header-height": "calc(var(--spacing) * 12)",
-          } as React.CSSProperties
-        }
-      >
-        <AppSidebar variant="inset" />
-        <SidebarInset>
-          <SiteHeader />
-          <div className="flex flex-1 flex-col items-center justify-center p-6">
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-center text-muted-foreground">Keine Statistiken verfügbar</p>
-              </CardContent>
+           <div className="flex flex-1 flex-col items-center justify-center h-full p-4">
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle className="text-center">Keine Daten verfügbar</CardTitle>
+                <CardDescription className="text-center">
+                  Es konnten keine Statistiken für das aktuelle Turnier geladen werden.
+                </CardDescription>
+              </CardHeader>
             </Card>
           </div>
         </SidebarInset>
@@ -186,254 +175,203 @@ export default function StatsPage() {
       <AppSidebar variant="inset" />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <div className="px-4 lg:px-6 space-y-6">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h1 className="text-2xl font-semibold tracking-tight">{stats.tournamentName}</h1>
-                    <p className="text-sm text-muted-foreground">Statistiken</p>
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    {stats.tournamentStatus}
-                  </Badge>
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <div className="grid auto-rows-min gap-4 md:grid-cols-1">
+             {/* Header */}
+             <div className="flex items-center justify-between pb-4">
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-semibold tracking-tight">
+                    {stats?.tournamentName || "Turnier Statistiken"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Live-Auswertung und Analysen aller Spiele
+                  </p>
                 </div>
-
-                {/* Metriken */}
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <div>
-                        <CardTitle className="text-sm font-normal text-muted-foreground">Trefferquote</CardTitle>
-                        <div className="text-2xl font-semibold mt-1">{stats.accuracyRate.toFixed(1)}%</div>
-                        <p className="text-xs text-muted-foreground">
-                          {stats.missedThrows} / {stats.totalThrows} Fehlwürfe
-                        </p>
-                      </div>
-                      <Target className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      {stats.charts.wasteChart.length > 0 && (
-                        <div className="h-[80px]">
-                          <StatsChart
-                            data={stats.charts.wasteChart}
-                            type="bar"
-                            color="hsl(var(--primary))"
-                          />
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <div>
-                        <CardTitle className="text-sm font-normal text-muted-foreground">Wurf-Verteilung</CardTitle>
-                        <div className="text-2xl font-semibold mt-1">{stats.totalThrows}</div>
-                        <p className="text-xs text-muted-foreground">
-                          Nach Uhrzeit
-                        </p>
-                      </div>
-                      <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      {stats.charts.throwIntensity.length > 0 && (
-                        <div className="h-[80px]">
-                          <StatsChart
-                            data={stats.charts.throwIntensity}
-                            type="area"
-                            color="hsl(var(--primary))"
-                          />
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <div>
-                        <CardTitle className="text-sm font-normal text-muted-foreground">Siegquote</CardTitle>
-                        <div className="text-2xl font-semibold mt-1">
-                          {stats.topPlayers.length > 0 ? Math.round((stats.topPlayers[0].wins / Math.max(stats.finishedGames, 1)) * 100) : 0}%
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Führender Spieler
-                        </p>
-                      </div>
-                      <Trophy className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      {stats.charts.luckIndex.length > 0 && (
-                        <div className="h-[80px]">
-                          <StatsChart
-                            data={stats.charts.luckIndex}
-                            type="bar"
-                            color="hsl(var(--primary))"
-                          />
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <div>
-                        <CardTitle className="text-sm font-normal text-muted-foreground">Durchschnittliche Spieldauer</CardTitle>
-                        <div className="text-2xl font-semibold mt-1">{stats.avgThrowsPerGame}</div>
-                        <p className="text-xs text-muted-foreground">
-                          Würfe pro Spiel
-                        </p>
-                      </div>
-                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      {stats.charts.nerveFactor.length > 0 && (
-                        <div className="h-[80px]">
-                          <StatsChart
-                            data={stats.charts.nerveFactor}
-                            type="line"
-                            color="hsl(var(--primary))"
-                          />
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                <div className="flex items-center gap-2">
+                   <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground mr-4">
+                      <Activity className="h-3 w-3" />
+                      Updated: Just now
+                   </div>
+                   <Badge variant={stats?.tournamentStatus === "LIVE" ? "destructive" : "secondary"} className="text-sm px-3 py-1">
+                      {stats?.tournamentStatus || "OFFLINE"}
+                   </Badge>
                 </div>
+             </div>
 
-                {/* Detaillierte Analyse */}
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base font-semibold flex items-center gap-2">
-                        <Users className="h-4 w-4" />
-                        Wurf-Aktivität
-                      </CardTitle>
-                      <CardDescription className="text-xs">Anzahl Würfe pro Spieler</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {stats.charts.mostThrows.length > 0 && (
-                        <div className="h-[200px]">
-                          <StatsChart
-                            data={stats.charts.mostThrows}
-                            type="bar"
-                            color="hsl(var(--primary))"
-                          />
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base font-semibold flex items-center gap-2">
-                        <Award className="h-4 w-4" />
-                        Checkout-Erfolge
-                      </CardTitle>
-                      <CardDescription className="text-xs">Erfolgreiche Finishes pro Spieler</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {stats.charts.checkoutChamp.length > 0 && (
-                        <div className="h-[200px]">
-                          <StatsChart
-                            data={stats.charts.checkoutChamp}
-                            type="area"
-                            color="hsl(var(--primary))"
-                          />
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Zusammenfassung */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base font-semibold flex items-center gap-2">
-                      <BarChart3 className="h-4 w-4" />
-                      Leistungsübersicht
-                    </CardTitle>
-                    <CardDescription className="text-xs">Kennzahlen im Überblick</CardDescription>
+             {/* Top Metriken */}
+             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card className="overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Spiele Gesamt</CardTitle>
+                    <Trophy className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-semibold">{stats.highestScore}</div>
-                        <p className="text-xs text-muted-foreground mt-1">Höchster Einzelwurf</p>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-semibold">{stats.averageScore.toFixed(1)}</div>
-                        <p className="text-xs text-muted-foreground mt-1">Durchschnittspunkte</p>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-semibold">{stats.totalCheckouts}</div>
-                        <p className="text-xs text-muted-foreground mt-1">Erfolgreiche Checkouts</p>
-                      </div>
+                    <div className="text-2xl font-bold">{stats?.totalGames}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {stats?.finishedGames} beendet, {stats?.activeGames} aktiv
+                    </p>
+                    <div className="h-[4px] w-full bg-secondary mt-3 rounded-full overflow-hidden">
+                       <div className="h-full bg-primary" style={{ width: `${((stats && stats.totalGames > 0) ? (stats.finishedGames / stats.totalGames * 100) : 0)}%` }} />
                     </div>
-                    {stats.topPlayers.length > 0 && (
-                      <div className="mt-6 p-4 border rounded-lg">
-                        <p className="text-xs font-medium text-muted-foreground mb-3">Führende Spieler</p>
-                        <div className="space-y-2">
-                          {stats.topPlayers.slice(0, 3).map((player, index) => (
-                            <div key={player.name} className="flex items-center justify-between text-sm">
-                              <div className="flex items-center gap-3">
-                                <span className="text-xs text-muted-foreground w-4">{index + 1}.</span>
-                                <span>{player.name}</span>
-                              </div>
-                              <span className="text-xs text-muted-foreground">{player.wins} Siege</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
 
-                {/* Übersicht */}
-                <div className="grid gap-4 md:grid-cols-4">
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-center">
-                        <Trophy className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-                        <div className="text-2xl font-semibold">{stats.totalGames}</div>
-                        <p className="text-xs text-muted-foreground">Spiele gesamt</p>
+                <Card className="overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Highscore</CardTitle>
+                    <Target className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats?.highestScore}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Höchster geworfener Score
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">ø Average</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats?.averageScore.toFixed(1)}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Punkte pro Aufnahme (3 Darts)
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                     <CardTitle className="text-sm font-medium">Checkouts</CardTitle>
+                     <Zap className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats?.totalCheckouts}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Erfolgreiche Finishes
+                    </p>
+                  </CardContent>
+                </Card>
+             </div>
+
+             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+                {/* Main Chart */}
+                <Card className="col-span-4">
+                  <CardHeader>
+                    <CardTitle>Wurf Intensität</CardTitle>
+                    <CardDescription>
+                      Anzahl der Würfe über den Turnierverlauf
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pl-2">
+                     <div className="h-[240px] w-full">
+                        {stats?.charts?.throwIntensity && stats.charts.throwIntensity.length > 0 ? (
+                           <StatsChart 
+                              data={stats.charts.throwIntensity} 
+                              type="area" 
+                              color="hsl(var(--primary))" 
+                           />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                            Keine Daten verfügbar
+                          </div>
+                        )}
+                     </div>
+                  </CardContent>
+                </Card>
+
+                {/* Top Players List */}
+                <Card className="col-span-3">
+                  <CardHeader>
+                    <CardTitle>Top Spieler</CardTitle>
+                    <CardDescription>
+                      Beste Performance im Turnier
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-8">
+                       {stats?.topPlayers && stats.topPlayers.length > 0 ? (
+                         stats.topPlayers.slice(0, 5).map((player, i) => (
+                          <div key={userAvatarKey(player.name)} className="flex items-center">
+                             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-xs font-medium">
+                                {i + 1}
+                             </div>
+                             <div className="ml-4 space-y-1">
+                                <p className="text-sm font-medium leading-none">{player.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                   AVG: {player.averageScore.toFixed(1)}
+                                </p>
+                             </div>
+                             <div className="ml-auto font-medium">
+                                +{player.wins} Wins
+                             </div>
+                          </div>
+                       ))
+                       ) : (
+                        <div className="text-sm text-muted-foreground text-center py-8">
+                          Noch keine Spielerdaten
+                        </div>
+                       )}
+                    </div>
+                  </CardContent>
+                </Card>
+             </div>
+
+             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card className="col-span-2">
+                   <CardHeader>
+                      <CardTitle>Trefferverteilung</CardTitle>
+                      <CardDescription>Häufigkeit der getroffenen Felder</CardDescription>
+                   </CardHeader>
+                   <CardContent>
+                      <div className="h-[200px]">
+                         {stats?.charts?.wasteChart && stats.charts.wasteChart.length > 0 ? (
+                            <StatsChart
+                               data={stats.charts.wasteChart}
+                               type="bar"
+                               color="hsl(var(--chart-2))"
+                            />
+                         ) : (
+                            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                              Keine Daten verfügbar
+                            </div>
+                         )}
                       </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-center">
-                        <Users className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-                        <div className="text-2xl font-semibold">{stats.totalPlayers}</div>
-                        <p className="text-xs text-muted-foreground">Teilnehmer</p>
+                   </CardContent>
+                </Card>
+
+                <Card className="col-span-2">
+                   <CardHeader>
+                      <CardTitle>Nervenstärke</CardTitle>
+                      <CardDescription>Average in entscheidenden Momenten</CardDescription>
+                   </CardHeader>
+                   <CardContent>
+                      <div className="h-[200px]">
+                         {stats?.charts?.nerveFactor && stats.charts.nerveFactor.length > 0 ? (
+                            <StatsChart
+                               data={stats.charts.nerveFactor}
+                               type="line"
+                               color="hsl(var(--chart-3))"
+                            />
+                         ) : (
+                            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                              Keine Daten verfügbar
+                            </div>
+                         )}
                       </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-center">
-                        <Target className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-                        <div className="text-2xl font-semibold">{stats.totalThrows.toLocaleString()}</div>
-                        <p className="text-xs text-muted-foreground">Würfe gesamt</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-center">
-                        <Calendar className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-                        <div className="text-2xl font-semibold">{stats.finishedGames}</div>
-                        <p className="text-xs text-muted-foreground">Abgeschlossen</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </div>
+                   </CardContent>
+                </Card>
+             </div>
+
           </div>
         </div>
       </SidebarInset>
     </SidebarProvider>
   );
+}
+
+function userAvatarKey(name: string) {
+   return name.toLowerCase().replace(/\s/g, "-");
 }
