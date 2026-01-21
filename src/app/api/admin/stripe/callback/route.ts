@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
      const stripeRaw = process.env.STRIPE_SECRET_KEY;
      if(!stripeRaw) throw new Error("Missing System Stripe Key");
      
-     const stripe = new Stripe(stripeRaw, { apiVersion: '2024-12-18.acacia' }); // using latest or existing version
+     const stripe = new Stripe(stripeRaw, { apiVersion: '2025-08-27.basil' }); // using latest or existing version
      
      const response = await stripe.oauth.token({
        grant_type: 'authorization_code',
