@@ -346,6 +346,22 @@ export default function DisplayBoard({ params }: { params: Promise<{ code: strin
                 <p className="text-xl text-slate-500">Das Board ist bereit. Spieler bitte anmelden.</p>
               </div>
 
+              {/* Display Main Sponsor/Event Logo specifically requested */}
+              {logos.mainLogo && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3 }}
+                  className="py-8"
+                >
+                  <img 
+                    src={logos.mainLogo} 
+                    alt="Event Logo" 
+                    className="h-40 md:h-56 w-auto mx-auto object-contain drop-shadow-lg"
+                  />
+                </motion.div>
+              )}
+
               {logos.sponsorLogos.length > 0 && (
                 <div className="w-full max-w-4xl border-t border-slate-100 pt-12">
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-8">Sponsored by</p>

@@ -300,7 +300,7 @@ export async function POST(request: NextRequest) {
           orderBy: { createdAt: 'desc' }
         });
         if (!tournament) return NextResponse.json({ error: 'Kein aktives Turnier gefunden' }, { status: 404 });
-        
+
         // Lade Bracket-Konfiguration
         const config = await prisma.bracketConfig.findFirst();
         
@@ -431,7 +431,7 @@ export async function POST(request: NextRequest) {
           orderBy: { createdAt: 'desc' }
         });
         if (!tournament) return NextResponse.json({ error: 'Kein aktives Turnier gefunden' }, { status: 404 });
-        
+
         // Lösche alle Shootout-Ergebnisse
         const deletedResults = await prisma.shootoutResult.deleteMany({
           where: { tournamentId: tournament.id }

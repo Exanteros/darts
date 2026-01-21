@@ -54,6 +54,7 @@ services:
     # --- Volumes ---
     volumes:
       - next_cache:/app/.next/cache # Cache Volume für read-only Filesystem
+      - uploads_data:/app/public/uploads # Volume für persistente Uploads
       
     # --- Dependencies ---
     depends_on:
@@ -110,4 +111,6 @@ volumes:
   redis_data:
     driver: local
   next_cache:
+    driver: local
+  uploads_data:
     driver: local

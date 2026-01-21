@@ -878,12 +878,9 @@ export default function TournamentBracket() {
 
     const sortedGames = [...games].sort((a, b) => {
       if (a.round !== b.round) return a.round - b.round;
-      // Sort by position within round (top to bottom)
-      // For bracket tournaments, games should be ordered by their bracket position
-      // We'll use a simple ordering based on player names or IDs to ensure consistent ordering
-      const aOrder = (a.player1?.playerName || a.player1?.id || '') + (a.player2?.playerName || a.player2?.id || '');
-      const bOrder = (b.player1?.playerName || b.player1?.id || '') + (b.player2?.playerName || b.player2?.id || '');
-      return aOrder.localeCompare(bOrder);
+      // Use ID for consistent sorting of bracket structure
+      // This maintains the logical order as created in database
+      return a.id.localeCompare(b.id);
     });
 
     // Group games by rounds
@@ -912,9 +909,9 @@ export default function TournamentBracket() {
 
       roundGames.forEach((game) => {
         // Skip games without both players (higher rounds not yet filled)
-        if (!game.player1 || !game.player2) {
-          return;
-        }
+        // if (!game.player1 || !game.player2) {
+        //   return;
+        // }
 
         // Determine status
         let status: 'FINISHED' | 'ACTIVE' | 'WAITING' = 'WAITING';

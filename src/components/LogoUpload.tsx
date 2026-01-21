@@ -193,10 +193,12 @@ export function SponsorLogosUpload({ label, values, onChange }: SponsorLogosUplo
     }
 
     setUploading(true);
-    const uploadedUrls: string[] = [];
+    let successCount = 0;
+    let failCount = 0;
+    const newUrls: string[] = [];
 
-    try {
-      for (const file of files) {
+    await Promise.all(files.map(async (file) => {
+      try {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('type', 'sponsorLogo');
@@ -207,33 +209,40 @@ export function SponsorLogosUpload({ label, values, onChange }: SponsorLogosUplo
         });
 
         if (!response.ok) {
-          throw new Error(`Upload von ${file.name} fehlgeschlagen`);
+          throw new Error(`Upload failed for ${file.name}`);
         }
 
         const result = await response.json();
-        uploadedUrls.push(result.url);
+        newUrls.push(result.url);
+        successCount++;
+      } catch (error) {
+        console.error(`Error uploading ${file.name}:`, error);
+        failCount++;
       }
+    }));
 
-      const newValues = [...values, ...uploadedUrls];
+    if (newUrls.length > 0) {
+      const newValues = [...values, ...newUrls];
       onChange(newValues);
+    }
 
+    setUploading(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+
+    if (successCount > 0) {
       toast({
-        title: "Upload erfolgreich",
-        description: `${uploadedUrls.length} Sponsor-Logo(s) wurden hochgeladen.`,
+        title: "Upload abgeschlossen",
+        description: `${successCount} Logo(s) erfolgreich hochgeladen.${failCount > 0 ? ` ${failCount} fehlgeschlagen.` : ''}`,
+        variant: failCount > 0 ? "default" : "default", // or "warning" if available
       });
-    } catch (error) {
-      console.error('Upload error:', error);
+    } else if (failCount > 0) {
       toast({
         title: "Upload fehlgeschlagen",
-        description: "Beim Hochladen ist ein Fehler aufgetreten.",
+        description: "Alle Uploads sind fehlgeschlagen.",
         variant: "destructive",
       });
-    } finally {
-      setUploading(false);
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
     }
   };
 

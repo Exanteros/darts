@@ -22,7 +22,7 @@ import { Separator } from '@/components/ui/separator';
 import { LogoUpload, SponsorLogosUpload } from '@/components/LogoUpload';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
-import { Star } from 'lucide-react';
+import { Star, CheckCircle2 } from 'lucide-react';
 import { IconInfoCircle } from '@tabler/icons-react';
 
 interface DartBoard {
@@ -59,6 +59,8 @@ interface TournamentSettings {
   stripePublishableKey: string;
   stripeSecretKey: string;
   stripeWebhookSecret: string;
+  stripeConnected?: boolean;
+  stripeAccountId?: string;
   mainLogo: string;
   sponsorLogos: string[];
   location: string;
@@ -244,6 +246,38 @@ export default function TournamentPage() {
     }
   });
   const { toast } = useToast();
+
+  // Stripe Connection Handling
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if(params.get('success') === 'stripe_connected') {
+       toast({ title: "Erfolg", description: "Stripe-Konto erfolgreich verbunden!" });
+       window.history.replaceState({}, '', window.location.pathname);
+    }
+    if(params.get('error') === 'stripe_connect_failed') {
+       toast({ title: "Fehler", description: "Verbindung zu Stripe fehlgeschlagen.", variant: "destructive" });
+    }
+  }, []);
+
+  const disconnectStripe = async () => {
+    try {
+      setSaving(true);
+      const res = await fetch('/api/admin/stripe/disconnect', { method: 'POST' });
+      if(!res.ok) throw new Error("Disconnect failed");
+      
+      setSettings(prev => ({ 
+        ...prev, 
+        stripeConnected: false, 
+        stripeAccountId: undefined, 
+        stripeEnabled: false 
+      }));
+      toast({ title: "Verbindung getrennt", description: "Stripe-Verbindung wurde aufgehoben." });
+    } catch(e) {
+      toast({ title: "Fehler", description: "Konnte Verbindung nicht trennen.", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Prüfe Berechtigung für Turnier-Management
   const canManageTournaments = isAdmin || tournamentAccess.some(access => {
@@ -1229,48 +1263,51 @@ export default function TournamentPage() {
                         <Label htmlFor="stripeEnabled">Stripe-Zahlungen aktivieren</Label>
                       </div>
 
-                      {settings.stripeEnabled && (
-                        <div className="space-y-4 mt-4 sm:ml-6">
-                          <div className="space-y-2">
-                            <Label htmlFor="stripePublishableKey">Stripe Publishable Key</Label>
-                            <Input
-                              id="stripePublishableKey"
-                              type="password"
-                              value={settings.stripePublishableKey || ''}
-                              onChange={(e) => setSettings(prev => ({ ...prev, stripePublishableKey: e.target.value }))}
-                              placeholder="pk_test_..."
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="stripeSecretKey">Stripe Secret Key</Label>
-                            <Input
-                              id="stripeSecretKey"
-                              type="password"
-                              value={settings.stripeSecretKey || ''}
-                              onChange={(e) => setSettings(prev => ({ ...prev, stripeSecretKey: e.target.value }))}
-                              placeholder="sk_test_..."
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="stripeWebhookSecret">Stripe Webhook Secret</Label>
-                            <Input
-                              id="stripeWebhookSecret"
-                              type="password"
-                              value={settings.stripeWebhookSecret || ''}
-                              onChange={(e) => setSettings(prev => ({ ...prev, stripeWebhookSecret: e.target.value }))}
-                              placeholder="whsec_..."
-                            />
-                          </div>
-                        </div>
+                      {/* START NEW STRIPE CONNECT UI - SIMPLEX */}
+                      {settings.stripeConnected ? (
+                         <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between mt-4">
+                            <div className="flex items-center gap-3">
+                               <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center text-green-600">
+                                  <CheckCircle2 className="h-6 w-6" />
+                               </div>
+                               <div>
+                                  <h4 className="font-semibold text-green-900">Verbunden</h4>
+                                  <p className="text-sm text-green-700">Online-Zahlungen aktiv via <span className="font-mono">{settings.stripeAccountId}</span></p>
+                               </div>
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={disconnectStripe} disabled={saving} className="text-slate-500 hover:text-red-600 hover:bg-red-50">
+                               Trennen
+                            </Button>
+                         </div>
+                      ) : (
+                         <div className="flex flex-col items-start gap-4 p-4 border rounded-lg bg-card text-card-foreground shadow-sm">
+                            <div className="flex items-center gap-4">
+                               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-50">
+                                  <svg viewBox="0 0 32 32" className="h-6 w-6" fill="#635BFF"><path d="M11.6 24.3c-.6 0-1.1-.5-1.1-1.1V12.1c0-.6.5-1.1 1.1-1.1.6 0 1.1.5 1.1 1.1v11.1c0 .6-.5 1.1-1.1 1.1zM20.4 24.3c-.6 0-1.1-.5-1.1-1.1V7.7c0-.6.5-1.1 1.1-1.1.6 0 1.1.5 1.1 1.1v15.5c0 .6-.5 1.1-1.1 1.1zM7.2 24.3c-.6 0-1.1-.5-1.1-1.1v-6.7c0-.6.5-1.1 1.1-1.1.6 0 1.1.5 1.1 1.1v6.7c0 .6-.5 1.1-1.1 1.1zM24.8 24.3c-.6 0-1.1-.5-1.1-1.1V14.3c0-.6.5-1.1 1.1-1.1.6 0 1.1.5 1.1 1.1v8.9c0 .6-.5 1.1-1.1 1.1zM16 24.3c-.6 0-1.1-.5-1.1-1.1V10c0-.6.5-1.1 1.1-1.1.6 0 1.1.5 1.1 1.1v13.2c0 .6-.5 1.1-1.1 1.1z" /></svg>
+                               </div>
+                               <div className="space-y-1">
+                                  <h4 className="text-sm font-semibold">Zahlungen einrichten</h4>
+                                  <p className="text-sm text-muted-foreground">
+                                    Verbinden Sie Ihr Stripe-Konto, um Startgebühren direkt online zu empfangen.
+                                  </p>
+                               </div>
+                            </div>
+                            <Button 
+                              size="sm"
+                              onClick={() => window.location.href = '/api/admin/stripe/connect'}
+                              className="w-full sm:w-auto"
+                            >
+                               Mit Stripe verbinden
+                            </Button>
+                         </div>
                       )}
 
-                      <div className="flex sm:justify-end">
-                        <LoadingButton onClick={updateSettings} loading={saving} loadingText="Speichere..." className="w-full sm:w-auto">
-                          Stripe-Einstellungen speichern
-                        </LoadingButton>
-                      </div>
+                      {/* Manual Settings Hidden by default or removed to simplify */}
+                      {/* Only showing manual if specifically enabled via props or if keys exist but not stripe connected - for now removing to make it "simpler" as requested */}
+                      
+                      {/* Hidden inputs to keep state consistent if needed, or we just rely on API */}
+                      
+                        {/* Remove orphan inputs */}
                     </CardContent>
                   </Card>
 

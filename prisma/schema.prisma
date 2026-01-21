@@ -30,47 +30,47 @@ model User {
 }
 
 model Tournament {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  startDate   DateTime
-  endDate     DateTime?
-  status      TournamentStatus @default(UPCOMING)
-  maxPlayers  Int      @default(64)
-  entryFee    Float    @default(0)
-  location    String?  // Veranstaltungsort (z.B. "Sportheim Puschendorf")
-  street      String?  // Straße und Hausnummer (z.B. "Waldstraße 1")
+  id              String           @id @default(cuid())
+  name            String
+  description     String?
+  startDate       DateTime
+  endDate         DateTime?
+  status          TournamentStatus @default(UPCOMING)
+  maxPlayers      Int              @default(64)
+  entryFee        Float            @default(0)
+  location        String? // Veranstaltungsort (z.B. "Sportheim Puschendorf")
+  street          String? // Straße und Hausnummer (z.B. "Waldstraße 1")
   shootoutBoardId String? // ID der Scheibe für Shootout
-  checkoutMode String  @default("DOUBLE_OUT") // SINGLE_OUT, DOUBLE_OUT, MASTER_OUT
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  checkoutMode    String           @default("DOUBLE_OUT") // SINGLE_OUT, DOUBLE_OUT, MASTER_OUT
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   // Beziehungen
-  players     TournamentPlayer[]
-  games       Game[]
-  boards      Board[]
+  players         TournamentPlayer[]
+  games           Game[]
+  boards          Board[]
   shootoutResults ShootoutResult[]
-  shootoutState ShootoutState?
-  accessGrants TournamentAccess[]
+  shootoutState   ShootoutState?
+  accessGrants    TournamentAccess[]
 
   @@map("tournaments")
 }
 
 model TournamentAccess {
-  id           String   @id @default(cuid())
+  id           String               @id @default(cuid())
   tournamentId String
   userId       String
   role         TournamentAccessRole @default(VIEWER)
-  grantedAt    DateTime @default(now())
-  grantedBy    String?  // userId who granted access
+  grantedAt    DateTime             @default(now())
+  grantedBy    String? // userId who granted access
   expiresAt    DateTime? // Optional expiration
 
   // Granulare Berechtigungen (JSON)
-  permissions  String   @default("{}") // JSON string with detailed permissions
+  permissions String @default("{}") // JSON string with detailed permissions
 
   // Beziehungen
-  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([tournamentId, userId])
   @@map("tournament_access")
@@ -80,82 +80,82 @@ model ShootoutResult {
   id           String   @id @default(cuid())
   tournamentId String
   playerId     String
-  boardId      String?  // Scheibe auf der das Shootout stattfand
-  score        Int      // Gesamtscore (Summe der 3 Würfe)
+  boardId      String? // Scheibe auf der das Shootout stattfand
+  score        Int // Gesamtscore (Summe der 3 Würfe)
   dart1        Int      @default(0) // Erster Wurf
   dart2        Int      @default(0) // Zweiter Wurf
   dart3        Int      @default(0) // Dritter Wurf
-  rank         Int?     // Endgültige Platzierung nach allen Ergebnissen
+  rank         Int? // Endgültige Platzierung nach allen Ergebnissen
   completedAt  DateTime @default(now())
 
   // Beziehungen
-  tournament   Tournament       @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  player       TournamentPlayer @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  board        Board?           @relation(fields: [boardId], references: [id])
+  tournament Tournament       @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  player     TournamentPlayer @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  board      Board?           @relation(fields: [boardId], references: [id])
 
   @@unique([tournamentId, playerId])
   @@map("shootout_results")
 }
 
 model TournamentPlayer {
-  id           String   @id @default(cuid())
+  id           String       @id @default(cuid())
   tournamentId String
   userId       String
-  playerName   String   // Anzeigename im Turnier
-  seed         Int?     // Setzposition nach Shootout
+  playerName   String // Anzeigename im Turnier
+  seed         Int? // Setzposition nach Shootout
   status       PlayerStatus @default(REGISTERED)
-  registeredAt DateTime @default(now())
-  paid         Boolean  @default(false)
+  registeredAt DateTime     @default(now())
+  paid         Boolean      @default(false)
 
   // Payment-Felder
   registrationDate      DateTime?
-  paymentStatus         String?   // PENDING, PAID, FAILED, REFUNDED
-  paymentMethod         String?   // STRIPE, CASH, FREE
+  paymentStatus         String? // PENDING, PAID, FAILED, REFUNDED
+  paymentMethod         String? // STRIPE, CASH, FREE
   stripePaymentIntentId String?   @unique // Stripe PaymentIntent ID
 
   // Darts-spezifische Statistiken
-  average         Float?    // Gesamt-Average (Punkte pro Dart)
-  firstNineAvg    Float?    // First 9 Average
-  highFinish      Int?      // Höchstes Finish
-  oneEighties     Int?      @default(0) // Anzahl 180er
-  checkoutRate    Float?    // Checkout-Quote in %
-  doubleRate      Float?    // Double-Quote in %
-  bestLeg         Int?      // Bestes Leg
-  totalPoints     Int?      @default(0) // Gesamtpunkte im Turnier
-  legsPlayed      Int?      @default(0) // Anzahl gespielte Legs
-  legsWon         Int?      @default(0) // Anzahl gewonnene Legs
-  matchesPlayed   Int?      @default(0) // Anzahl gespielte Matches
-  matchesWon      Int?      @default(0) // Anzahl gewonnene Matches
-  currentRank     Int?      // Aktuelle Ranglisten-Position
-  prizeMoney      Float?    @default(0) // Gewonnenes Preisgeld
+  average       Float? // Gesamt-Average (Punkte pro Dart)
+  firstNineAvg  Float? // First 9 Average
+  highFinish    Int? // Höchstes Finish
+  oneEighties   Int?   @default(0) // Anzahl 180er
+  checkoutRate  Float? // Checkout-Quote in %
+  doubleRate    Float? // Double-Quote in %
+  bestLeg       Int? // Bestes Leg
+  totalPoints   Int?   @default(0) // Gesamtpunkte im Turnier
+  legsPlayed    Int?   @default(0) // Anzahl gespielte Legs
+  legsWon       Int?   @default(0) // Anzahl gewonnene Legs
+  matchesPlayed Int?   @default(0) // Anzahl gespielte Matches
+  matchesWon    Int?   @default(0) // Anzahl gewonnene Matches
+  currentRank   Int? // Aktuelle Ranglisten-Position
+  prizeMoney    Float? @default(0) // Gewonnenes Preisgeld
 
   // Beziehungen
-  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  gamesAsPlayer1 Game[]   @relation("GamePlayer1")
-  gamesAsPlayer2 Game[]   @relation("GamePlayer2")
-  gamesAsWinner  Game[]   @relation("GameWinner")
-  throws        Throw[]
+  tournament      Tournament       @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gamesAsPlayer1  Game[]           @relation("GamePlayer1")
+  gamesAsPlayer2  Game[]           @relation("GamePlayer2")
+  gamesAsWinner   Game[]           @relation("GameWinner")
+  throws          Throw[]
   shootoutResults ShootoutResult[]
-  shootoutState ShootoutState?
+  shootoutState   ShootoutState?
 
   @@unique([tournamentId, userId])
   @@map("tournament_players")
 }
 
 model Board {
-  id           String   @id @default(cuid())
-  name         String   // z.B. "Scheibe 1", "Scheibe 2"
+  id           String  @id @default(cuid())
+  name         String // z.B. "Scheibe 1", "Scheibe 2"
   tournamentId String
-  accessCode   String   @unique // 5-stelliger zufälliger Code für sicheren Zugriff
-  isActive     Boolean  @default(true)
-  priority     Int      @default(1) // 1 = höchste Priorität
-  isMain       Boolean  @default(false) // Markiert die Hauptscheibe für wichtige Spiele
-  legSettings  Json?    // Leg-Einstellungen als JSON
+  accessCode   String  @unique // 5-stelliger zufälliger Code für sicheren Zugriff
+  isActive     Boolean @default(true)
+  priority     Int     @default(1) // 1 = höchste Priorität
+  isMain       Boolean @default(false) // Markiert die Hauptscheibe für wichtige Spiele
+  legSettings  Json? // Leg-Einstellungen als JSON
 
   // Beziehungen
-  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  games        Game[]
+  tournament      Tournament       @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  games           Game[]
   shootoutResults ShootoutResult[]
 
   @@map("boards")
@@ -163,9 +163,9 @@ model Board {
 
 model Dartboard {
   id          String   @id @default(cuid())
-  name        String   // z.B. "Dartscheibe A", "Dartscheibe B"
+  name        String // z.B. "Dartscheibe A", "Dartscheibe B"
   gameMode    String   @default("501") // Spielmodus (nur 501)
-  legSettings Json     // Leg-Einstellungen pro Runde als JSON
+  legSettings Json // Leg-Einstellungen pro Runde als JSON
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -173,55 +173,31 @@ model Dartboard {
   @@map("dartboards")
 }
 
-model SystemSettings {
-  id                  String   @id @default("default")
-  maintenanceMode     Boolean  @default(false) // Wartungsmodus
-  allowRegistration   Boolean  @default(true) // Registrierung erlauben
-  maxConcurrentGames  Int      @default(8) // Maximale gleichzeitige Spiele
-  autoSaveInterval    Int      @default(30) // Auto-Speicher-Intervall in Sekunden
-  logLevel            String   @default("info") // Log-Level
-  websocketTimeout    Int      @default(30000) // WebSocket Timeout in ms
-  cacheTimeout        Int      @default(3600) // Cache Timeout in Sekunden
-  maxConnections      Int      @default(100) // Maximale Verbindungen
-  monitoringInterval  Int      @default(60) // Monitoring-Intervall in Sekunden
-  
-  // Stripe-Einstellungen
-  stripeEnabled       Boolean  @default(false) // Stripe-Zahlungen aktivieren
-  stripePublishableKey String? // Stripe Publishable Key
-  stripeSecretKey     String? // Stripe Secret Key (verschlüsselt speichern)
-  stripeWebhookSecret String? // Stripe Webhook Secret
-  
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-
-  @@map("system_settings")
-}
-
 model Game {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   tournamentId String
-  round        Int      // Turnierrunde (1, 2, 3, 4, 5, 6)
+  round        Int // Turnierrunde (1, 2, 3, 4, 5, 6)
   boardId      String?
   player1Id    String?
   player2Id    String?
   winnerId     String?
   status       GameStatus @default(WAITING)
-  legsToWin    Int      @default(2)
-  currentLeg   Int      @default(1)
-  player1Legs  Int      @default(0)
-  player2Legs  Int      @default(0)
-  currentThrow Json?    // Temporary current throw data: {darts: number[], player: 1|2, score: number}
+  legsToWin    Int        @default(2)
+  currentLeg   Int        @default(1)
+  player1Legs  Int        @default(0)
+  player2Legs  Int        @default(0)
+  currentThrow Json? // Temporary current throw data: {darts: number[], player: 1|2, score: number}
   scheduledAt  DateTime?
   startedAt    DateTime?
   finishedAt   DateTime?
 
   // Beziehungen
-  tournament   Tournament       @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  board        Board?           @relation(fields: [boardId], references: [id])
-  player1      TournamentPlayer? @relation("GamePlayer1", fields: [player1Id], references: [id])
-  player2      TournamentPlayer? @relation("GamePlayer2", fields: [player2Id], references: [id])
-  winner       TournamentPlayer? @relation("GameWinner", fields: [winnerId], references: [id])
-  throws       Throw[]
+  tournament Tournament        @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  board      Board?            @relation(fields: [boardId], references: [id])
+  player1    TournamentPlayer? @relation("GamePlayer1", fields: [player1Id], references: [id])
+  player2    TournamentPlayer? @relation("GamePlayer2", fields: [player2Id], references: [id])
+  winner     TournamentPlayer? @relation("GameWinner", fields: [winnerId], references: [id])
+  throws     Throw[]
 
   @@map("games")
 }
@@ -238,8 +214,8 @@ model Throw {
   createdAt DateTime @default(now())
 
   // Beziehungen
-  game      Game            @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  player    TournamentPlayer @relation(fields: [playerId], references: [id])
+  game   Game             @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  player TournamentPlayer @relation(fields: [playerId], references: [id])
 
   @@map("throws")
 }
@@ -277,88 +253,88 @@ enum UserRole {
 }
 
 enum TournamentAccessRole {
-  VIEWER      // Can only view tournament data
-  OPERATOR    // Can manage boards, games, shootout
-  MANAGER     // Can manage everything except access control
-  ADMIN       // Full access including user management
+  VIEWER // Can only view tournament data
+  OPERATOR // Can manage boards, games, shootout
+  MANAGER // Can manage everything except access control
+  ADMIN // Full access including user management
 }
 
 model WebAuthnCredential {
-  id              String   @id @default(cuid())
-  userId          String
-  credentialId    String   @unique
-  publicKey       String
-  counter         Int      @default(0)
-  transports      String?  // JSON string of transport types
-  createdAt       DateTime @default(now())
+  id           String   @id @default(cuid())
+  userId       String
+  credentialId String   @unique
+  publicKey    String
+  counter      Int      @default(0)
+  transports   String? // JSON string of transport types
+  createdAt    DateTime @default(now())
 
   // Beziehungen
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("webauthn_credentials")
 }
 
 model BroadcastingSettings {
-  id                  String   @id @default("default")
-  obsUrl              String?  // OBS WebSocket URL
-  obsPassword         String?  // OBS WebSocket Passwort
-  displayRefresh      Int      @default(1000) // Anzeige-Aktualisierung in ms
-  transitionDuration  Int      @default(500) // Übergangsdauer in ms
-  overlayWidth        Int      @default(1920) // Overlay Breite in px
-  overlayHeight       Int      @default(1080) // Overlay Höhe in px
-  fontSize            Int      @default(48) // Schriftgröße in px
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                 String   @id @default("default")
+  obsUrl             String? // OBS WebSocket URL
+  obsPassword        String? // OBS WebSocket Passwort
+  displayRefresh     Int      @default(1000) // Anzeige-Aktualisierung in ms
+  transitionDuration Int      @default(500) // Übergangsdauer in ms
+  overlayWidth       Int      @default(1920) // Overlay Breite in px
+  overlayHeight      Int      @default(1080) // Overlay Höhe in px
+  fontSize           Int      @default(48) // Schriftgröße in px
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@map("broadcasting_settings")
 }
 
 model TournamentTreeSettings {
-  id                  String   @id @default("default")
-  seedingAlgorithm    String   @default("standard") // Setzlisten-Algorithmus
-  minBreakTime        Int      @default(10) // Mindest-Pausenzeit in Minuten
-  mainBoardPriority   String   @default("finals") // Haupt-Scheibe Priorität
-  autoAssignment      Boolean  @default(true) // Automatische Zuordnung
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                String   @id @default("default")
+  seedingAlgorithm  String   @default("standard") // Setzlisten-Algorithmus
+  minBreakTime      Int      @default(10) // Mindest-Pausenzeit in Minuten
+  mainBoardPriority String   @default("finals") // Haupt-Scheibe Priorität
+  autoAssignment    Boolean  @default(true) // Automatische Zuordnung
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@map("tournament_tree_settings")
 }
 
 model TournamentSettings {
-  id                String   @id @default("default")
-  defaultMaxPlayers Int      @default(64) // Standard maximale Spielerzahl
-  defaultEntryFee   Float    @default(0) // Standard Startgebühr
+  id                    String  @id @default("default")
+  defaultMaxPlayers     Int     @default(64) // Standard maximale Spielerzahl
+  defaultEntryFee       Float   @default(0) // Standard Startgebühr
   allowLateRegistration Boolean @default(true) // Späte Registrierung erlauben
-  autoStartGames    Boolean  @default(false) // Spiele automatisch starten
-  showLiveScores    Boolean  @default(true) // Live-Ergebnisse anzeigen
-  enableStatistics  Boolean  @default(true) // Statistiken aktivieren
-  stripeEnabled     Boolean  @default(false) // Stripe-Zahlungen aktivieren
-  stripePublishableKey String? // Stripe Publishable Key
-  stripeSecretKey   String? // Stripe Secret Key
-  stripeWebhookSecret String? // Stripe Webhook Secret
+  autoStartGames        Boolean @default(false) // Spiele automatisch starten
+  showLiveScores        Boolean @default(true) // Live-Ergebnisse anzeigen
+  enableStatistics      Boolean @default(true) // Statistiken aktivieren
+  stripeEnabled         Boolean @default(false) // Stripe-Zahlungen aktivieren
+  stripePublishableKey  String? // Stripe Publishable Key
+  stripeSecretKey       String? // Stripe Secret Key
+  stripeWebhookSecret   String? // Stripe Webhook Secret
 
   // Logo-Einstellungen
-  mainLogo         String? // Hauptlogo für Turnier-Bildschirme
-  sponsorLogos     String? // Sponsor-Logos (JSON Array von URLs)
-  backgroundImage  String? // Hintergrundbild für Displays
+  mainLogo        String? // Hauptlogo für Turnier-Bildschirme
+  sponsorLogos    String? // Sponsor-Logos (JSON Array von URLs)
+  backgroundImage String? // Hintergrundbild für Displays
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("tournament_settings")
 }
 
 model ShootoutState {
-  id           String   @id @default(cuid())
-  tournamentId String   @unique
-  currentPlayerId String? @unique
-  status       String   @default("waiting_for_selection") // waiting_for_selection, player_selected, throwing, waiting_for_admin
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String   @id @default(cuid())
+  tournamentId    String   @unique
+  currentPlayerId String?  @unique
+  status          String   @default("waiting_for_selection") // waiting_for_selection, player_selected, throwing, waiting_for_admin
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Beziehungen
-  tournament    Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  tournament    Tournament        @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   currentPlayer TournamentPlayer? @relation(fields: [currentPlayerId], references: [id], onDelete: SetNull)
 
   @@map("shootout_state")
@@ -395,9 +371,49 @@ model BracketConfig {
   mainBoardPriority      Boolean  @default(true)
   distributeEvenly       Boolean  @default(true)
   mainBoardPriorityLevel String   @default("finals")
-  legsPerRound           String   // JSON String: {"round1": 1, "round2": 1, ...}
+  legsPerRound           String // JSON String: {"round1": 1, "round2": 1, ...}
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
   @@map("bracket_config")
+}
+
+model PageModule {
+  id        String   @id @default(cuid())
+  type      String // z.B. "hero", "stats", "features", "faq"
+  order     Int      @default(0)
+  isVisible Boolean  @default(true)
+  content   Json // Flexibler Inhalt (Titel, Text, Bilder, Links)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("page_modules")
+}
+
+// Update SystemSettings for Stripe Connect
+model SystemSettings {
+  id                 String  @id @default("default")
+  maintenanceMode    Boolean @default(false)
+  allowRegistration  Boolean @default(true)
+  maxConcurrentGames Int     @default(8)
+  autoSaveInterval   Int     @default(30)
+  logLevel           String  @default("info")
+  websocketTimeout   Int     @default(30000)
+  cacheTimeout       Int     @default(3600)
+  maxConnections     Int     @default(100)
+  monitoringInterval Int     @default(60)
+
+  // Stripe-Einstellungen (Manual OR Connect)
+  stripeEnabled        Boolean @default(false)
+  stripePublishableKey String? // Override manual
+  stripeSecretKey      String? // Override manual
+  stripeWebhookSecret  String? // Override manual
+
+  stripeAccountId String? // Connected Account ID
+  stripeConnected Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
 }
