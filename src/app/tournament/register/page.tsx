@@ -126,9 +126,9 @@ export default function TournamentRegistrationPage() {
     setLoading(true);
     setError(null);
 
-    const isFull = selectedTournament._count.players >= selectedTournament.maxPlayers;
+    const isFull = selectedTournament._count.players >= selectedTournament.maxPlayers || selectedTournament.status === 'WAITLIST';
 
-    // Check if tournament is free OR FULL (Waiting list doesn't pay immediately)
+    // Check if tournament is free OR FULL or WAITLIST (Waiting list doesn't pay immediately)
     if (selectedTournament.entryFee === 0 || isFull) {
       try {
         const res = await fetch('/api/tournament/register/public', {
@@ -324,7 +324,7 @@ export default function TournamentRegistrationPage() {
                     key={t.id} 
                     className={cn(
                       "w-full md:w-[380px] min-h-[450px] cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1 active:scale-95 flex flex-col",
-                      t.status !== 'REGISTRATION_OPEN' && "opacity-60 pointer-events-none grayscale"
+                      (t.status !== 'REGISTRATION_OPEN' && t.status !== 'WAITLIST') && "opacity-60 pointer-events-none grayscale"
                     )}
                     onClick={() => handleSelect(t)}
                   >
@@ -333,8 +333,8 @@ export default function TournamentRegistrationPage() {
                         <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-900">
                           <Trophy className="h-6 w-6" />
                         </div>
-                        <Badge variant={t.status === 'REGISTRATION_OPEN' ? 'default' : 'secondary'} className={t.status === 'REGISTRATION_OPEN' ? "bg-blue-600 hover:bg-blue-700 text-sm px-3 py-1" : "text-sm px-3 py-1"}>
-                          {t.status === 'REGISTRATION_OPEN' ? 'Offen' : 'Geschlossen'}
+                        <Badge variant={t.status === 'REGISTRATION_OPEN' || t.status === 'WAITLIST' ? 'default' : 'secondary'} className={t.status === 'REGISTRATION_OPEN' || t.status === 'WAITLIST' ? "bg-blue-600 hover:bg-blue-700 text-sm px-3 py-1" : "text-sm px-3 py-1"}>
+                          {t.status === 'REGISTRATION_OPEN' ? 'Offen' : t.status === 'WAITLIST' ? 'Warteliste' : 'Geschlossen'}
                         </Badge>
                       </div>
 
@@ -359,12 +359,12 @@ export default function TournamentRegistrationPage() {
                         )}
                         <div className="flex items-center text-sm text-slate-600">
                           <Users className="h-4 w-4 mr-3 text-slate-400" />
-                          {t._count.players} / {t.maxPlayers} Teilnehmer
+                          {t.status === 'WAITLIST' ? `${t.maxPlayers} / ${t.maxPlayers} Teilnehmer` : `${t._count.players} / ${t.maxPlayers} Teilnehmer`}
                         </div>
                         <div className="flex items-center justify-between mt-4 pt-2">
                            <span className="text-2xl font-bold text-slate-900">{t.entryFee}€</span>
                            <span className="text-sm font-medium text-blue-600 flex items-center group-hover:translate-x-1 transition-transform">
-                             {t._count.players >= t.maxPlayers ? 'Warteliste' : 'Anmelden'} <ArrowRight className="ml-1 h-4 w-4" />
+                             {(t._count.players >= t.maxPlayers || t.status === 'WAITLIST') ? 'Warteliste' : 'Anmelden'} <ArrowRight className="ml-1 h-4 w-4" />
                            </span>
                         </div>
                       </div>
@@ -463,7 +463,7 @@ export default function TournamentRegistrationPage() {
                           </Button>
                           <Button type="submit" disabled={loading} className="h-10 flex-[2] bg-slate-900 text-white hover:bg-black rounded-lg shadow-lg shadow-slate-900/20 text-sm font-medium">
                              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : (
-                               selectedTournament._count.players >= selectedTournament.maxPlayers ? "Auf Warteliste setzen" :
+                               (selectedTournament._count.players >= selectedTournament.maxPlayers || selectedTournament.status === 'WAITLIST') ? "Auf Warteliste setzen" :
                                (stripeEnabled ? "Weiter zur Zahlung" : "Weiter zur Bestätigung")
                              )}
                           </Button>

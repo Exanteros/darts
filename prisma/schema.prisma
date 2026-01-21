@@ -228,6 +228,7 @@ enum TournamentStatus {
   ACTIVE
   FINISHED
   CANCELLED
+  WAITLIST
 }
 
 enum PlayerStatus {

@@ -50,7 +50,7 @@ interface TournamentSettings {
   description: string;
   startDate?: Date;
   endDate?: Date;
-  status: 'UPCOMING' | 'REGISTRATION_OPEN' | 'REGISTRATION_CLOSED' | 'SHOOTOUT' | 'ACTIVE' | 'FINISHED' | 'CANCELLED';
+  status: 'UPCOMING' | 'REGISTRATION_OPEN' | 'REGISTRATION_CLOSED' | 'SHOOTOUT' | 'ACTIVE' | 'FINISHED' | 'CANCELLED' | 'WAITLIST';
   maxPlayers: number;
   entryFee: number;
   gameMode: '501' | '301' | 'cricket';
@@ -365,10 +365,8 @@ export default function TournamentPage() {
         return <Badge variant="default">Aktiv</Badge>;
       case 'FINISHED':
         return <Badge variant="outline">Abgeschlossen</Badge>;
-      case 'CANCELLED':
-        return <Badge variant="destructive">Abgebrochen</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+      case 'WAITLIST':
+        return <Badge variant="secondary">Warteschlange</Badge>;
     }
   };
 
@@ -610,7 +608,7 @@ export default function TournamentPage() {
     }
   }, [settings.status]);
 
-  const handleStatusChange = (value: 'UPCOMING' | 'REGISTRATION_OPEN' | 'REGISTRATION_CLOSED' | 'SHOOTOUT' | 'ACTIVE' | 'FINISHED' | 'CANCELLED') => {
+  const handleStatusChange = (value: 'UPCOMING' | 'REGISTRATION_OPEN' | 'REGISTRATION_CLOSED' | 'SHOOTOUT' | 'ACTIVE' | 'FINISHED' | 'CANCELLED' | 'WAITLIST') => {
     if (value === 'ACTIVE' && shootoutStatus && !shootoutStatus.allCompleted) {
       toast({
         title: "Aktion nicht erlaubt",
@@ -729,7 +727,7 @@ export default function TournamentPage() {
                                 Aktiv {shootoutStatus && !shootoutStatus.allCompleted && `(${shootoutStatus.playersWithShootout}/${shootoutStatus.totalPlayers})`}
                               </SelectItem>
                               <SelectItem value="FINISHED">Abgeschlossen</SelectItem>
-                              <SelectItem value="CANCELLED">Abgebrochen</SelectItem>
+                              <SelectItem value="WAITLIST">Warteschlange</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
