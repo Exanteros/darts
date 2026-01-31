@@ -958,7 +958,7 @@ export default function PlayersPage() {
               if (stat.label === 'Average:' && typeof stat.value === 'number' && stat.value > 80) {
                 playerSheet.getCell(`B${detailRow}`).font = { bold: true, color: { argb: 'FF00AA00' } };
               }
-              if (stat.label === '180s:' && stat.value > 0) {
+              if (stat.label === '180s:' && typeof stat.value === 'number' && stat.value > 0) {
                 playerSheet.getCell(`B${detailRow}`).font = { bold: true, color: { argb: 'FFFF6600' } };
               }
               
