@@ -108,6 +108,11 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
   const [shownGamePopups, setShownGamePopups] = useState<Set<string>>(new Set());
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   
+  // Edit Mode State
+  const [editingThrowIndex, setEditingThrowIndex] = useState<number | null>(null);
+  const [editedThrow, setEditedThrow] = useState<ThrowDart[]>([]);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  
   // Practice Mode State
   const [showPracticeSetup, setShowPracticeSetup] = useState(false);
   const [practiceSessionActive, setPracticeSessionActive] = useState(false);
@@ -1036,6 +1041,168 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
     toast({ title: "Einstellungen übernommen", description: "Neues Spiel gestartet" });
   };
 
+  const startEditThrow = (throwIndex: number) => {
+    const throwToEdit = gameState.throws[throwIndex];
+    if (!throwToEdit) return;
+    
+    // Konvertiere die Wurf-Daten zurück in ThrowDart Format
+    const darts: ThrowDart[] = throwToEdit.darts.map(value => ({
+      value,
+      multiplier: value === 50 ? 2 : value === 25 ? 1 : 1 // Vereinfachte Logik
+    }));
+    
+    setEditingThrowIndex(throwIndex);
+    setEditedThrow(darts);
+    setShowEditDialog(true);
+  };
+
+  const saveEditedThrow = async () => {
+    if (editingThrowIndex === null || editedThrow.length === 0) return;
+    
+    const throwToEdit = gameState.throws[editingThrowIndex];
+    if (!throwToEdit) return;
+
+    const newTotal = editedThrow.reduce((sum, dart) => sum + dart.value, 0);
+    
+    // Aktualisiere den GameState
+    setGameState(prev => {
+      const newState = { ...prev };
+      const updatedThrows = [...prev.throws];
+      
+      // Finde den letzten Wurf DESSELBEN SPIELERS vor diesem Wurf
+      let previousRemaining = isPracticeMode ? practiceConfig.startingScore : 501;
+      for (let i = editingThrowIndex - 1; i >= 0; i--) {
+        if (updatedThrows[i].player === throwToEdit.player) {
+          previousRemaining = updatedThrows[i].remaining;
+          break;
+        }
+      }
+      
+      const newRemaining = previousRemaining - newTotal;
+      
+      // Aktualisiere den bearbeiteten Wurf
+      updatedThrows[editingThrowIndex] = {
+        ...throwToEdit,
+        darts: editedThrow.map(d => d.value),
+        total: newTotal,
+        remaining: newRemaining
+      };
+      
+      // Aktualisiere alle nachfolgenden Würfe DESSELBEN SPIELERS
+      for (let i = editingThrowIndex + 1; i < updatedThrows.length; i++) {
+        if (updatedThrows[i].player === throwToEdit.player) {
+          // Finde den vorherigen Wurf dieses Spielers
+          let prevPlayerRemaining = previousRemaining;
+          for (let j = i - 1; j >= 0; j--) {
+            if (updatedThrows[j].player === updatedThrows[i].player) {
+              prevPlayerRemaining = updatedThrows[j].remaining;
+              break;
+            }
+          }
+          updatedThrows[i] = {
+            ...updatedThrows[i],
+            remaining: prevPlayerRemaining - updatedThrows[i].total
+          };
+        }
+      }
+      
+      newState.throws = updatedThrows;
+      
+      // Aktualisiere den aktuellen Score der BEIDEN Spieler
+      // Finde den letzten Wurf jedes Spielers
+      let lastPlayer1Throw = null;
+      let lastPlayer2Throw = null;
+      
+      for (let i = updatedThrows.length - 1; i >= 0; i--) {
+        if (updatedThrows[i].player === 1 && !lastPlayer1Throw) {
+          lastPlayer1Throw = updatedThrows[i];
+        }
+        if (updatedThrows[i].player === 2 && !lastPlayer2Throw) {
+          lastPlayer2Throw = updatedThrows[i];
+        }
+        if (lastPlayer1Throw && lastPlayer2Throw) break;
+      }
+      
+      if (lastPlayer1Throw) {
+        newState.player1.score = lastPlayer1Throw.remaining;
+      }
+      if (lastPlayer2Throw) {
+        newState.player2.score = lastPlayer2Throw.remaining;
+      }
+      
+      return newState;
+    });
+
+    // Sync mit Backend wenn ein echtes Spiel läuft
+    if (currentGame?.id) {
+      try {
+        await fetch('/api/game/throw/edit', {
+          method: 'PUT',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-board-code': code
+          },
+          body: JSON.stringify({
+            gameId: currentGame.id,
+            throwIndex: editingThrowIndex,
+            dart1: editedThrow[0]?.value || 0,
+            dart2: editedThrow[1]?.value || 0,
+            dart3: editedThrow[2]?.value || 0,
+            score: newTotal,
+            leg: throwToEdit.leg
+          })
+        });
+      } catch (error) {
+        console.error('Error updating throw:', error);
+        toast({ 
+          title: "Fehler", 
+          description: "Wurf konnte nicht aktualisiert werden",
+          variant: "destructive" 
+        });
+      }
+    }
+
+    // WebSocket Update senden
+    if (boardId && wsConnected) {
+      sendGameUpdate({
+        type: 'throw-update',
+        boardId,
+        gameData: {
+          player1Score: gameState.player1.score,
+          player2Score: gameState.player2.score,
+          player1Legs: gameState.player1.legs,
+          player2Legs: gameState.player2.legs,
+          currentPlayer: gameState.currentPlayer,
+          currentLeg: gameState.currentLeg
+        }
+      });
+    }
+
+    setShowEditDialog(false);
+    setEditingThrowIndex(null);
+    setEditedThrow([]);
+    toast({ title: "Wurf aktualisiert" });
+  };
+
+  const cancelEdit = () => {
+    setShowEditDialog(false);
+    setEditingThrowIndex(null);
+    setEditedThrow([]);
+    setSelectedNumber(null);
+  };
+
+  const addDartToEdit = (baseNumber: number, mult: 0 | 1 | 2 | 3) => {
+    if (editedThrow.length >= 3) return;
+    
+    const dartValue = baseNumber * mult;
+    const newDart = { value: dartValue, multiplier: mult };
+    setEditedThrow([...editedThrow, newDart]);
+  };
+
+  const clearEditedThrow = () => {
+    setEditedThrow([]);
+  };
+
   // --- RENDER ---
 
   if (loading) {
@@ -1147,6 +1314,7 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
               />
               <GameHistory 
                 gameState={gameState} 
+                onEditThrow={startEditThrow}
                 // NEU: Versteckt auf Mobile und Tablet Portrait, sichtbar ab Large (Desktop/iPad Q)
                 className="flex-1 hidden lg:flex"
               />
@@ -1160,8 +1328,8 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
       <MultiplierDialog
         selectedNumber={selectedNumber}
         onSetSelectedNumber={setSelectedNumber}
-        onAddDart={addDart}
-        currentThrowLength={currentThrow.length}
+        onAddDart={showEditDialog ? addDartToEdit : addDart}
+        currentThrowLength={showEditDialog ? editedThrow.length : currentThrow.length}
       />
 
       <ShootoutModals
@@ -1201,6 +1369,122 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
             </Button>
             <Button variant="destructive" onClick={resetGame}>
               Zurücksetzen
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showEditDialog} onOpenChange={(open) => { if (!open) cancelEdit(); }}>
+        <DialogContent className="sm:max-w-2xl bg-white rounded-2xl border-slate-200">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-900">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                <path d="m15 5 4 4"/>
+              </svg>
+              Wurf bearbeiten
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-6">
+            {/* Original Wurf Info */}
+            {editingThrowIndex !== null && gameState.throws[editingThrowIndex] && (
+              <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-3">
+                    <span className="text-slate-400 font-mono">
+                      #{editingThrowIndex + 1}
+                    </span>
+                    <span className="font-medium text-slate-900">
+                      {gameState.throws[editingThrowIndex].player === 1 ? gameState.player1.name : gameState.player2.name}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-slate-400">Original:</span>
+                    <span className="font-bold font-mono text-slate-900 bg-white px-3 py-1 rounded border border-slate-300">
+                      {gameState.throws[editingThrowIndex].total}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Bearbeitete Darts anzeigen */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-slate-700">Neue Würfe eingeben</label>
+              <div className="flex justify-center gap-3">
+                {[0, 1, 2].map(i => (
+                  <div
+                    key={i}
+                    className={`w-20 h-20 rounded-xl flex items-center justify-center border-2 text-3xl font-mono font-bold transition-all duration-200 ${
+                      editedThrow[i] !== undefined 
+                        ? "border-slate-900 bg-slate-900 text-white shadow-lg shadow-slate-900/20 scale-105" 
+                        : "border-slate-100 bg-slate-50 text-slate-300"
+                    }`}
+                  >
+                    {editedThrow[i] !== undefined ? editedThrow[i].value : (i + 1)}
+                  </div>
+                ))}
+              </div>
+              <div className="text-center">
+                <div className="text-4xl font-bold font-mono text-slate-900 tracking-tight">
+                  {editedThrow.length > 0 ? editedThrow.reduce((sum, dart) => sum + dart.value, 0) : 0}
+                </div>
+                <div className="text-sm text-slate-400 font-medium uppercase tracking-wider">
+                  Gesamtpunkte
+                </div>
+              </div>
+            </div>
+
+            {/* Dartboard Nummern */}
+            <div className="grid grid-cols-5 gap-2">
+              {dartboardNumbers.map(num => (
+                <Button
+                  key={num}
+                  onClick={() => setSelectedNumber(num)}
+                  variant="outline"
+                  disabled={editedThrow.length >= 3}
+                  className="h-12 text-lg font-semibold rounded-xl border-slate-200 hover:bg-slate-900 hover:text-white hover:border-slate-900"
+                >
+                  {num}
+                </Button>
+              ))}
+              <Button
+                onClick={() => setSelectedNumber(25)}
+                variant="outline"
+                disabled={editedThrow.length >= 3}
+                className="h-12 text-lg font-semibold rounded-xl border-slate-200 hover:bg-slate-900 hover:text-white hover:border-slate-900 col-span-2"
+              >
+                Bull
+              </Button>
+              <Button
+                onClick={() => addDartToEdit(0, 0)}
+                variant="outline"
+                disabled={editedThrow.length >= 3}
+                className="h-12 text-lg font-semibold rounded-xl border-slate-200 hover:bg-slate-900 hover:text-white hover:border-slate-900 col-span-3"
+              >
+                Miss (0)
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={cancelEdit} className="flex-1">
+              Abbrechen
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={clearEditedThrow}
+              disabled={editedThrow.length === 0}
+              className="flex-1"
+            >
+              Löschen
+            </Button>
+            <Button 
+              onClick={saveEditedThrow}
+              disabled={editedThrow.length !== 3}
+              className="flex-1 bg-slate-900 hover:bg-slate-800 text-white"
+            >
+              Speichern
             </Button>
           </div>
         </DialogContent>
@@ -1646,9 +1930,10 @@ const DartboardInput: FC<DartboardInputProps> = ({
 interface GameHistoryProps {
   gameState: GameState;
   className?: string;
+  onEditThrow: (throwIndex: number) => void;
 }
 
-const GameHistory: FC<GameHistoryProps> = ({ gameState, className = '' }) => {
+const GameHistory: FC<GameHistoryProps> = ({ gameState, className = '', onEditThrow }) => {
   if (gameState.isShootout) return null;
 
   return (
@@ -1662,26 +1947,41 @@ const GameHistory: FC<GameHistoryProps> = ({ gameState, className = '' }) => {
         </CardHeader>
         <CardContent className="flex-1 overflow-hidden pt-0">
           <div className="h-full overflow-y-auto pt-4 space-y-2 pr-1 custom-scrollbar">
-            {gameState.throws.slice(-10).reverse().map((throw_, index) => (
-              <div key={gameState.throws.length - index - 1} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm">
-                <div className="flex items-center gap-3">
-                  <span className="text-slate-400 font-mono text-xs w-6">
-                    #{gameState.throws.length - index}
-                  </span>
-                  <span className="font-medium text-slate-900 truncate max-w-[100px]">
-                    {throw_.player === 1 ? gameState.player1.name : gameState.player2.name}
-                  </span>
+            {gameState.throws.slice(-10).reverse().map((throw_, index) => {
+              const throwIndex = gameState.throws.length - index - 1;
+              return (
+                <div key={throwIndex} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm group hover:bg-slate-100 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <span className="text-slate-400 font-mono text-xs w-6">
+                      #{throwIndex + 1}
+                    </span>
+                    <span className="font-medium text-slate-900 truncate max-w-[100px]">
+                      {throw_.player === 1 ? gameState.player1.name : gameState.player2.name}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold font-mono text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                      {throw_.total}
+                    </span>
+                    <span className="text-slate-400 font-mono w-12 text-right">
+                      {throw_.remaining}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onEditThrow(throwIndex)}
+                      className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Wurf bearbeiten"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                        <path d="m15 5 4 4"/>
+                      </svg>
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="font-bold font-mono text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
-                    {throw_.total}
-                  </span>
-                  <span className="text-slate-400 font-mono w-12 text-right">
-                    {throw_.remaining}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {gameState.throws.length === 0 && (
               <div className="text-center py-12">
                 <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">

@@ -10,6 +10,7 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 import { useState, useEffect } from 'react';
+import ExcelJS from 'exceljs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LoadingButton } from '@/components/ui/loading-button';
@@ -130,6 +131,13 @@ export default function PlayersPage() {
   const [stats, setStats] = useState<PlayerStats>({ total: 0 });
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportOptions, setExportOptions] = useState({
+    includeRegistered: true,
+    includeWaitingList: true,
+    includeStatistics: true,
+    includeContactInfo: true
+  });
   const [updating, setUpdating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -448,60 +456,669 @@ export default function PlayersPage() {
     );
   };
 
-  const exportToCSV = () => {
-    const headers = [
-      'Spielername',
-      'Benutzername',
-      'E-Mail',
-      'Turnier',
-      'Status',
-      'Bezahlt',
-      'Average',
-      '180s',
-      'High Finish',
-      'Checkout %',
-      'Total Points',
-      'Legs Played',
-      'Legs Won',
-      'Matches Played',
-      'Matches Won',
-      'Prize Money',
-      'Registriert am'
-    ];
-
-    const csvData = players.map(player => [
-      player.playerName,
-      player.user.name,
-      player.user.email,
-      player.tournament.name,
-      player.status,
-      player.paid ? 'Ja' : 'Nein',
-      player.average || '',
-      player.oneEighties || 0,
-      player.highFinish || '',
-      player.checkoutRate || '',
-      player.totalPoints || 0,
-      player.legsPlayed || 0,
-      player.legsWon || 0,
-      player.matchesPlayed || 0,
-      player.matchesWon || 0,
-      player.prizeMoney || 0,
-      new Date(player.registeredAt).toLocaleDateString('de-DE')
-    ]);
-
-    const csvContent = [headers, ...csvData]
-      .map(row => row.map(field => `"${field}"`).join(','))
-      .join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `spieler-export-${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const exportToExcel = async () => {
+    try {
+      setExporting(true);
+      const workbook = new ExcelJS.Workbook();
+      
+      // Metadaten
+      workbook.creator = 'Dartsturnier System';
+      workbook.created = new Date();
+      workbook.company = currentTournament?.name || 'Dartsturnier';
+      workbook.title = `Spieler Export - ${currentTournament?.name || 'Turnier'}`;
+      
+      // Separiere Spieler nach Status
+      const registeredPlayers = players.filter(p => 
+        ['REGISTERED', 'CONFIRMED', 'ACTIVE', 'ELIMINATED'].includes(p.status)
+      );
+      const waitingListPlayers = players.filter(p => p.status === 'WAITING_LIST');
+      
+      // ========== SHEET 1: ÜBERSICHT / DASHBOARD ==========
+      const dashboardSheet = workbook.addWorksheet('📊 Übersicht', {
+        properties: { tabColor: { argb: 'FF2E86AB' } }
+      });
+      
+      // Logo/Header Bereich
+      dashboardSheet.mergeCells('A1:F3');
+      const logoCell = dashboardSheet.getCell('A1');
+      logoCell.value = `${currentTournament?.name || 'DARTSTURNIER'}\nSpieler Export Report`;
+      logoCell.font = { size: 24, bold: true, color: { argb: 'FFFFFFFF' } };
+      logoCell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF2E86AB' }
+      };
+      logoCell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      dashboardSheet.getRow(1).height = 60;
+      
+      // Datum und Ersteller
+      dashboardSheet.mergeCells('A4:F4');
+      const dateCell = dashboardSheet.getCell('A4');
+      dateCell.value = `Erstellt am: ${new Date().toLocaleDateString('de-DE', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })}`;
+      dateCell.font = { size: 10, italic: true, color: { argb: 'FF666666' } };
+      dateCell.alignment = { horizontal: 'center' };
+      
+      // Statistik-Karten
+      let currentRow = 6;
+      
+      // Karte 1: Gesamtanzahl
+      dashboardSheet.mergeCells(`A${currentRow}:C${currentRow + 2}`);
+      const totalCard = dashboardSheet.getCell(`A${currentRow}`);
+      totalCard.value = `${players.length}\nGESAMTE SPIELER`;
+      totalCard.font = { size: 28, bold: true, color: { argb: 'FF2E86AB' } };
+      totalCard.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE8F4F8' }
+      };
+      totalCard.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      totalCard.border = {
+        top: { style: 'medium', color: { argb: 'FF2E86AB' } },
+        left: { style: 'medium', color: { argb: 'FF2E86AB' } },
+        bottom: { style: 'medium', color: { argb: 'FF2E86AB' } },
+        right: { style: 'medium', color: { argb: 'FF2E86AB' } }
+      };
+      
+      // Karte 2: Angemeldet
+      dashboardSheet.mergeCells(`D${currentRow}:F${currentRow + 2}`);
+      const registeredCard = dashboardSheet.getCell(`D${currentRow}`);
+      registeredCard.value = `${registeredPlayers.length}\nANGEMELDET`;
+      registeredCard.font = { size: 28, bold: true, color: { argb: 'FF00AA00' } };
+      registeredCard.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE8F8E8' }
+      };
+      registeredCard.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      registeredCard.border = {
+        top: { style: 'medium', color: { argb: 'FF00AA00' } },
+        left: { style: 'medium', color: { argb: 'FF00AA00' } },
+        bottom: { style: 'medium', color: { argb: 'FF00AA00' } },
+        right: { style: 'medium', color: { argb: 'FF00AA00' } }
+      };
+      
+      currentRow += 4;
+      
+      // Karte 3: Warteschlange
+      dashboardSheet.mergeCells(`A${currentRow}:C${currentRow + 2}`);
+      const waitingCard = dashboardSheet.getCell(`A${currentRow}`);
+      waitingCard.value = `${waitingListPlayers.length}\nWARTESCHLANGE`;
+      waitingCard.font = { size: 28, bold: true, color: { argb: 'FFFFA500' } };
+      waitingCard.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFFF4E6' }
+      };
+      waitingCard.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      waitingCard.border = {
+        top: { style: 'medium', color: { argb: 'FFFFA500' } },
+        left: { style: 'medium', color: { argb: 'FFFFA500' } },
+        bottom: { style: 'medium', color: { argb: 'FFFFA500' } },
+        right: { style: 'medium', color: { argb: 'FFFFA500' } }
+      };
+      
+      // Karte 4: Bezahlt
+      const paidCount = players.filter(p => p.paid).length;
+      dashboardSheet.mergeCells(`D${currentRow}:F${currentRow + 2}`);
+      const paidCard = dashboardSheet.getCell(`D${currentRow}`);
+      paidCard.value = `${paidCount}\nBEZAHLT`;
+      paidCard.font = { size: 28, bold: true, color: { argb: 'FF0066CC' } };
+      paidCard.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE6F2FF' }
+      };
+      paidCard.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      paidCard.border = {
+        top: { style: 'medium', color: { argb: 'FF0066CC' } },
+        left: { style: 'medium', color: { argb: 'FF0066CC' } },
+        bottom: { style: 'medium', color: { argb: 'FF0066CC' } },
+        right: { style: 'medium', color: { argb: 'FF0066CC' } }
+      };
+      
+      currentRow += 5;
+      
+      // Navigation / Inhaltsverzeichnis
+      dashboardSheet.mergeCells(`A${currentRow}:F${currentRow}`);
+      const navHeader = dashboardSheet.getCell(`A${currentRow}`);
+      navHeader.value = 'NAVIGATION';
+      navHeader.font = { size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+      navHeader.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF333333' }
+      };
+      navHeader.alignment = { vertical: 'middle', horizontal: 'center' };
+      dashboardSheet.getRow(currentRow).height = 25;
+      
+      currentRow++;
+      
+      // Navigation Links
+      if (exportOptions.includeRegistered && registeredPlayers.length > 0) {
+        dashboardSheet.mergeCells(`A${currentRow}:F${currentRow}`);
+        const navLink1 = dashboardSheet.getCell(`A${currentRow}`);
+        navLink1.value = {
+          text: '→ Angemeldete Spieler ansehen',
+          hyperlink: '#\'🎯 Angemeldete Spieler\'!A1'
+        };
+        navLink1.font = { size: 12, underline: true, color: { argb: 'FF0066CC' } };
+        navLink1.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFF8F8F8' }
+        };
+        navLink1.alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+        dashboardSheet.getRow(currentRow).height = 25;
+        currentRow++;
+      }
+      
+      if (exportOptions.includeWaitingList && waitingListPlayers.length > 0) {
+        dashboardSheet.mergeCells(`A${currentRow}:F${currentRow}`);
+        const navLink2 = dashboardSheet.getCell(`A${currentRow}`);
+        navLink2.value = {
+          text: '→ Warteschlange ansehen',
+          hyperlink: '#\'⏳ Warteschlange\'!A1'
+        };
+        navLink2.font = { size: 12, underline: true, color: { argb: 'FFFFA500' } };
+        navLink2.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFF8F8F8' }
+        };
+        navLink2.alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+        dashboardSheet.getRow(currentRow).height = 25;
+        currentRow++;
+      }
+      
+      // Spaltenbreiten für Dashboard
+      dashboardSheet.columns = [
+        { width: 15 },
+        { width: 15 },
+        { width: 15 },
+        { width: 15 },
+        { width: 15 },
+        { width: 15 }
+      ];
+      
+      // ========== SHEET 2: ANGEMELDETE SPIELER ==========
+      if (exportOptions.includeRegistered && registeredPlayers.length > 0) {
+        const registeredSheet = workbook.addWorksheet('🎯 Angemeldete Spieler', {
+          properties: { tabColor: { argb: 'FF00AA00' } }
+        });
+        
+        // Zurück zur Übersicht Link
+        registeredSheet.mergeCells('A1:B1');
+        const backLink = registeredSheet.getCell('A1');
+        backLink.value = {
+          text: '← Zurück zur Übersicht',
+          hyperlink: '#\'📊 Übersicht\'!A1'
+        };
+        backLink.font = { size: 10, underline: true, color: { argb: 'FF0066CC' } };
+        backLink.alignment = { vertical: 'middle', horizontal: 'left' };
+        
+        // Bestimme Spalten basierend auf Optionen
+        const baseColumns = ['#', 'Spielername'];
+        const columns = [
+          ...baseColumns,
+          ...(exportOptions.includeContactInfo ? ['Benutzername', 'E-Mail'] : []),
+          'Status',
+          'Bezahlt',
+          ...(exportOptions.includeStatistics ? ['Average', '180s', 'High Finish', 'Checkout %'] : []),
+          'Registriert am',
+          'Details'
+        ];
+        
+        const columnCount = columns.length;
+        const lastColumn = String.fromCharCode(64 + columnCount);
+        
+        // Header Zeile mit Titel
+        registeredSheet.mergeCells(`A3:${lastColumn}3`);
+        const titleCell = registeredSheet.getCell('A3');
+        titleCell.value = `Angemeldete Spieler - ${currentTournament?.name || 'Turnier'} (${registeredPlayers.length} Spieler)`;
+        titleCell.font = { size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+        titleCell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF00AA00' }
+        };
+        titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+        registeredSheet.getRow(3).height = 30;
+        
+        // Spalten-Header (Zeile 5)
+        registeredSheet.getRow(5).values = columns;
+        
+        // Spalten-Header Styling
+        registeredSheet.getRow(5).eachCell((cell) => {
+          cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF4472C4' }
+          };
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+        });
+        registeredSheet.getRow(5).height = 25;
+        
+        // Daten einfügen
+        registeredPlayers.forEach((player, index) => {
+          const rowNum = index + 6;
+          const row = registeredSheet.getRow(rowNum);
+          
+          const rowData = [
+            index + 1, // Nummer
+            player.playerName,
+            ...(exportOptions.includeContactInfo ? [player.user.name, player.user.email] : []),
+            player.status === 'REGISTERED' ? 'Registriert' :
+            player.status === 'CONFIRMED' ? 'Bestätigt' :
+            player.status === 'ACTIVE' ? 'Aktiv' :
+            player.status === 'ELIMINATED' ? 'Ausgeschieden' : player.status,
+            player.paid ? 'Ja' : 'Nein',
+            ...(exportOptions.includeStatistics ? [
+              player.average || '-',
+              player.oneEighties || 0,
+              player.highFinish || '-',
+              player.checkoutRate ? `${player.checkoutRate}%` : '-'
+            ] : []),
+            new Date(player.registeredAt).toLocaleDateString('de-DE', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric'
+            }),
+            'Details →' // Wird durch Hyperlink ersetzt
+          ];
+          
+          row.values = rowData;
+          
+          // Hyperlink zur Detailseite hinzufügen
+          const detailsColIndex = columnCount;
+          const detailsCell = row.getCell(detailsColIndex);
+          detailsCell.value = {
+            text: 'Details →',
+            hyperlink: `#'👤 ${player.playerName.replace(/'/g, "''")}'!A1`
+          };
+          detailsCell.font = { bold: true, underline: true, color: { argb: 'FF0066CC' } };
+          
+          // Alternierende Zeilenfarben
+          row.eachCell((cell) => {
+            if (index % 2 === 0) {
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFF2F2F2' }
+              };
+            }
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+              left: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+              bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+              right: { style: 'thin', color: { argb: 'FFD0D0D0' } }
+            };
+            cell.alignment = { vertical: 'middle', horizontal: 'left' };
+          });
+          
+          // Bezahlt Spalte hervorheben
+          const paidColIndex = exportOptions.includeContactInfo ? 6 : 4;
+          const paidCell = row.getCell(paidColIndex);
+          if (player.paid) {
+            paidCell.font = { bold: true, color: { argb: 'FF00AA00' } };
+          } else {
+            paidCell.font = { bold: true, color: { argb: 'FFFF0000' } };
+          }
+        });
+        
+        // Spaltenbreiten anpassen
+        const columnWidths = [
+          8, // Nummer
+          20, // Spielername
+          ...(exportOptions.includeContactInfo ? [20, 30] : []), // Benutzername, E-Mail
+          15, // Status
+          10, // Bezahlt
+          ...(exportOptions.includeStatistics ? [12, 8, 12, 12] : []), // Average, 180s, High Finish, Checkout %
+          15, // Registriert am
+          15, // Details Link
+        ];
+        
+        registeredSheet.columns = columnWidths.map(width => ({ width }));
+        
+        // ========== INDIVIDUELLE SPIELER-DETAILSEITEN ==========
+        registeredPlayers.forEach((player, index) => {
+          const playerSheet = workbook.addWorksheet(`👤 ${player.playerName.substring(0, 28)}`, {
+            properties: { tabColor: { argb: 'FF4472C4' } }
+          });
+          
+          // Zurück-Link
+          playerSheet.mergeCells('A1:B1');
+          const playerBackLink = playerSheet.getCell('A1');
+          playerBackLink.value = {
+            text: '← Zurück zur Spielerliste',
+            hyperlink: '#\'🎯 Angemeldete Spieler\'!A1'
+          };
+          playerBackLink.font = { size: 10, underline: true, color: { argb: 'FF0066CC' } };
+          
+          // Spieler Header
+          playerSheet.mergeCells('A3:D3');
+          const playerHeader = playerSheet.getCell('A3');
+          playerHeader.value = player.playerName;
+          playerHeader.font = { size: 22, bold: true, color: { argb: 'FFFFFFFF' } };
+          playerHeader.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF4472C4' }
+          };
+          playerHeader.alignment = { vertical: 'middle', horizontal: 'center' };
+          playerSheet.getRow(3).height = 40;
+          
+          // Status Badge
+          playerSheet.mergeCells('A5:D5');
+          const statusBadge = playerSheet.getCell('A5');
+          const statusText = player.status === 'REGISTERED' ? 'Registriert' :
+                             player.status === 'CONFIRMED' ? 'Bestätigt' :
+                             player.status === 'ACTIVE' ? 'Aktiv' :
+                             player.status === 'ELIMINATED' ? 'Ausgeschieden' : player.status;
+          statusBadge.value = `Status: ${statusText}`;
+          statusBadge.font = { size: 14, bold: true };
+          statusBadge.alignment = { vertical: 'middle', horizontal: 'center' };
+          statusBadge.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE8F4F8' }
+          };
+          playerSheet.getRow(5).height = 30;
+          
+          let detailRow = 7;
+          
+          // Kontaktinformationen Section
+          if (exportOptions.includeContactInfo) {
+            playerSheet.mergeCells(`A${detailRow}:D${detailRow}`);
+            const contactHeader = playerSheet.getCell(`A${detailRow}`);
+            contactHeader.value = 'KONTAKTINFORMATIONEN';
+            contactHeader.font = { size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+            contactHeader.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FF666666' }
+            };
+            contactHeader.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+            detailRow++;
+            
+            // Benutzername
+            playerSheet.getCell(`A${detailRow}`).value = 'Benutzername:';
+            playerSheet.getCell(`A${detailRow}`).font = { bold: true };
+            playerSheet.mergeCells(`B${detailRow}:D${detailRow}`);
+            playerSheet.getCell(`B${detailRow}`).value = player.user.name;
+            detailRow++;
+            
+            // E-Mail
+            playerSheet.getCell(`A${detailRow}`).value = 'E-Mail:';
+            playerSheet.getCell(`A${detailRow}`).font = { bold: true };
+            playerSheet.mergeCells(`B${detailRow}:D${detailRow}`);
+            playerSheet.getCell(`B${detailRow}`).value = player.user.email;
+            detailRow += 2;
+          }
+          
+          // Turnierinformationen
+          playerSheet.mergeCells(`A${detailRow}:D${detailRow}`);
+          const tournamentHeader = playerSheet.getCell(`A${detailRow}`);
+          tournamentHeader.value = 'TURNIERINFORMATIONEN';
+          tournamentHeader.font = { size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+          tournamentHeader.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF666666' }
+          };
+          tournamentHeader.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+          detailRow++;
+          
+          // Turniername
+          playerSheet.getCell(`A${detailRow}`).value = 'Turnier:';
+          playerSheet.getCell(`A${detailRow}`).font = { bold: true };
+          playerSheet.mergeCells(`B${detailRow}:D${detailRow}`);
+          playerSheet.getCell(`B${detailRow}`).value = player.tournament.name;
+          detailRow++;
+          
+          // Bezahlstatus
+          playerSheet.getCell(`A${detailRow}`).value = 'Bezahlt:';
+          playerSheet.getCell(`A${detailRow}`).font = { bold: true };
+          const paidStatusCell = playerSheet.getCell(`B${detailRow}`);
+          paidStatusCell.value = player.paid ? '✓ Ja' : '✗ Nein';
+          paidStatusCell.font = { 
+            bold: true, 
+            color: { argb: player.paid ? 'FF00AA00' : 'FFFF0000' } 
+          };
+          detailRow++;
+          
+          // Seed
+          if (player.seed) {
+            playerSheet.getCell(`A${detailRow}`).value = 'Seed:';
+            playerSheet.getCell(`A${detailRow}`).font = { bold: true };
+            playerSheet.getCell(`B${detailRow}`).value = player.seed;
+            detailRow++;
+          }
+          
+          // Registrierungsdatum
+          playerSheet.getCell(`A${detailRow}`).value = 'Registriert am:';
+          playerSheet.getCell(`A${detailRow}`).font = { bold: true };
+          playerSheet.mergeCells(`B${detailRow}:D${detailRow}`);
+          playerSheet.getCell(`B${detailRow}`).value = new Date(player.registeredAt).toLocaleDateString('de-DE', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          detailRow += 2;
+          
+          // Statistiken Section
+          if (exportOptions.includeStatistics) {
+            playerSheet.mergeCells(`A${detailRow}:D${detailRow}`);
+            const statsHeader = playerSheet.getCell(`A${detailRow}`);
+            statsHeader.value = 'STATISTIKEN';
+            statsHeader.font = { size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+            statsHeader.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FF666666' }
+            };
+            statsHeader.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+            detailRow++;
+            
+            // Stats Grid
+            const stats = [
+              { label: 'Average:', value: player.average || '-' },
+              { label: '180s:', value: player.oneEighties || 0 },
+              { label: 'High Finish:', value: player.highFinish || '-' },
+              { label: 'Checkout Rate:', value: player.checkoutRate ? `${player.checkoutRate}%` : '-' },
+              { label: 'Total Points:', value: player.totalPoints || 0 },
+              { label: 'Legs Played:', value: player.legsPlayed || 0 },
+              { label: 'Legs Won:', value: player.legsWon || 0 },
+              { label: 'Matches Played:', value: player.matchesPlayed || 0 },
+              { label: 'Matches Won:', value: player.matchesWon || 0 }
+            ];
+            
+            stats.forEach(stat => {
+              playerSheet.getCell(`A${detailRow}`).value = stat.label;
+              playerSheet.getCell(`A${detailRow}`).font = { bold: true };
+              playerSheet.getCell(`B${detailRow}`).value = stat.value;
+              
+              // Highlight für besondere Werte
+              if (stat.label === 'Average:' && typeof stat.value === 'number' && stat.value > 80) {
+                playerSheet.getCell(`B${detailRow}`).font = { bold: true, color: { argb: 'FF00AA00' } };
+              }
+              if (stat.label === '180s:' && stat.value > 0) {
+                playerSheet.getCell(`B${detailRow}`).font = { bold: true, color: { argb: 'FFFF6600' } };
+              }
+              
+              detailRow++;
+            });
+          }
+          
+          // Spaltenbreiten
+          playerSheet.columns = [
+            { width: 20 },
+            { width: 20 },
+            { width: 20 },
+            { width: 20 }
+          ];
+        });
+      }
+      
+      // ========== SHEET: WARTESCHLANGE ==========
+      if (exportOptions.includeWaitingList && waitingListPlayers.length > 0) {
+        const waitingSheet = workbook.addWorksheet('⏳ Warteschlange', {
+          properties: { tabColor: { argb: 'FFFFA500' } }
+        });
+        
+        // Zurück zur Übersicht Link
+        waitingSheet.mergeCells('A1:B1');
+        const waitingBackLink = waitingSheet.getCell('A1');
+        waitingBackLink.value = {
+          text: '← Zurück zur Übersicht',
+          hyperlink: '#\'📊 Übersicht\'!A1'
+        };
+        waitingBackLink.font = { size: 10, underline: true, color: { argb: 'FF0066CC' } };
+        waitingBackLink.alignment = { vertical: 'middle', horizontal: 'left' };
+        
+        // Bestimme Spalten basierend auf Optionen
+        const waitingColumns = [
+          'Position',
+          'Spielername',
+          ...(exportOptions.includeContactInfo ? ['Benutzername', 'E-Mail'] : []),
+          'Registriert am'
+        ];
+        
+        const waitingColumnCount = waitingColumns.length;
+        const waitingLastColumn = String.fromCharCode(64 + waitingColumnCount);
+        
+        // Header Zeile mit Titel
+        waitingSheet.mergeCells(`A3:${waitingLastColumn}3`);
+        const waitingTitleCell = waitingSheet.getCell('A3');
+        waitingTitleCell.value = `Warteschlange - ${currentTournament?.name || 'Turnier'} (${waitingListPlayers.length} Spieler)`;
+        waitingTitleCell.font = { size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+        waitingTitleCell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFA500' }
+        };
+        waitingTitleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+        waitingSheet.getRow(3).height = 30;
+        
+        // Spalten-Header (Zeile 5)
+        waitingSheet.getRow(5).values = waitingColumns;
+        
+        // Spalten-Header Styling
+        waitingSheet.getRow(5).eachCell((cell) => {
+          cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFFFA500' }
+          };
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+        });
+        waitingSheet.getRow(5).height = 25;
+        
+        // Daten einfügen
+        waitingListPlayers.forEach((player, index) => {
+          const rowNum = index + 6;
+          const row = waitingSheet.getRow(rowNum);
+          
+          const rowData = [
+            index + 1,
+            player.playerName,
+            ...(exportOptions.includeContactInfo ? [player.user.name, player.user.email] : []),
+            new Date(player.registeredAt).toLocaleDateString('de-DE', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric'
+            })
+          ];
+          
+          row.values = rowData;
+          
+          // Alternierende Zeilenfarben
+          row.eachCell((cell) => {
+            if (index % 2 === 0) {
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFFFF4E6' }
+              };
+            }
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+              left: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+              bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+              right: { style: 'thin', color: { argb: 'FFD0D0D0' } }
+            };
+            cell.alignment = { vertical: 'middle', horizontal: 'left' };
+          });
+          
+          // Position Spalte zentrieren
+          row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+        
+        // Spaltenbreiten anpassen
+        const waitingColumnWidths = [
+          10, // Position
+          20, // Spielername
+          ...(exportOptions.includeContactInfo ? [20, 30] : []), // Benutzername, E-Mail
+          15, // Registriert am
+        ];
+        
+        waitingSheet.columns = waitingColumnWidths.map(width => ({ width }));
+      }
+      
+      // Export als Blob
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+      
+      // Download
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `spieler-export-${currentTournament?.name || 'turnier'}-${new Date().toISOString().split('T')[0]}.xlsx`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: 'Erfolg',
+        description: 'Excel-Export erfolgreich erstellt'
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: 'Fehler',
+        description: 'Fehler beim Erstellen des Excel-Exports',
+        variant: 'destructive'
+      });
+    } finally {
+      setExporting(false);
+    }
   };
 
   // Zeige Ladezustand während der Authentifizierung
@@ -564,9 +1181,12 @@ export default function PlayersPage() {
                           tournamentId: tournamentFilter !== 'all' ? tournamentFilter : '' 
                         }}
                       />
-                      <Button variant="outline" onClick={exportToCSV}>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setExportDialogOpen(true)}
+                      >
                         <Download className="h-4 w-4 mr-2" />
-                        Export
+                        Spieler Export
                       </Button>
                       <Button variant="outline">
                         <Upload className="h-4 w-4 mr-2" />
@@ -1183,6 +1803,104 @@ export default function PlayersPage() {
                     </Button>
                   </div>
                 )}
+              </DialogContent>
+            </Dialog>
+
+            {/* Export Dialog */}
+            <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Download className="h-5 w-5" />
+                    Spieler Export Optionen
+                  </DialogTitle>
+                </DialogHeader>
+                
+                <div className="space-y-6 py-4">
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium">Welche Spieler exportieren?</h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="includeRegistered"
+                          checked={exportOptions.includeRegistered}
+                          onCheckedChange={(checked) => 
+                            setExportOptions({...exportOptions, includeRegistered: checked as boolean})
+                          }
+                        />
+                        <Label htmlFor="includeRegistered" className="text-sm cursor-pointer">
+                          Angemeldete Spieler (Registriert, Bestätigt, Aktiv, Ausgeschieden)
+                        </Label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="includeWaitingList"
+                          checked={exportOptions.includeWaitingList}
+                          onCheckedChange={(checked) => 
+                            setExportOptions({...exportOptions, includeWaitingList: checked as boolean})
+                          }
+                        />
+                        <Label htmlFor="includeWaitingList" className="text-sm cursor-pointer">
+                          Warteschlange
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium">Welche Daten einschließen?</h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="includeContactInfo"
+                          checked={exportOptions.includeContactInfo}
+                          onCheckedChange={(checked) => 
+                            setExportOptions({...exportOptions, includeContactInfo: checked as boolean})
+                          }
+                        />
+                        <Label htmlFor="includeContactInfo" className="text-sm cursor-pointer">
+                          Kontaktinformationen (E-Mail, Benutzername)
+                        </Label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="includeStatistics"
+                          checked={exportOptions.includeStatistics}
+                          onCheckedChange={(checked) => 
+                            setExportOptions({...exportOptions, includeStatistics: checked as boolean})
+                          }
+                        />
+                        <Label htmlFor="includeStatistics" className="text-sm cursor-pointer">
+                          Statistiken (Average, 180s, High Finish, Checkout %)
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => setExportDialogOpen(false)}
+                    >
+                      Abbrechen
+                    </Button>
+                    <LoadingButton 
+                      className="flex-1"
+                      loading={exporting}
+                      onClick={async () => {
+                        await exportToExcel();
+                        setExportDialogOpen(false);
+                      }}
+                      disabled={!exportOptions.includeRegistered && !exportOptions.includeWaitingList}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Jetzt exportieren
+                    </LoadingButton>
+                  </div>
+                </div>
               </DialogContent>
             </Dialog>
 

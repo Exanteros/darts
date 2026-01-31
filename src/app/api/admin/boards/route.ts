@@ -3,6 +3,16 @@ import { getSession } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 
+// Generiere einen sicheren 12-Zeichen Code
+function generateSecureBoardCode(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 12; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
 // GET /api/admin/boards - Alle Boards abrufen
 export async function GET() {
   try {
@@ -156,7 +166,7 @@ export async function POST(request: NextRequest) {
       data: {
         name: location ? `${name} (${location})` : name,
         tournamentId: tournament.id,
-        accessCode: Math.random().toString(36).substring(2, 7).toUpperCase(),
+        accessCode: generateSecureBoardCode(), // Sicherer 12-Zeichen Code
         isActive: true,
         priority: 1,
         legSettings: legSettings ? JSON.stringify(legSettings) : JSON.stringify({ legsPerGame: 2 }),
