@@ -345,6 +345,50 @@ export default function PlayersPage() {
     }
   };
 
+  const handleSavePlayer = async () => {
+    if (!selectedPlayer) return;
+    
+    try {
+      const response = await fetch('/api/admin/players', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          playerId: selectedPlayer.id,
+          updates: {
+            playerName: selectedPlayer.playerName,
+            seed: selectedPlayer.seed
+          }
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: 'Erfolg',
+          description: 'Spieler wurde erfolgreich aktualisiert'
+        });
+        setEditDialogOpen(false);
+        fetchPlayers();
+      } else {
+        toast({
+          title: 'Fehler',
+          description: data.error || 'Fehler beim Speichern',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Error saving player:', error);
+      toast({
+        title: 'Fehler',
+        description: 'Netzwerkfehler beim Speichern',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const updatePaymentStatus = async (playerId: string, paid: boolean) => {
     try {
       const updates: any = { paid };
@@ -1631,10 +1675,7 @@ export default function PlayersPage() {
                           <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
                             Abbrechen
                           </Button>
-                          <Button onClick={() => {
-                            // Hier würde die Update-Logik implementiert
-                            setEditDialogOpen(false);
-                          }}>
+                          <Button onClick={handleSavePlayer}>
                             Speichern
                           </Button>
                         </div>
