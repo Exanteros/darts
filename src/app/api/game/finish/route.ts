@@ -54,7 +54,37 @@ async function promoteWinnerToNextRound(
     }
 
     if (nextGameIndex >= nextRoundGames.length) {
-      console.log('⚠️  Kein entsprechendes Spiel in nächster Runde gefunden');
+      console.log('⚠️  Kein entsprechendes Spiel in nächster Runde gefunden - erstelle neues Spiel');
+      
+      // Load Bracket Config for Legs
+      const bracketConfig = await prisma.bracketConfig.findFirst();
+      let legsPerRound = { round1: 3, round2: 3, round3: 3, round4: 3, round5: 5, round6: 7 };
+      try {
+        if (bracketConfig?.legsPerRound) {
+            legsPerRound = JSON.parse(bracketConfig.legsPerRound);
+        }
+      } catch (e) {
+        console.error('Error parsing legsPerRound:', e);
+      }
+      
+      const legsToWin = Math.ceil((legsPerRound[`round${nextRound}` as keyof typeof legsPerRound] || 3) / 2);
+
+      // Bestimme Player1/2 Position
+      const isPlayer1 = gameIndex % 2 === 0;
+
+      await prisma.game.create({
+        data: {
+          tournamentId,
+          round: nextRound,
+          legsToWin,
+          status: 'WAITING',
+          // Set winner as player 1 or 2
+          player1Id: isPlayer1 ? winnerId : null,
+          player2Id: !isPlayer1 ? winnerId : null
+        }
+      });
+      
+      console.log(`✨ Neues Spiel für Runde ${nextRound} erstellt (Legs: ${legsToWin})`);
       return;
     }
 

@@ -29,7 +29,8 @@ export async function GET() {
         file.match(/\.(jpg|jpeg|png|gif|webp)$/i)
       );
 
-      const imageUrls = imageFiles.map(file => `/uploads/logos/${file}`);
+      // Return URLs pointing to the API route for serving
+      const imageUrls = imageFiles.map(file => `/api/uploads/logos/${file}`);
 
       return NextResponse.json({ images: imageUrls });
     } catch (error) {

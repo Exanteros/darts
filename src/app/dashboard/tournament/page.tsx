@@ -8,6 +8,7 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 import { useState, useEffect } from 'react';
+import { BracketSettingsForm } from '@/components/tournament/BracketSettingsForm';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LoadingButton } from '@/components/ui/loading-button';
@@ -229,22 +230,6 @@ export default function TournamentPage() {
   const [selectedBoard, setSelectedBoard] = useState<DartBoard | null>(null);
   const [newBoard, setNewBoard] = useState({ name: '', location: '' });
   const [validationErrors, setValidationErrors] = useState({ name: false, location: false });
-  const [bracketConfig, setBracketConfig] = useState({
-    bracketFormat: 'single',
-    seedingAlgorithm: 'standard',
-    autoAssignBoards: true,
-    mainBoardPriority: true,
-    distributeEvenly: true,
-    mainBoardPriorityLevel: 'finals',
-    legsPerRound: {
-      round1: 1,
-      round2: 1,
-      round3: 3,
-      round4: 3,
-      round5: 5,
-      round6: 7
-    }
-  });
   const { toast } = useToast();
 
   // Stripe Connection Handling
@@ -289,7 +274,6 @@ export default function TournamentPage() {
     if (isAuthenticated && canManageTournaments) {
       fetchBoards();
       fetchSettings();
-      fetchBracketConfig();
     }
   }, [isAuthenticated, canManageTournaments]);
 
@@ -339,17 +323,6 @@ export default function TournamentPage() {
     }
   };
 
-  const fetchBracketConfig = async () => {
-    try {
-      const response = await fetch('/api/admin/tournament/bracket-config');
-      if (response.ok) {
-        const data = await response.json();
-        setBracketConfig(data);
-      }
-    } catch (error) {
-      console.error('Error fetching bracket config:', error);
-    }
-  };
 
   const getTournamentStatusBadge = (status: string) => {
     switch (status) {
@@ -866,329 +839,7 @@ export default function TournamentPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Spalte 1: Turnier-Format & Setzliste */}
-                        <div className="space-y-6">
-                          <Card>
-                            <CardHeader className="pb-3">
-                              <CardTitle className="text-base font-semibold">Turnier-Format</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                              <div className="space-y-2">
-                                <Label className="text-sm">Bracket-Format</Label>
-                                <Select 
-                                  value={bracketConfig.bracketFormat}
-                                  onValueChange={(value) => setBracketConfig({...bracketConfig, bracketFormat: value})}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="single">
-                                      <div className="flex flex-col">
-                                        <span>Single Elimination</span>
-                                        <span className="text-xs text-muted-foreground">Verlust = Ausgeschieden</span>
-                                      </div>
-                                    </SelectItem>
-                                    <SelectItem value="double">
-                                      <div className="flex flex-col">
-                                        <span>Double Elimination</span>
-                                        <span className="text-xs text-muted-foreground">2 Verluste = Ausgeschieden</span>
-                                      </div>
-                                    </SelectItem>
-                                    <SelectItem value="roundrobin">
-                                      <div className="flex flex-col">
-                                        <span>Gruppen + K.O.</span>
-                                        <span className="text-xs text-muted-foreground">Gruppenphase dann K.O.-Runde</span>
-                                      </div>
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-
-                              <div className="space-y-2">
-                                <Label className="text-sm">Setzlisten-Algorithmus</Label>
-                                <Select 
-                                  value={bracketConfig.seedingAlgorithm}
-                                  onValueChange={(value) => setBracketConfig({...bracketConfig, seedingAlgorithm: value})}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="standard">
-                                      <div className="flex flex-col">
-                                        <span>Standard (1vs64, 2vs63, ...)</span>
-                                        <span className="text-xs text-muted-foreground">Beste gegen Schlechteste</span>
-                                      </div>
-                                    </SelectItem>
-                                    <SelectItem value="random">
-                                      <div className="flex flex-col">
-                                        <span>Zufällig</span>
-                                        <span className="text-xs text-muted-foreground">Komplett zufällige Paarungen</span>
-                                      </div>
-                                    </SelectItem>
-                                    <SelectItem value="grouped">
-                                      <div className="flex flex-col">
-                                        <span>Gruppiert (Top/Bottom)</span>
-                                        <span className="text-xs text-muted-foreground">Starke vs Starke, Schwache vs Schwache</span>
-                                      </div>
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </CardContent>
-                          </Card>
-
-                          <Card>
-                            <CardHeader className="pb-3">
-                              <CardTitle className="text-base font-semibold">Scheiben-Zuordnung</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                              <div className="space-y-3">
-                                <div className="flex items-center justify-between rounded-lg border p-3">
-                                  <div className="space-y-0.5">
-                                    <Label className="text-sm font-semibold">Automatisch zuordnen</Label>
-                                    <p className="text-xs text-muted-foreground">Max. {boards.length} parallele Spiele</p>
-                                  </div>
-                                  <Switch 
-                                    checked={bracketConfig.autoAssignBoards}
-                                    onCheckedChange={(checked) => setBracketConfig({...bracketConfig, autoAssignBoards: checked})}
-                                  />
-                                </div>
-                                <div className="flex items-center justify-between rounded-lg border p-3">
-                                  <div className="space-y-0.5">
-                                    <Label className="text-sm font-semibold">Finale auf Haupt-Scheibe</Label>
-                                    <p className="text-xs text-muted-foreground">Wichtige Spiele priorisieren</p>
-                                  </div>
-                                  <Switch 
-                                    checked={bracketConfig.mainBoardPriority}
-                                    onCheckedChange={(checked) => setBracketConfig({...bracketConfig, mainBoardPriority: checked})}
-                                  />
-                                </div>
-                                <div className="flex items-center justify-between rounded-lg border p-3">
-                                  <div className="space-y-0.5">
-                                    <Label className="text-sm font-semibold">Gleichmäßig verteilen</Label>
-                                    <p className="text-xs text-muted-foreground">Alle Scheiben nutzen</p>
-                                  </div>
-                                  <Switch 
-                                    checked={bracketConfig.distributeEvenly}
-                                    onCheckedChange={(checked) => setBracketConfig({...bracketConfig, distributeEvenly: checked})}
-                                  />
-                                </div>
-                              </div>
-
-                              <Separator />
-
-                              <div className="space-y-2">
-                                <Label className="text-sm">Haupt-Scheibe Priorität</Label>
-                                <Select 
-                                  value={bracketConfig.mainBoardPriorityLevel}
-                                  onValueChange={(value) => setBracketConfig({...bracketConfig, mainBoardPriorityLevel: value})}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="all">
-                                      <div className="flex flex-col">
-                                        <span>Alle Runden</span>
-                                        <span className="text-xs text-muted-foreground">Jedes Spiel auf Haupt-Scheibe möglich</span>
-                                      </div>
-                                    </SelectItem>
-                                    <SelectItem value="semifinals">
-                                      <div className="flex flex-col">
-                                        <span>Ab Halbfinale</span>
-                                        <span className="text-xs text-muted-foreground">Halbfinale und Finale priorisiert</span>
-                                      </div>
-                                    </SelectItem>
-                                    <SelectItem value="finals">
-                                      <div className="flex flex-col">
-                                        <span>Nur Finale</span>
-                                        <span className="text-xs text-muted-foreground">Nur das Finale auf Haupt-Scheibe</span>
-                                      </div>
-                                    </SelectItem>
-                                    <SelectItem value="none">
-                                      <div className="flex flex-col">
-                                        <span>Keine Priorität</span>
-                                        <span className="text-xs text-muted-foreground">Gleichmäßige Verteilung auf alle Scheiben</span>
-                                      </div>
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </div>
-
-                        {/* Spalte 2: Legs-Konfiguration */}
-                        <Card>
-                          <CardHeader className="pb-3">
-                            <div className="flex items-center justify-between">
-                              <CardTitle className="text-base font-semibold">Legs-Konfiguration</CardTitle>
-                              <Badge variant="outline" className="text-xs">Best of X</Badge>
-                            </div>
-                            <CardDescription className="text-xs">
-                              Legs pro Runde festlegen
-                            </CardDescription>
-                          </CardHeader>
-                          <CardContent className="space-y-3">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div className="space-y-2">
-                                <Label htmlFor="legs-round1" className="text-xs text-muted-foreground">Runde 1 (64)</Label>
-                                <Input 
-                                  id="legs-round1"
-                                  type="number" 
-                                  value={bracketConfig.legsPerRound.round1}
-                                  onChange={(e) => setBracketConfig({
-                                    ...bracketConfig,
-                                    legsPerRound: {...bracketConfig.legsPerRound, round1: parseInt(e.target.value) || 1}
-                                  })}
-                                  min="1"
-                                  max="11"
-                                  className="h-9" 
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="legs-round2" className="text-xs text-muted-foreground">Runde 2 (32)</Label>
-                                <Input 
-                                  id="legs-round2"
-                                  type="number" 
-                                  value={bracketConfig.legsPerRound.round2}
-                                  onChange={(e) => setBracketConfig({
-                                    ...bracketConfig,
-                                    legsPerRound: {...bracketConfig.legsPerRound, round2: parseInt(e.target.value) || 1}
-                                  })}
-                                  min="1"
-                                  max="11"
-                                  className="h-9" 
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="legs-round3" className="text-xs text-muted-foreground">Achtelfinale</Label>
-                                <Input 
-                                  id="legs-round3"
-                                  type="number" 
-                                  value={bracketConfig.legsPerRound.round3}
-                                  onChange={(e) => setBracketConfig({
-                                    ...bracketConfig,
-                                    legsPerRound: {...bracketConfig.legsPerRound, round3: parseInt(e.target.value) || 1}
-                                  })}
-                                  min="1"
-                                  max="11"
-                                  className="h-9" 
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="legs-round4" className="text-xs text-muted-foreground">Viertelfinale</Label>
-                                <Input 
-                                  id="legs-round4"
-                                  type="number" 
-                                  value={bracketConfig.legsPerRound.round4}
-                                  onChange={(e) => setBracketConfig({
-                                    ...bracketConfig,
-                                    legsPerRound: {...bracketConfig.legsPerRound, round4: parseInt(e.target.value) || 1}
-                                  })}
-                                  min="1"
-                                  max="11"
-                                  className="h-9" 
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="legs-round5" className="text-xs text-muted-foreground">Halbfinale</Label>
-                                <Input 
-                                  id="legs-round5"
-                                  type="number" 
-                                  value={bracketConfig.legsPerRound.round5}
-                                  onChange={(e) => setBracketConfig({
-                                    ...bracketConfig,
-                                    legsPerRound: {...bracketConfig.legsPerRound, round5: parseInt(e.target.value) || 1}
-                                  })}
-                                  min="1"
-                                  max="11"
-                                  className="h-9" 
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="legs-round6" className="text-xs text-muted-foreground">Finale</Label>
-                                <Input 
-                                  id="legs-round6"
-                                  type="number" 
-                                  value={bracketConfig.legsPerRound.round6}
-                                  onChange={(e) => setBracketConfig({
-                                    ...bracketConfig,
-                                    legsPerRound: {...bracketConfig.legsPerRound, round6: parseInt(e.target.value) || 1}
-                                  })}
-                                  min="1"
-                                  max="11"
-                                  className="h-9" 
-                                />
-                              </div>
-                            </div>
-                            
-                            <Separator />
-                            
-                            <div className="rounded-lg border bg-muted/30 p-3">
-                              <p className="text-xs text-muted-foreground">
-                                <span className="font-semibold">Best of X:</span> Beispiel: Bei "3" muss ein Spieler 2 Legs gewinnen
-                              </p>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-
-                      <Separator />
-
-                      {/* Info-Box */}
-                      <div className="rounded-lg border bg-muted/50 p-4">
-                        <div className="flex items-start gap-3">
-                          <IconInfoCircle className="h-5 w-5 text-muted-foreground mt-0.5" />
-                          <div className="space-y-1">
-                            <p className="text-sm font-semibold">Erweiterte Konfiguration</p>
-                            <p className="text-xs text-muted-foreground">
-                              Einstellungen beeinflussen automatische Turnierbaum-Generierung und Scheiben-Zuordnung. 
-                              Änderungen gelten für neue Bracket-Generierungen.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex sm:justify-end">
-                        <Button className="w-full sm:w-auto" onClick={async (e) => {
-                          const btn = e.currentTarget;
-                          const originalText = btn.textContent;
-                          btn.disabled = true;
-                          btn.innerHTML = '<span class="animate-spin mr-2">⏳</span> Speichere...';
-                          
-                          try {
-                            const response = await fetch('/api/admin/tournament/bracket-config', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify(bracketConfig)
-                            });
-                            
-                            if (response.ok) {
-                              toast({
-                                title: "Gespeichert",
-                                description: "Turnierbaum-Konfiguration wurde erfolgreich gespeichert"
-                              });
-                            } else {
-                              throw new Error('Fehler beim Speichern');
-                            }
-                          } catch (error) {
-                            toast({
-                              title: "Fehler",
-                              description: "Turnierbaum-Konfiguration konnte nicht gespeichert werden",
-                              variant: "destructive"
-                            });
-                          } finally {
-                            btn.disabled = false;
-                            btn.textContent = originalText || 'Turnierbaum-Einstellungen speichern';
-                          }
-                        }}>
-                          Turnierbaum-Einstellungen speichern
-                        </Button>
-                      </div>
+                      <BracketSettingsForm />
                     </CardContent>
                   </Card>
 
@@ -1409,47 +1060,6 @@ export default function TournamentPage() {
                                 <p className="text-sm text-muted-foreground">{board.location}</p>
                               </CardHeader>
                               <CardContent className="space-y-4">
-                                {/* Legs-Konfiguration Anzeige */}
-                                <div className="space-y-3">
-                                  <div className="flex items-center gap-2">
-                                    <Label className="text-sm font-semibold">Legs-Konfiguration</Label>
-                                    <Badge variant="outline" className="text-xs">Best of X</Badge>
-                                  </div>
-                                  
-                                  <div className="rounded-lg border bg-muted/30 p-3">
-                                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                                      <div className="flex flex-col">
-                                        <span className="text-muted-foreground">Runde 1 (64)</span>
-                                        <span className="font-semibold">{bracketConfig.legsPerRound.round1} Leg{bracketConfig.legsPerRound.round1 > 1 ? 's' : ''}</span>
-                                      </div>
-                                      <div className="flex flex-col">
-                                        <span className="text-muted-foreground">Runde 2 (32)</span>
-                                        <span className="font-semibold">{bracketConfig.legsPerRound.round2} Leg{bracketConfig.legsPerRound.round2 > 1 ? 's' : ''}</span>
-                                      </div>
-                                      <div className="flex flex-col">
-                                        <span className="text-muted-foreground">Achtelfinale</span>
-                                        <span className="font-semibold">{bracketConfig.legsPerRound.round3} Leg{bracketConfig.legsPerRound.round3 > 1 ? 's' : ''}</span>
-                                      </div>
-                                      <div className="flex flex-col">
-                                        <span className="text-muted-foreground">Viertelfinale</span>
-                                        <span className="font-semibold">{bracketConfig.legsPerRound.round4} Leg{bracketConfig.legsPerRound.round4 > 1 ? 's' : ''}</span>
-                                      </div>
-                                      <div className="flex flex-col">
-                                        <span className="text-muted-foreground">Halbfinale</span>
-                                        <span className="font-semibold">{bracketConfig.legsPerRound.round5} Leg{bracketConfig.legsPerRound.round5 > 1 ? 's' : ''}</span>
-                                      </div>
-                                      <div className="flex flex-col">
-                                        <span className="text-muted-foreground">Finale</span>
-                                        <span className="font-semibold">{bracketConfig.legsPerRound.round6} Leg{bracketConfig.legsPerRound.round6 > 1 ? 's' : ''}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  
-                                  <p className="text-xs text-muted-foreground">
-                                    Einstellungen aus Turnierbaum-Konfiguration
-                                  </p>
-                                </div>
-
                                 {/* Aktuelles Spiel */}
                                 <div className="space-y-2">
                                   <Label className="text-sm font-medium">Aktuelles Spiel</Label>

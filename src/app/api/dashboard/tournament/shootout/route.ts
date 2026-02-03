@@ -174,19 +174,77 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Lade Bracket-Konfiguration
+      const bracketConfig = await prisma.bracketConfig.findFirst();
+      let legsPerRound = { round1: 3 };
+      try {
+        if (bracketConfig?.legsPerRound) {
+            legsPerRound = JSON.parse(bracketConfig.legsPerRound);
+        }
+      } catch (e) {
+        console.error('Error parsing legsPerRound:', e);
+      }
+      
+      const legsToWin = Math.ceil((legsPerRound['round1' as keyof typeof legsPerRound] || 3) / 2);
+
+      // Defines the specific matchup order (Snake/Custom)
+      // This order ensures that 1vs64 is Game 1, 32vs33 is Game 2 etc.
+      const customSeedingOrder = [
+        1, 64, 32, 33, 16, 49, 17, 48, 8, 57, 25, 40, 9, 56, 24, 41,
+        4, 61, 29, 36, 13, 52, 20, 45, 5, 60, 28, 37, 12, 53, 21, 44,
+        3, 62, 30, 35, 19, 46, 14, 51, 6, 59, 27, 38, 22, 43, 54, 11,
+        7, 58, 26, 39, 42, 23, 55, 10, 15, 50, 47, 18, 31, 34, 63, 2
+      ];
+
+      // Entscheide über Setzliste basierend auf Konfiguration
+      let finalSeedingOrder: number[] = [];
+      const seedingAlgorithm = bracketConfig?.seedingAlgorithm || 'standard';
+
+      if (seedingAlgorithm === 'snake') {
+        finalSeedingOrder = customSeedingOrder;
+      } else {
+        // Standard: 1 vs 64, 2 vs 63... sequential
+        // But for consistent game creation, we usually pair them up.
+        // If we want 1 vs 64 to be Game 1, 2 vs 63 to be Game 2...
+        const maxSeed = seededPlayers.length > 64 ? 128 : (seededPlayers.length > 32 ? 64 : 32);
+        for (let i = 0; i < maxSeed / 2; i++) {
+            finalSeedingOrder.push(i + 1);
+            finalSeedingOrder.push(maxSeed - i);
+        }
+        
+        if (seedingAlgorithm === 'random') {
+           // Shuffle pairs? Or shuffle players entirely?
+           // Simple shuffle of the pairs created above to randomize game order?
+           // Or random seeding assignments.
+           // Random algorithm usually implies random seeds assignment, which we can't do here easily without re-assigning seeds.
+           // For now, treat random as standard but we might want to implement real random later.
+        }
+      }
+
       // Erstelle nur die erste Runde - höhere Runden werden später bei Bedarf erstellt
       const games = [];
       
-      // Erstelle erste Runde Spiele
-      for (let i = 0; i < seededPlayers.length; i += 2) {
-        if (i + 1 < seededPlayers.length) {
+      // Erstelle Spiele basierend auf der vordefinierten Setzliste
+      for (let i = 0; i < finalSeedingOrder.length; i += 2) {
+        const seed1 = finalSeedingOrder[i];
+        const seed2 = finalSeedingOrder[i+1];
+        
+        // Finde Spieler mit entsprechendem Seed
+        const player1 = seededPlayers.find(p => p.seed === seed1);
+        const player2 = seededPlayers.find(p => p.seed === seed2);
+
+        // Erstelle Spiel nur wenn mindestens ein Spieler existiert oder wir im Snake-Modus sind (leere Slots erlauben für Bracket-Struktur?)
+        // Wir erstellen Spiele wenn mindestens einer da ist.
+        if (player1 || player2) {
           const game = await prisma.game.create({
             data: {
               tournamentId: tournamentWithPlayers.id,
               round: 1,
-              player1Id: seededPlayers[i].id,
-              player2Id: seededPlayers[i + 1].id,
-              status: 'WAITING'
+              player1Id: player1?.id || null, // Handle BYE if null
+              player2Id: player2?.id || null,
+              status: (player1 && player2) ? 'WAITING' : 'FINISHED', // Auto-win if bye
+              winnerId: (player1 && !player2) ? player1.id : ((!player1 && player2) ? player2.id : null),
+              legsToWin: legsToWin
             }
           });
           games.push(game);

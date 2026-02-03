@@ -461,7 +461,8 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
             currentPlayer: game.currentPlayerId === game.player2Id ? 2 : 1,
             currentLeg: game.currentLeg ?? 1,
             legsToWin: game.legsToWin ?? 2,
-            gameStatus: 'active',
+            gameStatus: game.status === 'FINISHED' ? 'finished' : 'active',
+            winner: game.status === 'FINISHED' && game.winnerId ? (game.winnerId === game.player1Id ? 1 : 2) : undefined,
             isShootout: false,
             throws: game.throws || []
           }));

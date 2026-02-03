@@ -42,12 +42,15 @@ async function generateBracketFromShootout() {
         legsConfig = config?.legsPerRound ? JSON.parse(config.legsPerRound as string) : {};
     } catch (e) { console.error('Error parsing legs config', e); }
 
-    const getLegsForRound = (round: number) => {
+    const getLegsForResult = (round: number) => {
         if (legsConfig && legsConfig[`round${round}`]) {
-            return legsConfig[`round${round}`];
+            // "Best of X" bedeutet, man braucht (X+1)/2 Siege (aufgerundet)
+            const bestOf = legsConfig[`round${round}`];
+            return Math.ceil(bestOf / 2);
         }
-        // Fallback
+        // Fallback: Best of 3 -> First to 2
         return round >= 5 ? 3 : 2;
+    };
     };
 
     // 3. Lösche alle bestehenden Spiele
@@ -80,20 +83,32 @@ async function generateBracketFromShootout() {
     }
 
     // Runde 1: Weise Spieler basierend auf Liste zu
-    for (let i = 0; i < 32; i++) {
-      const player1Index = i;
-      const player2Index = 63 - i;
+    const seedingOrder = [
+        1, 64, 32, 33, 16, 49, 17, 48, 8, 57, 25, 40, 9, 56, 24, 41,
+        4, 61, 29, 36, 13, 52, 20, 45, 5, 60, 28, 37, 12, 53, 21, 44,
+        3, 62, 30, 35, 19, 46, 14, 51, 6, 59, 27, 38, 22, 43, 54, 11,
+        7, 58, 26, 39, 42, 23, 55, 10, 15, 50, 47, 18, 31, 34, 63, 2
+    ];
 
-      const player1 = seedingList[player1Index]?.player;
-      const player2 = seedingList[player2Index]?.player;
+    for (let i = 0; i < seedingOrder.length; i += 2) {
+      const seed1 = seedingOrder[i];
+      const seed2 = seedingOrder[i+1];
+
+      // Finde Spieler mit entsprechendem Seed
+      // Array ist 0-indiziert, Seed ist 1-indiziert
+      // seedingList wurde oben gemischt oder sortiert, aber wir müssen die echten Seeds benutzen
+      // Normalerweise: seedingList ist sortiert nach Rank 1..N.
+      const player1 = seedingList.length >= seed1 ? seedingList[seed1 - 1]?.player : null;
+      const player2 = seedingList.length >= seed2 ? seedingList[seed2 - 1]?.player : null;
 
       games.push({
         tournamentId: tournament.id,
         round: 1,
         player1Id: player1?.id || null,
         player2Id: player2?.id || null,
-        status: (player1 && player2) ? 'WAITING' : 'WAITING',
-        legsToWin: getLegsForRound(1),
+        status: (player1 && player2) ? 'WAITING' : 'FINISHED',
+        winnerId: (player1 && !player2) ? player1.id : ((!player1 && player2) ? player2.id : null),
+        legsToWin: getLegsForResult(1),
         boardId: null
       });
     }
@@ -107,7 +122,7 @@ async function generateBracketFromShootout() {
           player1Id: null, // Beide Spieler null für höhere Runden
           player2Id: null,
           status: 'WAITING',
-          legsToWin: getLegsForRound(round),
+          legsToWin: getLegsForResult(round),
           boardId: null
         });
       }

@@ -27,12 +27,16 @@ interface CustomBracketProps {
   matches: BracketMatch[];
   isDark?: boolean;
   onMatchClick?: (matchId: string) => void;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 export const CustomBracket: React.FC<CustomBracketProps> = ({
   matches,
   isDark = false,
-  onMatchClick
+  onMatchClick,
+  className,
+  style
 }) => {
   const isMobile = useIsMobile()
   // Organize matches by rounds
@@ -49,10 +53,11 @@ export const CustomBracket: React.FC<CustomBracketProps> = ({
 
   return (
     <div
-      className="relative w-full overflow-x-auto overflow-y-auto bg-background"
+      className={`relative w-full overflow-x-auto overflow-y-auto bg-background ${className || ''}`}
       style={{
         minHeight: '600px',
         maxHeight: '800px',
+        ...style
       }}
     >
       {/* Tournament Bracket */}

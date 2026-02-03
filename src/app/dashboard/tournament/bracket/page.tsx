@@ -791,10 +791,55 @@ export default function TournamentBracket() {
     }
   };
 
-  // Function to handle match click (start a game)
-  const handleMatchClick = async (matchId: string) => {
+  const [matchDialogOpen, setMatchDialogOpen] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState<Game | null>(null);
+  const [newBoardId, setNewBoardId] = useState<string>('');
+
+  const handleAssignBoard = async () => {
+    if (!selectedMatch || !newBoardId) return;
+
+    try {
+      const response = await fetch('/api/dashboard/tournament/bracket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'assign_game',
+          gameId: selectedMatch.id,
+          boardId: newBoardId
+        })
+      });
+
+      if (response.ok) {
+        // Update local state
+        setGames(prev => prev.map(g => 
+          g.id === selectedMatch.id 
+            ? { ...g, boardId: newBoardId, boardName: boards.find(b => b.id === newBoardId)?.name } 
+            : g
+        ));
+        
+        // Update selected match
+        setSelectedMatch(prev => prev ? { 
+            ...prev, 
+            boardId: newBoardId,
+            boardName: boards.find(b => b.id === newBoardId)?.name
+        } : null);
+
+        // Also refresh from server to be sure
+        fetchTournamentData();
+        setMatchDialogOpen(false);
+      } else {
+        const error = await response.json();
+        alert(`Fehler beim Zuweisen: ${error.error || 'Unbekannt'}`);
+      }
+    } catch (error) {
+      console.error('Error assigning board:', error);
+      alert('Fehler beim Zuweisen der Scheibe');
+    }
+  };
+
+  const handleStartGame = async (matchId: string) => {
     // Find the game by match ID
-    const game = games.find(g => g.id === matchId);
+    const game = games.find(g => g.id === matchId) || selectedMatch; // Fallback to selectedMatch if ID matches
     
     if (!game) {
       alert('Spiel nicht gefunden');
@@ -837,6 +882,7 @@ export default function TournamentBracket() {
         return;
       }
 
+      setMatchDialogOpen(false); // Close dialog if open
       alert(`Spiel gestartet!\n\n${data.game.player1} vs ${data.game.player2}\nScheibe: ${data.game.boardName}\n\nBesuchen Sie /note/scheibe/${data.game.boardAccessCode} um das Spiel zu verfolgen.`);
 
       // Send WebSocket update to notify boards
@@ -850,16 +896,20 @@ export default function TournamentBracket() {
       }
 
       // Refresh the data
-      const refreshResponse = await fetch('/api/dashboard/tournament/bracket');
-      if (refreshResponse.ok) {
-        const refreshData = await refreshResponse.json();
-        setGames(refreshData.games || []);
-        setBoards(refreshData.boards || []);
-        setTournament(refreshData.tournament);
-      }
+      fetchTournamentData();
     } catch (error) {
       console.error('Error starting game:', error);
       alert('Fehler beim Starten des Spiels. Bitte versuchen Sie es erneut.');
+    }
+  };
+
+  // Function to handle match click (opens dialog)
+  const handleMatchClick = (matchId: string) => {
+    const game = games.find(g => g.id === matchId);
+    if (game) {
+        setSelectedMatch(game);
+        setNewBoardId(game.boardId || '');
+        setMatchDialogOpen(true);
     }
   };
 
@@ -2096,7 +2146,7 @@ export default function TournamentBracket() {
       </SidebarInset>
 
       <Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
-        <DialogContent className="fixed inset-x-0 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[98vw] h-[95vh] max-w-none p-0 m-0 rounded-lg border-gray-200">
+        <DialogContent className="fixed inset-x-0 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[98vw] h-[95vh] max-w-none p-0 m-0 rounded-lg border-gray-200 flex flex-col">
           <DialogHeader className="p-4 pb-0 border-b border-gray-200 flex-shrink-0 bg-background">
             <DialogTitle className="flex items-center justify-between">
               <span>Turnierbaum - Vollbild</span>
@@ -2109,29 +2159,100 @@ export default function TournamentBracket() {
               </Button>
             </DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-x-auto overflow-y-hidden w-full h-full relative bg-background" onWheel={handleWheel}>
-            <div className="min-w-max min-h-full p-10 inline-block">
-              {bracketMatches && bracketMatches.length > 0 ? (
-                <DragDropContext onDragEnd={handleDragEnd}>
-                  <CustomBracket
-                    matches={bracketMatches}
-                    isDark={false}
-                    onMatchClick={handleMatchClick}
-                  />
-                </DragDropContext>
-              ) : (
-                <div className="flex items-center justify-center h-full w-full min-w-[50vw]">
-                  <div className="text-center p-12">
-                    <div className="text-6xl mb-4">⏳</div>
-                    <h3 className="text-xl font-semibold mb-2">Keine Spiele verfügbar</h3>
-                    <p className="text-muted-foreground">
-                      Erstelle ein Turnier oder warte auf die Bracket-Erstellung
-                    </p>
-                  </div>
+          <div className="flex-1 overflow-hidden w-full h-full relative bg-background">
+            {bracketMatches && bracketMatches.length > 0 ? (
+              <DragDropContext onDragEnd={handleDragEnd}>
+                <CustomBracket
+                  matches={bracketMatches}
+                  isDark={false}
+                  onMatchClick={handleMatchClick}
+                  className="h-full w-full"
+                  style={{ maxHeight: 'none', minHeight: 'auto' }}
+                />
+              </DragDropContext>
+            ) : (
+              <div className="flex items-center justify-center h-full w-full min-w-[50vw]">
+                <div className="text-center p-12">
+                  <div className="text-6xl mb-4">⏳</div>
+                  <h3 className="text-xl font-semibold mb-2">Keine Spiele verfügbar</h3>
+                  <p className="text-muted-foreground">
+                    Erstelle ein Turnier oder warte auf die Bracket-Erstellung
+                  </p>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={matchDialogOpen} onOpenChange={setMatchDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Spiel-Details</DialogTitle>
+          </DialogHeader>
+          
+          {selectedMatch && (
+            <div className="space-y-6 py-4">
+              <div className="flex items-center justify-between px-4">
+                <div className="text-center flex-1">
+                  <p className="font-semibold text-lg">{selectedMatch.player1?.playerName || 'TBD'}</p>
+                </div>
+                <div className="text-muted-foreground font-bold px-2">VS</div>
+                <div className="text-center flex-1">
+                  <p className="font-semibold text-lg">{selectedMatch.player2?.playerName || 'TBD'}</p>
+                </div>
+              </div>
+
+              <div className="space-y-4 rounded-lg border p-4 bg-muted/20">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Scheibe zuweisen</label>
+                  <div className="flex gap-2">
+                    <Select value={newBoardId} onValueChange={setNewBoardId}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Wähle eine Scheibe" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {boards.filter(b => b.isActive).map(board => (
+                          <SelectItem key={board.id} value={board.id}>
+                            {board.name} {board.currentGame ? '(Belegt)' : '(Frei)'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      variant="outline" 
+                      onClick={handleAssignBoard}
+                      disabled={!newBoardId || newBoardId === selectedMatch.boardId}
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {selectedMatch.boardName && (
+                     <p className="text-xs text-muted-foreground">Aktuelle Scheibe: {selectedMatch.boardName}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center gap-4 pt-2">
+                <div className="flex items-center gap-2">
+                   <Badge variant={selectedMatch.status === 'FINISHED' ? 'secondary' : selectedMatch.status === 'ACTIVE' ? 'default' : 'outline'}>
+                     {selectedMatch.status === 'FINISHED' ? 'Beendet' : selectedMatch.status === 'ACTIVE' ? 'Läuft' : 'Wartend'}
+                   </Badge>
+                </div>
+
+                {selectedMatch.status === 'WAITING' && (
+                    <Button 
+                        onClick={() => handleStartGame(selectedMatch.id)}
+                        disabled={!selectedMatch.player1 || !selectedMatch.player2 || !selectedMatch.boardId}
+                        className="flex-1 ml-4"
+                    >
+                        <Play className="mr-2 h-4 w-4" />
+                        Spiel Starten
+                    </Button>
+                )}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </SidebarProvider>

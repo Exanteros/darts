@@ -23,6 +23,15 @@ export default function AccountPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [saving, setSaving] = useState(false);
+  
+  const [adminSecret, setAdminSecret] = useState('');
+  const [promoting, setPromoting] = useState(false);
+
+  // New Admin Creation State
+  const [newAdminName, setNewAdminName] = useState('');
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [creatingAdmin, setCreatingAdmin] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -66,6 +75,85 @@ export default function AccountPage() {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePromote = async () => {
+    if (!adminSecret) return;
+    
+    setPromoting(true);
+    try {
+      const response = await fetch('/api/user/promote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret: adminSecret })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Erfolg!",
+          description: "Sie sind nun Administrator. Seite wird neu geladen...",
+        });
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        toast({
+          title: "Fehler",
+          description: data.error || "Admin-Promotion fehlgeschlagen",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Netzwerkfehler",
+        variant: "destructive"
+      });
+    } finally {
+      setPromoting(false);
+    }
+  };
+
+  const handleCreateAdmin = async () => {
+    if (!newAdminEmail || !newAdminPassword) {
+        toast({ title: "Fehler", description: "Email und Passwort sind erforderlich", variant: "destructive" });
+        return;
+    }
+
+    setCreatingAdmin(true);
+    try {
+      const response = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newAdminName, email: newAdminEmail, password: newAdminPassword })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Erfolg",
+          description: "Neuer Administrator wurde erstellt.",
+        });
+        setNewAdminName('');
+        setNewAdminEmail('');
+        setNewAdminPassword('');
+      } else {
+        toast({
+          title: "Fehler",
+          description: data.error || "Fehler beim Erstellen",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Netzwerkfehler",
+        variant: "destructive"
+      });
+    } finally {
+      setCreatingAdmin(false);
     }
   };
 
@@ -210,6 +298,100 @@ export default function AccountPage() {
                       </div>
                     </CardContent>
                   </Card>
+
+                  {/* Admin Promotion Zone */}
+                  {!isAdmin && (
+                    <Card className="border-yellow-500/50 bg-yellow-500/5">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
+                          <IconShield className="h-5 w-5" />
+                          Admin Access
+                        </CardTitle>
+                        <CardDescription>
+                          Entwickler-Bereich: Admin-Rechte anfordern
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Admin Secret Code</Label>
+                          <div className="flex gap-2">
+                            <Input 
+                              type="password" 
+                              placeholder="Code eingeben..." 
+                              value={adminSecret}
+                              onChange={(e) => setAdminSecret(e.target.value)}
+                            />
+                            <Button 
+                              onClick={handlePromote}
+                              disabled={promoting || !adminSecret}
+                              variant="outline"
+                              className="border-yellow-500/50 text-yellow-600 hover:bg-yellow-500/10"
+                            >
+                              {promoting ? '...' : 'Upgrade'}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Nur für autorisiertes Personal. Missbrauch wird protokolliert.
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Create New Admin Section (Only for Admins) */}
+                  {isAdmin && (
+                    <Card className="border-blue-500/50 bg-blue-500/5">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-blue-600 dark:text-blue-500">
+                           <IconUser className="h-5 w-5" />
+                           Neuen Admin anlegen
+                        </CardTitle>
+                        <CardDescription>
+                          Erstellen Sie einen neuen Benutzer mit vollen Administrator-Rechten.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="newAdminName">Name (Optional)</Label>
+                            <Input 
+                              id="newAdminName"
+                              placeholder="Vorname Nachname" 
+                              value={newAdminName}
+                              onChange={(e) => setNewAdminName(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="newAdminEmail">E-Mail *</Label>
+                            <Input 
+                              id="newAdminEmail"
+                              type="email"
+                              placeholder="admin@hallo.de" 
+                              value={newAdminEmail}
+                              onChange={(e) => setNewAdminEmail(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="newAdminPassword">Passwort *</Label>
+                            <Input 
+                              id="newAdminPassword"
+                              type="password"
+                              placeholder="Sicheres Passwort" 
+                              value={newAdminPassword}
+                              onChange={(e) => setNewAdminPassword(e.target.value)}
+                            />
+                          </div>
+                          <Button 
+                             onClick={handleCreateAdmin} 
+                             disabled={creatingAdmin || !newAdminEmail || !newAdminPassword}
+                             className="bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            {creatingAdmin ? 'Erstelle...' : 'Admin erstellen'}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
               </div>
             </div>

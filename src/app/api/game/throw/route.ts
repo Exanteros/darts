@@ -187,6 +187,21 @@ export async function POST(request: NextRequest) {
           }
       }
 
+      // Logic for Match Win
+      let matchWon = false;
+      let matchWinnerId = undefined;
+      
+      if (legWon && winnerId) {
+         const currentLegs = winnerId === game.player1Id ? game.player1Legs : game.player2Legs;
+         const newTotalLegs = currentLegs + 1;
+         const legsToWin = game.legsToWin || 2;
+         
+         if (newTotalLegs >= legsToWin) {
+             matchWon = true;
+             matchWinnerId = winnerId;
+         }
+      }
+
       // Always update game to clear currentThrow and update legs if won
       const updatedGameResult = await tx.game.update({
           where: { id: gameId },
@@ -195,7 +210,12 @@ export async function POST(request: NextRequest) {
               ...(legWon && winnerId ? {
                   player1Legs: { increment: winnerId === game.player1Id ? 1 : 0 },
                   player2Legs: { increment: winnerId === game.player2Id ? 1 : 0 },
-                  currentLeg: { increment: 1 }
+                  currentLeg: matchWon ? undefined : { increment: 1 },
+                  ...(matchWon ? {
+                      status: 'FINISHED',
+                      winnerId: matchWinnerId,
+                      finishedAt: new Date()
+                  } : {})
               } : {})
           },
           include: {
