@@ -8,7 +8,7 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { DatePicker } from '@/components/ui/date-picker';
+import { IconUser } from "@tabler/icons-react";
 
 interface TournamentSettings {
   id?: string;
@@ -100,6 +101,12 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+
+  // Admin Creation State
+  const [newAdminName, setNewAdminName] = useState('');
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [creatingAdmin, setCreatingAdmin] = useState(false);
 
   // Prüfe Berechtigung für Einstellungen
   const canManageSettings = isAdmin || tournamentAccess.some(access => {
@@ -353,6 +360,48 @@ export default function SettingsPage() {
     }
   };
 
+  const handleCreateAdmin = async () => {
+    if (!newAdminEmail || !newAdminPassword) {
+        toast({ title: "Fehler", description: "Email und Passwort sind erforderlich", variant: "destructive" });
+        return;
+    }
+
+    setCreatingAdmin(true);
+    try {
+      const response = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newAdminName, email: newAdminEmail, password: newAdminPassword })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Erfolg",
+          description: "Neuer Administrator wurde erstellt.",
+        });
+        setNewAdminName('');
+        setNewAdminEmail('');
+        setNewAdminPassword('');
+      } else {
+        toast({
+          title: "Fehler",
+          description: data.error || "Fehler beim Erstellen",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Netzwerkfehler",
+        variant: "destructive"
+      });
+    } finally {
+      setCreatingAdmin(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'UPCOMING':
@@ -523,6 +572,61 @@ export default function SettingsPage() {
                       </div>
                     </CardContent>
                   </Card>
+
+                  {/* Create New Admin Section */}
+                  {isAdmin && (
+                    <Card className="border-blue-500/50 bg-blue-500/5">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-blue-600 dark:text-blue-500">
+                            <IconUser className="h-5 w-5" />
+                            Neuen Admin anlegen
+                        </CardTitle>
+                        <CardDescription>
+                          Erstellen Sie einen neuen Benutzer mit vollen Administrator-Rechten.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="newAdminName">Name (Optional)</Label>
+                            <Input 
+                              id="newAdminName"
+                              placeholder="Vorname Nachname" 
+                              value={newAdminName}
+                              onChange={(e) => setNewAdminName(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="newAdminEmail">E-Mail *</Label>
+                            <Input 
+                              id="newAdminEmail"
+                              type="email"
+                              placeholder="admin@hallo.de" 
+                              value={newAdminEmail}
+                              onChange={(e) => setNewAdminEmail(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="newAdminPassword">Passwort *</Label>
+                            <Input 
+                              id="newAdminPassword"
+                              type="password"
+                              placeholder="Sicheres Passwort" 
+                              value={newAdminPassword}
+                              onChange={(e) => setNewAdminPassword(e.target.value)}
+                            />
+                          </div>
+                          <Button 
+                              onClick={handleCreateAdmin} 
+                              disabled={creatingAdmin || !newAdminEmail || !newAdminPassword}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            {creatingAdmin ? 'Erstelle...' : 'Admin erstellen'}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
                   {/* Statistiken-Einstellungen */}
                   <Card>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,7 @@ interface GameState {
   gameStatus: "waiting" | "active" | "finished";
   winner?: 1 | 2;
   isShootout?: boolean;
+  isPractice?: boolean;
 }
 
 /* ================= COMPONENTS ================= */
@@ -77,6 +78,17 @@ export default function DisplayBoard({ params }: { params: Promise<{ code: strin
   });
 
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const isPracticeRef = useRef(false);
+
+  // Sync ref with state
+  useEffect(() => {
+    if (gameState?.isPractice) {
+        isPracticeRef.current = true;
+    } else if (gameState && !gameState.isPractice) {
+        isPracticeRef.current = false;
+    }
+  }, [gameState]);
+
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Connection Status für UI-Feedback
@@ -117,14 +129,16 @@ export default function DisplayBoard({ params }: { params: Promise<{ code: strin
                 currentLeg: data.gameData.currentLeg,
                 legsToWin: data.practiceConfig.legsToWin || 3,
                 throws: [],
-                gameStatus: 'active'
+                gameStatus: 'active',
+                isPractice: true
              });
              return; // Skip standard logic
         }
 
         // Standard Logic: Wenn ein neues Leg beginnt (Score 501), erzwinge einen Refresh vom Server
         // um sicherzustellen, dass alles synchron ist
-        if (data.gameData.player1Score === 501 && data.gameData.player2Score === 501 && 
+        if (!isPracticeRef.current && 
+           data.gameData.player1Score === 501 && data.gameData.player2Score === 501 && 
            (data.gameData.player1Legs > 0 || data.gameData.player2Legs > 0)) {
             setRefreshTrigger(prev => prev + 1);
         }
