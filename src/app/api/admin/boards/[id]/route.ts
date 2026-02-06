@@ -207,6 +207,23 @@ export async function PUT(
 
     if (legSettings !== undefined) {
       updateData.legSettings = JSON.stringify(legSettings);
+
+      // Aktualisiere auch alle aktiven Spiele auf diesem Board, 
+       // damit die Änderung sofort wirksam wird
+       if (legSettings.legsPerGame) {
+         // Berechnung von Best-Of zu Gewinnsätzen (z.B. Best of 3 => 2 Gewinnsätze)
+         const legsToWinVal = Math.ceil(Number(legSettings.legsPerGame) / 2);
+         
+         await prisma.game.updateMany({
+           where: {
+             boardId: id,
+             status: { in: ['ACTIVE', 'WAITING'] }
+           },
+           data: {
+             legsToWin: legsToWinVal
+           }
+         });
+       }
     }
 
     const board = await prisma.board.update({

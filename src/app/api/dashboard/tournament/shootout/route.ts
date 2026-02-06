@@ -152,10 +152,13 @@ export async function POST(request: NextRequest) {
 
       // Weise Seeds zu (1 = beste Platzierung)
       for (let i = 0; i < playersWithResults.length; i++) {
+        const newSeed = i + 1;
         await prisma.tournamentPlayer.update({
           where: { id: playersWithResults[i].id },
-          data: { seed: i + 1 }
+          data: { seed: newSeed }
         });
+        // Update in-memory object for next steps
+        playersWithResults[i].seed = newSeed;
       }
 
       // Setze Turnier-Status auf ACTIVE
@@ -165,6 +168,9 @@ export async function POST(request: NextRequest) {
       });
 
       // Erstelle Spiele basierend auf der Setzliste
+      // Da wir seeds gerade gesetzt haben, ist playersWithResults bereits nach Score sortiert (Line 144)
+      // und hat jetzt die korrekten Seeds (Line 153). 
+      // Ein erneutes Sortieren nach Seed ist redundant aber sicher.
       const seededPlayers = playersWithResults.sort((a, b) => (a.seed || 999) - (b.seed || 999));
 
       if (seededPlayers.length < 2) {
@@ -225,6 +231,7 @@ export async function POST(request: NextRequest) {
       const games = [];
       
       // Erstelle Spiele basierend auf der vordefinierten Setzliste
+      let round1Games = [];
       for (let i = 0; i < finalSeedingOrder.length; i += 2) {
         const seed1 = finalSeedingOrder[i];
         const seed2 = finalSeedingOrder[i+1];
@@ -247,13 +254,45 @@ export async function POST(request: NextRequest) {
               legsToWin: legsToWin
             }
           });
+          round1Games.push(game);
           games.push(game);
         }
       }
 
+        // GENERIERE PLATZHALTER FÜR SPÄTERE RUNDEN (2 bis Finale)
+      const totalRounds = Math.ceil(Math.log2(seededPlayers.length));
+      let previousRoundGames = round1Games;
+
+      for (let r = 2; r <= totalRounds; r++) {
+          const currentRoundGames = [];
+          const roundLegsToWin = Math.ceil((legsPerRound[`round${r}` as keyof typeof legsPerRound] || 3) / 2);
+          
+          // Wir nehmen immer 2 Spiele aus der vorherigen Runde und führen sie zu einem neuen Spiel zusammen
+          // Annahme: previousRoundGames ist sortiert (oder wir haben IDs).
+          // Da round1Games sequentiell erstellt wurden (Game 1, Game 2, etc.), sollte Order stimmen.
+          // Game 1 vs Game 2 -> Game next round 1
+          
+          for (let i = 0; i < previousRoundGames.length; i += 2) {
+              // Erzeuge leeres Spiel für die nächste Runde
+              const game = await prisma.game.create({
+                  data: {
+                      tournamentId: tournamentWithPlayers.id,
+                      round: r,
+                      player1Id: null,
+                      player2Id: null,
+                      status: 'WAITING', // Status waiting, aber Spieler noch TBD
+                      legsToWin: roundLegsToWin
+                  }
+              });
+              currentRoundGames.push(game);
+              games.push(game);
+          }
+          previousRoundGames = currentRoundGames;
+      }
+
       return NextResponse.json({
         success: true,
-        message: `Shootout finalisiert und erste Runde erstellt. Höhere Runden werden bei Bedarf automatisch generiert.`,
+        message: `Shootout finalisiert und kompletter Turnierbaum erstellt (${games.length} Spiele).`,
         gamesCreated: games.length,
         playersSeeded: seededPlayers.length,
         firstRoundComplete: true

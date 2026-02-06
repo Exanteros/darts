@@ -283,7 +283,26 @@ export async function POST(request: NextRequest) {
       case 'assign_game': {
         const { gameId, boardId } = body;
         if (!gameId || !boardId) return NextResponse.json({ error: 'gameId und boardId sind erforderlich' }, { status: 400 });
-        await prisma.game.update({ where: { id: gameId }, data: { boardId, status: 'WAITING' } });
+        
+        // Hole Board-Einstellungen für Legs
+        const board = await prisma.board.findUnique({ where: { id: boardId } });
+        let updateData: any = { boardId, status: 'WAITING' };
+
+        if (board && board.legSettings) {
+            try {
+                const settings = typeof board.legSettings === 'string' 
+                   ? JSON.parse(board.legSettings) 
+                   : board.legSettings;
+                   
+                if (settings.legsPerGame) {
+                    updateData.legsToWin = Number(settings.legsPerGame);
+                }
+            } catch (e) {
+                console.error("Error parsing board leg settings", e);
+            }
+        }
+
+        await prisma.game.update({ where: { id: gameId }, data: updateData });
         return NextResponse.json({ success: true, message: 'Spiel erfolgreich zugewiesen' });
       }
 
@@ -391,6 +410,23 @@ export async function POST(request: NextRequest) {
                     const roundKey = `round${game.round}`;
                     if (legsConfig[roundKey]) {
                         legsToWin = legsConfig[roundKey];
+                    }
+                }
+
+                // Check Board Specific Settings (Overrides Bracket Config if set)
+                const board = availableBoards.find(b => b.id === targetBoardId);
+                if (board && board.legSettings) {
+                    try {
+                        const bSettings = typeof board.legSettings === 'string'
+                            ? JSON.parse(board.legSettings)
+                            : board.legSettings;
+                        
+                        // Type assertion for TS if needed, or just standard access
+                        if ((bSettings as any).legsPerGame) {
+                            legsToWin = Number((bSettings as any).legsPerGame);
+                        }
+                    } catch (e) {
+                        // ignore parse error
                     }
                 }
 
