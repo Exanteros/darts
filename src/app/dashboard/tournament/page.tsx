@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Star, CheckCircle2 } from 'lucide-react';
 import { IconInfoCircle } from '@tabler/icons-react';
+import { TestGameCard } from '@/components/admin/TestGameCard';
 
 interface DartBoard {
   id: string;
@@ -959,6 +960,8 @@ export default function TournamentPage() {
                         {/* Remove orphan inputs */}
                     </CardContent>
                   </Card>
+
+                  <TestGameCard boards={boards} />
 
                   <Separator />
 

@@ -58,10 +58,6 @@ git reset --hard origin/main
 log "📦 Installiere neue Dependencies..."
 npm install
 
-# Datenbank-Migration prüfen
-log "🗄️ Prüfe Datenbank-Migrationen..."
-docker-compose exec app npx prisma migrate deploy
-
 # Anwendung neu bauen
 log "🔨 Baue neue Version..."
 docker-compose build app

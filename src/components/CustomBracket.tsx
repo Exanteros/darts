@@ -56,7 +56,7 @@ export const CustomBracket: React.FC<CustomBracketProps> = ({
       className={`relative w-full overflow-x-auto overflow-y-auto bg-background ${className || ''}`}
       style={{
         minHeight: '600px',
-        maxHeight: '800px',
+        maxHeight: '700px',
         ...style
       }}
     >

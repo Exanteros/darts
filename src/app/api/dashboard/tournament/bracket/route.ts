@@ -34,6 +34,7 @@ export async function GET() {
     const games = await prisma.game.findMany({
       where: { 
         tournamentId: tournament.id,
+        round: { not: 999 }, // Exclude test games
         // player1Id: { not: null }, // Removed to show empty bracket slots
         // player2Id: { not: null }  // Removed to show empty bracket slots
       },

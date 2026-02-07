@@ -1241,6 +1241,9 @@ export default function TournamentBracket() {
 
   // Shootout component in Players style
   const ShootoutInterface = () => {
+    // Filter active players (exclude waiting list and withdrawn)
+    const activePlayers = tournament?.players?.filter(p => !['WAITING_LIST', 'WITHDRAWN'].includes(p.status)) || [];
+
     // Use statistics from API, if available
     const completedShootouts = tournament?.shootoutStats?.completedShootouts || shootoutResults.filter(r => r.score > 0).length;
     const totalPlayers = tournament?.shootoutStats?.totalPlayers || shootoutResults.length;
@@ -1424,8 +1427,11 @@ export default function TournamentBracket() {
                   )}
 
                   <div className="flex justify-between items-center">
-                    <h4 className="text-lg font-medium">Spieler auswählen ({tournament?.players?.length || 0} verfügbar)</h4>
+                    <h4 className="text-lg font-medium">Spieler auswählen ({activePlayers.length} verfügbar)</h4>
                     <div className="flex gap-2">
+                       <Button variant="outline" size="sm" onClick={() => setSelectedPlayers(activePlayers.map(p => p.userId))}>
+                        Alle auswählen
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => setSelectedPlayers([])}>
                         Alle abwählen
                       </Button>
@@ -1433,8 +1439,7 @@ export default function TournamentBracket() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-60 overflow-y-auto border rounded-lg p-4">
-                    {tournament?.players
-                      ?.filter(player => player.status === 'ACTIVE')
+                    {activePlayers
                       .map(player => (
                         <div
                           key={player.id}
@@ -1490,10 +1495,8 @@ export default function TournamentBracket() {
                     </p>
                     <Button
                       onClick={() => {
-                        const allPlayers = tournament?.players
-                          ?.filter(player => player.status === 'ACTIVE')
-                          .map(player => player.userId) || [];
-                        setSelectedPlayers(allPlayers);
+                        const allPlayerIds = activePlayers.map(player => player.userId);
+                        setSelectedPlayers(allPlayerIds);
                       }}
                       disabled={!selectedShootoutBoard && !lockedInBoard}
                       size="lg"
@@ -1637,8 +1640,8 @@ export default function TournamentBracket() {
 
   // Pre-Tournament State Component
   const PreTournamentState = () => {
-    // Load players for selection
-    const tournamentPlayers = tournament?.players || [];
+    // Load players for selection (filter out waiting list and withdrawn)
+    const tournamentPlayers = tournament?.players?.filter(p => !['WAITING_LIST', 'WITHDRAWN'].includes(p.status)) || [];
 
     const handlePlayerToggle = (userId: string) => {
       setSelectedPlayers(prev =>

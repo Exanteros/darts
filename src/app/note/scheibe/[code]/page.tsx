@@ -132,6 +132,9 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
     // zeige das Setup-Popup an (damit "Warte auf Match..." nicht ewig bleibt ohne Aktion)
     if (isPracticeMode && !practiceSessionActive && !loading && !boardError) {
         setShowPracticeSetup(true);
+    } else if (!isPracticeMode) {
+        // Wenn ein Spiel zugewiesen wurde (oder Shootout startet), das Popup automatisch schließen
+        setShowPracticeSetup(false);
     }
   }, [isPracticeMode, practiceSessionActive, loading, boardError]);
 
