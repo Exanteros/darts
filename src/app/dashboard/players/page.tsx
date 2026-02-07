@@ -1236,6 +1236,13 @@ export default function PlayersPage() {
                         <Upload className="h-4 w-4 mr-2" />
                         Import
                       </Button>
+                      <Button onClick={() => {
+                        setAddPlayerDialogOpen(true);
+                        setIsCreatingNew(false);
+                      }}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Neuer Spieler
+                      </Button>
                     </div>
                   </div>
                 </div>

@@ -159,6 +159,7 @@ export default function TournamentBracket() {
     showStatus: true
   });
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
   const [selectedGames, setSelectedGames] = useState<string[]>([]);
   const [showGameSelection, setShowGameSelection] = useState(false);
@@ -1171,14 +1172,29 @@ export default function TournamentBracket() {
         {/* Player selection for sequential shootout */}
         <div className="px-4 lg:px-6 pt-6" data-shootout-selection>
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Spieler für Shootout auswählen
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Wählen Sie einen Spieler aus, der als nächstes das Shootout macht
-              </p>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Spieler für Shootout auswählen
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Wählen Sie einen Spieler aus, der als nächstes das Shootout macht
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  setIsRefreshing(true);
+                  await fetchTournamentData();
+                  setIsRefreshing(false);
+                }}
+                disabled={isRefreshing || loading}
+                title="Spielerliste aktualisieren"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing || loading ? 'animate-spin' : ''}`} />
+              </Button>
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="players" className="w-full">
