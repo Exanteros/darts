@@ -1650,6 +1650,102 @@ export default function TournamentBracket() {
             </Card>
           </div>
         )}
+
+        {/* Shootout Status Modal - NEW SEQUENTIAL WORKFLOW */}
+        {showShootoutSpinner && currentShootoutPlayer && tournament?.players && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                <h3 className="text-lg font-semibold mb-2">🎯 Shootout läuft</h3>
+                {(() => {
+                  const player = tournament.players.find(p => p.id === currentShootoutPlayer);
+                  return (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        {shootoutStatus === 'player_selected' && (
+                          <>
+                            <p className="text-muted-foreground">
+                              <strong>{player?.playerName}</strong> wurde ausgewählt
+                            </p>
+                            <p className="text-sm text-muted-foreground mb-4">
+                              Bleibe hier, bis das Shootout auf /note/scheibe/ gestartet wird
+                            </p>
+                            <Button 
+                              variant="destructive"
+                              size="sm"
+                              onClick={async () => {
+                                if (!window.confirm('Möchten Sie wirklich einen anderen Spieler wählen?')) return;
+                                try {
+                                  const response = await fetch('/api/dashboard/tournament/shootout/update', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ action: 'cancel_selection' })
+                                  });
+                                  if (response.ok) {
+                                    setShowShootoutSpinner(false);
+                                    setCurrentShootoutPlayer(null);
+                                    setShootoutStatus('waiting_for_selection');
+                                  }
+                                } catch (e) {
+                                  console.error(e);
+                                }
+                              }}
+                            >
+                              Spieler wechseln
+                            </Button>
+                          </>
+                        )}
+                        {shootoutStatus === 'throwing' && (
+                          <>
+                            <p className="text-muted-foreground">
+                              <strong>{player?.playerName}</strong> wirft gerade seine 3 Darts...
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Bleibe hier, bis die Würfe auf /note/scheibe/ bestätigt wurden
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+                <div className="flex justify-center space-x-2 mt-4">
+                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Ready for new player selection Modal - NEW WORKFLOW */}
+        {showNextPlayerModal && tournament?.status === 'SHOOTOUT' && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+              <div className="text-center">
+                <div className="text-4xl mb-4">✅</div>
+                <h3 className="text-lg font-semibold mb-2">Spieler abgeschlossen</h3>
+                <p className="text-muted-foreground mb-4">
+                  {currentShootoutPlayer && tournament?.players && (() => {
+                    const player = tournament.players.find(p => p.id === currentShootoutPlayer);
+                    return `${player?.playerName} hat seine Würfe abgeschlossen.`;
+                  })()}
+                </p>
+                <div className="flex justify-center gap-3">
+                  <Button 
+                    onClick={finishCurrentPlayer} 
+                    className="w-full"
+                    disabled={shootoutLoading}
+                  >
+                    {shootoutLoading ? 'Wird geladen...' : 'Nächsten Spieler auswählen'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };

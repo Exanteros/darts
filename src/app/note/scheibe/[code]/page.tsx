@@ -316,14 +316,32 @@ export default function ScoreEntry({ params }: { params: Promise<{ code: string 
       setTournamentStatus(lastUpdate.tournament.status);
       setShootoutBoardId(lastUpdate.tournament.shootoutBoardId);
 
-      if (lastUpdate.tournament.status === 'SHOOTOUT') checkForShootoutStatusOnly();
-      else if (lastUpdate.tournament.status === 'ACTIVE') checkForGameAssignment();
+      if (lastUpdate.tournament.status === 'SHOOTOUT') {
+        checkForShootoutStatusOnly();
+      } else {
+        // Fix: Alle Shootout Popups schließen, wenn nicht mehr im Shootout Modus
+        if (showShootoutPopup) setShowShootoutPopup(false);
+        if (showWaitingPopup) setShowWaitingPopup(false);
+        if (showNextPlayerReadyPopup) setShowNextPlayerReadyPopup(false);
+        if (showStartShootoutPopup) setShowStartShootoutPopup(false);
+
+        if (lastUpdate.tournament.status === 'ACTIVE') checkForGameAssignment();
+      }
     }
   }, [lastUpdate]);
 
   // --- API Helper Functions ---
 
   const checkForShootoutStatusOnly = async () => {
+    // Wenn wir nicht das Shootout-Board sind, sicherstellen dass keine Popups offen sind
+    if (boardId && shootoutBoardId && boardId !== shootoutBoardId) {
+      if (showShootoutPopup) setShowShootoutPopup(false);
+      if (showWaitingPopup) setShowWaitingPopup(false);
+      if (showNextPlayerReadyPopup) setShowNextPlayerReadyPopup(false);
+      if (showStartShootoutPopup) setShowStartShootoutPopup(false);
+      return;
+    }
+
     try {
       const response = await fetch(`/api/dashboard/tournament/shootout/status?activePlayer=${currentShootoutPlayer || ''}`);
       const data = await response.json();

@@ -129,8 +129,8 @@ export async function POST(request: NextRequest) {
         status: 'waiting_for_admin'
       });
 
-    } else if (action === 'finish_player') {
-      // Admin bestätigt das Ende des Spielers und bereitet nächste Auswahl vor
+    } else if (action === 'finish_player' || action === 'cancel_selection') {
+      // Admin bestätigt das Ende des Spielers oder bricht die Auswahl ab
       if (!tournament.shootoutState) {
         return NextResponse.json(
           { error: 'Kein Shootout-Status gefunden' },
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: 'Spieler abgeschlossen - bereit für nächste Auswahl',
+        message: action === 'cancel_selection' ? 'Auswahl abgebrochen' : 'Spieler abgeschlossen - bereit für nächste Auswahl',
         status: 'waiting_for_selection'
       });
 

@@ -2377,9 +2377,32 @@ export default function TournamentBracket() {
                         <p className="text-muted-foreground">
                           <strong>{player?.playerName}</strong> wurde ausgewählt
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground mb-4">
                           Bleibe hier, bis das Shootout auf /note/scheibe/ gestartet wird
                         </p>
+                        <Button 
+                          variant="destructive"
+                          size="sm"
+                          onClick={async () => {
+                            if (!window.confirm('Möchten Sie wirklich einen anderen Spieler wählen?')) return;
+                            try {
+                              const response = await fetch('/api/dashboard/tournament/shootout/update', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ action: 'cancel_selection' })
+                              });
+                              if (response.ok) {
+                                setShowShootoutSpinner(false);
+                                setCurrentShootoutPlayer(null);
+                                setShootoutStatus('waiting_for_selection');
+                              }
+                            } catch (e) {
+                              console.error(e);
+                            }
+                          }}
+                        >
+                          Spieler wechseln
+                        </Button>
                       </>
                     )}
                     {shootoutStatus === 'throwing' && (
