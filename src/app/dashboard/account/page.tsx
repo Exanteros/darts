@@ -340,9 +340,9 @@ export default function AccountPage() {
 
                   {/* Create New Admin Section (Only for Admins) */}
                   {isAdmin && (
-                    <Card className="border-blue-500/50 bg-blue-500/5">
+                    <Card>
                       <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-blue-600 dark:text-blue-500">
+                        <CardTitle className="flex items-center gap-2">
                            <IconUser className="h-5 w-5" />
                            Neuen Admin anlegen
                         </CardTitle>
@@ -351,7 +351,7 @@ export default function AccountPage() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <div className="grid gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="newAdminName">Name (Optional)</Label>
                             <Input 
@@ -371,7 +371,7 @@ export default function AccountPage() {
                               onChange={(e) => setNewAdminEmail(e.target.value)}
                             />
                           </div>
-                          <div className="space-y-2">
+                          <div className="space-y-2 md:col-span-2">
                             <Label htmlFor="newAdminPassword">Passwort *</Label>
                             <Input 
                               id="newAdminPassword"
@@ -381,10 +381,11 @@ export default function AccountPage() {
                               onChange={(e) => setNewAdminPassword(e.target.value)}
                             />
                           </div>
+                        </div>
+                        <div className="flex justify-end pt-2">
                           <Button 
                              onClick={handleCreateAdmin} 
                              disabled={creatingAdmin || !newAdminEmail || !newAdminPassword}
-                             className="bg-blue-600 hover:bg-blue-700 text-white"
                           >
                             {creatingAdmin ? 'Erstelle...' : 'Admin erstellen'}
                           </Button>

@@ -403,13 +403,13 @@ export default function DisplayBoard({ params }: { params: Promise<{ code: strin
                 gameState.currentPlayer === 1 ? "bg-white" : "bg-slate-50/50"
               )}>
                 {gameState.currentPlayer === 1 && (
-                  <motion.div layoutId="active-indicator" className="absolute top-0 inset-x-0 h-1.5 bg-blue-600 shadow-[0_0_20px_rgba(37,99,235,0.5)]" />
+                  <motion.div layoutId="active-indicator" className="absolute top-0 inset-x-0 h-1.5 bg-slate-500 shadow-[0_0_20px_rgba(100,116,139,0.5)]" />
                 )}
                 
                 <div className="flex-1 flex flex-col items-center justify-center space-y-8">
                   <h2 className={cn(
                     "text-3xl md:text-5xl font-bold tracking-tight text-center max-w-lg break-words",
-                    gameState.currentPlayer === 1 ? "text-slate-900" : "text-slate-400"
+                    gameState.currentPlayer === 1 ? "text-slate-500" : "text-slate-300"
                   )}>
                     {gameState.player1.name}
                   </h2>
@@ -438,13 +438,13 @@ export default function DisplayBoard({ params }: { params: Promise<{ code: strin
                 gameState.currentPlayer === 2 ? "bg-white" : "bg-slate-50/50"
               )}>
                 {gameState.currentPlayer === 2 && (
-                  <motion.div layoutId="active-indicator" className="absolute top-0 inset-x-0 h-1.5 bg-blue-600 shadow-[0_0_20px_rgba(37,99,235,0.5)]" />
+                  <motion.div layoutId="active-indicator" className="absolute top-0 inset-x-0 h-1.5 bg-slate-500 shadow-[0_0_20px_rgba(100,116,139,0.5)]" />
                 )}
 
                 <div className="flex-1 flex flex-col items-center justify-center space-y-8">
                   <h2 className={cn(
                     "text-3xl md:text-5xl font-bold tracking-tight text-center max-w-lg break-words",
-                    gameState.currentPlayer === 2 ? "text-slate-900" : "text-slate-400"
+                    gameState.currentPlayer === 2 ? "text-slate-500" : "text-slate-300"
                   )}>
                     {gameState.player2.name}
                   </h2>

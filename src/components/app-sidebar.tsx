@@ -16,6 +16,7 @@ import {
   IconShield,
   IconListDetails,
   IconMail,
+  IconPalette,
 } from "@tabler/icons-react"
 import Link from "next/link"
 
@@ -168,11 +169,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         icon: IconListDetails,
       }] : []),
       
-      // Live-Überwachung - wenn Live-Berechtigung
-      ...(canViewLive ? [{
-        title: "Live-Überwachung",
-        url: "/dashboard/live",
-        icon: IconActivity,
+      // Theme Editor - wenn Settings-Berechtigung oder Admin
+      ...(canManageSettings ? [{
+        title: "Theme Editor",
+        url: "/dashboard/themes",
+        icon: IconPalette,
       }] : []),
       
       // Spieler-Verwaltung - wenn Player-Berechtigung

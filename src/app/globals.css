@@ -113,17 +113,46 @@
 }
 
 @layer base {
-  * {
+  *,
+  *::before,
+  *::after {
     @apply border-border outline-ring/50;
+    font-family: var(--font-sans), system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   }
+
+  /* Ensure base elements inherit Geist */
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans), system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     overflow-x: hidden !important;
     overflow-y: auto !important;
   }
   html {
     overflow-x: hidden !important;
     overflow-y: auto !important;
+  }
+
+  /* Form controls should inherit the UI font */
+  input,
+  textarea,
+  select,
+  button,
+  a {
+    font-family: inherit;
+  }
+
+  /* Monospace for code elements */
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Courier New', monospace;
+  }
+
+  /* Headings slightly tighter */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sans);
+    letter-spacing: -0.008em;
   }
 }
 

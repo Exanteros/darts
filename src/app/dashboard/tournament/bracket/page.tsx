@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
@@ -169,6 +170,7 @@ export default function TournamentBracket() {
   const [showPlayerSelection, setShowPlayerSelection] = useState(false);
   const [shootoutLoading, setShootoutLoading] = useState(false);
   const [selectedShootoutBoard, setSelectedShootoutBoard] = useState<string>('');
+  const [shootoutSearchQuery, setShootoutSearchQuery] = useState('');
   const [debugInfo, setDebugInfo] = useState<string>('');
 
   // Prüfe Berechtigung für Bracket
@@ -1335,7 +1337,7 @@ export default function TournamentBracket() {
               </p>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {boards
                   .filter(board => board.isActive)
                   .sort((a, b) => a.priority - b.priority)
@@ -1343,33 +1345,33 @@ export default function TournamentBracket() {
                     <div
                       key={board.id}
                       onClick={() => !lockedInBoard && setSelectedShootoutBoard(board.id)}
-                      className={`p-4 border rounded-lg transition-all ${lockedInBoard
+                      className={`relative flex flex-col items-center justify-center p-4 border-2 rounded-xl transition-all aspect-[2/1] cursor-pointer ${lockedInBoard
                           ? board.id === lockedInBoard
-                            ? 'border-green-500 bg-green-50 cursor-not-allowed'
-                            : 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50'
+                            ? 'border-green-500 bg-green-50 shadow-sm'
+                            : 'border-transparent bg-gray-100 opacity-50 cursor-not-allowed'
                           : selectedShootoutBoard === board.id
-                            ? 'border-primary bg-primary/5 ring-2 ring-primary/20 cursor-pointer hover:shadow-md'
-                            : 'border-gray-200 hover:border-primary/50 cursor-pointer hover:shadow-md'
+                            ? 'border-primary bg-primary/5 shadow-md scale-[1.02]'
+                            : 'border-muted hover:border-primary/50 hover:bg-muted/50'
                         }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <Target className="h-5 w-5 text-muted-foreground" />
-                        <div className="flex-1">
-                          <div className="font-medium">{board.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            Priorität: {board.priority}
-                          </div>
-                        </div>
-                        {lockedInBoard && board.id === lockedInBoard && (
-                          <div className="flex items-center gap-1 text-green-600">
-                            <CheckCircle className="h-4 w-4" />
-                            <span className="text-xs font-medium">Gesperrt</span>
-                          </div>
-                        )}
-                        {!lockedInBoard && selectedShootoutBoard === board.id && (
-                          <CheckCircle className="h-4 w-4 text-primary" />
-                        )}
+                      <div className={`p-2 rounded-full mb-2 transition-colors ${selectedShootoutBoard === board.id ? 'bg-primary/20' : 'bg-muted'}`}>
+                          <Target className={`h-5 w-5 ${selectedShootoutBoard === board.id ? 'text-primary' : 'text-muted-foreground'}`} />
                       </div>
+                      
+                      <div className="font-bold text-center leading-tight mb-1 truncate w-full px-2" title={board.name}>
+                        {board.name}
+                      </div>
+
+                      {lockedInBoard && board.id === lockedInBoard && (
+                          <div className="absolute top-2 right-2 text-green-600">
+                            <CheckCircle className="h-4 w-4" />
+                          </div>
+                      )}
+                      {!lockedInBoard && selectedShootoutBoard === board.id && (
+                          <div className="absolute top-2 right-2 text-primary">
+                            <CheckCircle className="h-4 w-4" />
+                          </div>
+                      )}
                     </div>
                   ))}
               </div>
@@ -1454,31 +1456,46 @@ export default function TournamentBracket() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-60 overflow-y-auto border rounded-lg p-4">
+                  <div className="my-4 relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Spieler suchen..."
+                      value={shootoutSearchQuery}
+                      onChange={(e) => setShootoutSearchQuery(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[600px] overflow-y-auto p-1">
                     {activePlayers
+                      .filter(p => !shootoutSearchQuery || p.playerName.toLowerCase().includes(shootoutSearchQuery.toLowerCase()))
                       .map(player => (
                         <div
                           key={player.id}
                           onClick={() => {
                             setSelectedPlayers([player.userId]);
                           }}
-                          className={`p-3 border rounded-lg cursor-pointer transition-all hover:shadow-sm ${selectedPlayers.includes(player.userId)
-                              ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
-                              : 'border-gray-200 hover:border-primary/50'
+                          className={`relative flex flex-col items-center justify-center p-4 border-2 rounded-xl transition-all aspect-[2/1] cursor-pointer ${selectedPlayers.includes(player.userId)
+                              ? 'border-primary bg-primary/5 shadow-md scale-[1.02]'
+                              : 'border-muted hover:border-primary/50 hover:bg-muted/50'
                             }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            <div className="flex-1">
-                              <div className="font-medium">{player.playerName}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {player.seed ? `Seed: ${player.seed}` : 'Noch kein Shootout'}
-                              </div>
-                            </div>
-                            {selectedPlayers.includes(player.userId) && (
-                              <CheckCircle className="h-4 w-4 text-primary" />
-                            )}
+                          <div className={`p-2 rounded-full mb-2 transition-colors ${selectedPlayers.includes(player.userId) ? 'bg-primary/20' : 'bg-muted'}`}>
+                            <User className={`h-5 w-5 ${selectedPlayers.includes(player.userId) ? 'text-primary' : 'text-muted-foreground'}`} />
                           </div>
+                          
+                          <div className="font-bold text-center leading-tight mb-1 truncate w-full px-2" title={player.playerName}>
+                            {player.playerName}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {player.seed ? `Seed: ${player.seed}` : 'Noch kein Shootout'}
+                          </div>
+
+                          {selectedPlayers.includes(player.userId) && (
+                            <div className="absolute top-2 right-2 text-primary">
+                              <CheckCircle className="h-4 w-4" />
+                            </div>
+                          )}
                         </div>
                       ))}
                   </div>
@@ -2095,10 +2112,10 @@ export default function TournamentBracket() {
 
     switch (tournament.status) {
       case 'REGISTRATION_CLOSED':
-        return <ShootoutInterface />;
+        return ShootoutInterface();
 
       case 'SHOOTOUT':
-        return <ShootoutInterface />;
+        return ShootoutInterface();
 
       case 'ACTIVE':
         return (
