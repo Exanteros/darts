@@ -3,8 +3,9 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Loader2, CheckCircle2, AlertCircle, Target } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 function MagicLinkSuccessContent() {
   const router = useRouter();
@@ -125,48 +126,54 @@ function MagicLinkSuccessContent() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-red-50 to-orange-50">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
-              <AlertCircle className="h-10 w-10 text-red-600" />
-            </div>
-            <CardTitle className="text-2xl">Fehler</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <p className="text-muted-foreground">{error}</p>
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Weiterleitung zum Login...
-            </div>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white relative overflow-hidden font-sans text-slate-900 selection:bg-slate-200">
+        <div className="absolute inset-0 -z-10 h-full w-full bg-white bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+        
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-md px-6">
+          <Card className="border-slate-200 shadow-none rounded-sm bg-white">
+            <CardContent className="p-8 text-center">
+              <div className="mx-auto w-20 h-20 bg-red-50 text-red-600 rounded-sm flex items-center justify-center mb-8 border border-red-100">
+                <AlertCircle className="h-10 w-10" />
+              </div>
+              <h2 className="text-2xl font-extrabold text-slate-900 mb-4 tracking-tight">Fehler</h2>
+              <p className="text-slate-600 text-base mb-8 leading-relaxed">{error}</p>
+              <div className="flex items-center justify-center gap-3 text-sm font-mono text-slate-400 uppercase tracking-widest">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Weiterleitung zum Login...
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-red-50 to-orange-50">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-            <CheckCircle className="h-10 w-10 text-green-600" />
-          </div>
-          <CardTitle className="text-2xl">Magic Link bestätigt!</CardTitle>
-        </CardHeader>
-        <CardContent className="text-center space-y-4">
-          <p className="text-muted-foreground">
-            Willkommen zurück!
-          </p>
-          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Sichere Anmeldung wird durchgeführt...
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Du wirst automatisch zum Dashboard weitergeleitet
-          </p>
-        </CardContent>
-      </Card>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white relative overflow-hidden font-sans text-slate-900 selection:bg-slate-200">
+      <div className="absolute inset-0 -z-10 h-full w-full bg-white bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+      
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-md px-6">
+        <Card className="border-slate-200 shadow-none rounded-sm bg-white">
+          <CardContent className="p-8 text-center">
+            <div className="mx-auto w-20 h-20 bg-slate-900 text-white rounded-sm flex items-center justify-center mb-8">
+              <CheckCircle2 className="h-10 w-10" />
+            </div>
+            <h2 className="text-2xl font-extrabold text-slate-900 mb-4 tracking-tight">Magic Link bestätigt!</h2>
+            <p className="text-slate-600 text-base mb-8 leading-relaxed">
+              Willkommen zurück!
+            </p>
+            <div className="flex flex-col items-center justify-center gap-4">
+              <div className="flex items-center gap-3 text-sm font-mono text-slate-900 uppercase tracking-widest font-semibold">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Sichere Anmeldung...
+              </div>
+              <p className="text-xs font-mono text-slate-400">
+                Du wirst automatisch weitergeleitet
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 }
@@ -174,13 +181,18 @@ function MagicLinkSuccessContent() {
 export default function MagicLinkSuccessPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <Loader2 className="h-10 w-10 animate-spin mx-auto mb-4 text-primary" />
-            <CardTitle>Lade...</CardTitle>
-          </CardHeader>
-        </Card>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white relative overflow-hidden font-sans text-slate-900">
+        <div className="absolute inset-0 -z-10 h-full w-full bg-white bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+        <div className="w-full max-w-md px-6">
+          <Card className="border-slate-200 shadow-none rounded-sm bg-white">
+            <CardContent className="p-8 text-center">
+              <div className="mx-auto w-20 h-20 bg-slate-50 text-slate-400 rounded-sm flex items-center justify-center mb-8 border border-slate-100">
+                <Loader2 className="h-10 w-10 animate-spin" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight">Lade...</h2>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     }>
       <MagicLinkSuccessContent />

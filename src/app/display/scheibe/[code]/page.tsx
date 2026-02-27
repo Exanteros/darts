@@ -4,9 +4,10 @@ import { useState, useEffect, use, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Target, Trophy, Wifi, WifiOff, Activity } from "lucide-react";
+import { Target, Trophy, Wifi, WifiOff, Activity, QrCode } from "lucide-react";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { cn } from "@/lib/utils";
+import QRCode from "react-qr-code";
 
 /* ================= TYPES ================= */
 
@@ -79,6 +80,15 @@ export default function DisplayBoard({ params }: { params: Promise<{ code: strin
 
   const [gameState, setGameState] = useState<GameState | null>(null);
   const isPracticeRef = useRef(false);
+  const [qrToken, setQrToken] = useState<number>(Date.now());
+
+  // Rotate QR code every 60 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setQrToken(Date.now());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Sync ref with state
   useEffect(() => {
@@ -360,18 +370,43 @@ export default function DisplayBoard({ params }: { params: Promise<{ code: strin
                 <p className="text-xl text-slate-500">Das Board ist bereit. Spieler bitte anmelden.</p>
               </div>
 
+              {/* Testspiel QR Code */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="flex flex-col items-center bg-white p-6 rounded-2xl shadow-xl border border-slate-200"
+              >
+                <div className="flex items-center gap-2 mb-4 text-slate-900 font-bold text-xl">
+                  <QrCode className="h-6 w-6" />
+                  Testspiel Starten?
+                </div>
+                <div className="bg-white p-4 rounded-xl border border-slate-100">
+                  {typeof window !== 'undefined' && (
+                    <QRCode 
+                      value={`${window.location.origin}/testspiel/${code}?t=${qrToken}`} 
+                      size={180}
+                      level="H"
+                    />
+                  )}
+                </div>
+                <p className="mt-4 text-sm text-slate-500 font-medium">
+                  Scannen um ein freies Spiel zu starten
+                </p>
+              </motion.div>
+
               {/* Display Main Sponsor/Event Logo specifically requested */}
               {logos.mainLogo && (
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.3 }}
-                  className="py-8"
+                  className="py-4"
                 >
                   <img 
                     src={logos.mainLogo} 
                     alt="Event Logo" 
-                    className="h-40 md:h-56 w-auto mx-auto object-contain drop-shadow-lg"
+                    className="h-24 md:h-32 w-auto mx-auto object-contain drop-shadow-lg"
                   />
                 </motion.div>
               )}

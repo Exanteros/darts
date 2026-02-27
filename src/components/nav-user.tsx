@@ -1,14 +1,14 @@
 "use client"
 
 import {
-  IconCreditCard,
-  IconDotsVertical,
-  IconLogout,
-  IconNotification,
-  IconUserCircle,
-} from "@tabler/icons-react"
+  BadgeCheck,
+  Bell,
+  ChevronsUpDown,
+  CreditCard,
+  LogOut,
+  Sparkles,
+} from "lucide-react"
 import { signOut } from "next-auth/react"
-import { useRouter } from "next/navigation"
 
 import {
   Avatar,
@@ -41,16 +41,6 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
-  const router = useRouter()
-
-  const handleLogout = async () => {
-    await signOut({ redirect: false })
-    router.push('/login')
-  }
-
-  const getInitial = (name: string) => {
-    return name ? name.charAt(0).toUpperCase() : 'U'
-  }
 
   return (
     <SidebarMenu>
@@ -59,49 +49,58 @@ export function NavUser({
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              className="data-[state=open]:bg-slate-100 data-[state=open]:text-slate-900 rounded-sm transition-colors hover:bg-slate-50"
             >
-              <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarFallback className="rounded-lg">{getInitial(user.name)}</AvatarFallback>
+              <Avatar className="h-8 w-8 rounded-sm border border-slate-200">
+                <AvatarImage src={user.avatar} alt={user.name} />
+                <AvatarFallback className="rounded-sm bg-slate-100 text-slate-900 font-mono text-xs">
+                  {user.name.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{user.name}</span>
-                <span className="text-muted-foreground truncate text-xs">
-                  {user.email}
-                </span>
+                <span className="truncate font-medium text-slate-900">{user.name}</span>
+                <span className="truncate text-xs text-slate-500">{user.email}</span>
               </div>
-              <IconDotsVertical className="ml-auto size-4" />
+              <ChevronsUpDown className="ml-auto size-4 text-slate-400" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-sm border-slate-200 bg-white shadow-sm"
             side={isMobile ? "bottom" : "right"}
             align="end"
             sideOffset={4}
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarFallback className="rounded-lg">{getInitial(user.name)}</AvatarFallback>
+                <Avatar className="h-8 w-8 rounded-sm border border-slate-200">
+                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarFallback className="rounded-sm bg-slate-100 text-slate-900 font-mono text-xs">
+                    {user.name.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>
-                  <span className="text-muted-foreground truncate text-xs">
-                    {user.email}
-                  </span>
+                  <span className="truncate font-medium text-slate-900">{user.name}</span>
+                  <span className="truncate text-xs text-slate-500">{user.email}</span>
                 </div>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator className="bg-slate-200" />
             <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => router.push('/dashboard/account')}>
-                <IconUserCircle />
+              <DropdownMenuItem className="rounded-sm focus:bg-slate-100 focus:text-slate-900 cursor-pointer">
+                <BadgeCheck className="mr-2 h-4 w-4 text-slate-500" />
                 Account
               </DropdownMenuItem>
+              <DropdownMenuItem className="rounded-sm focus:bg-slate-100 focus:text-slate-900 cursor-pointer">
+                <Bell className="mr-2 h-4 w-4 text-slate-500" />
+                Notifications
+              </DropdownMenuItem>
             </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>
-              <IconLogout />
+            <DropdownMenuSeparator className="bg-slate-200" />
+            <DropdownMenuItem 
+              onClick={() => signOut({ callbackUrl: '/' })}
+              className="rounded-sm focus:bg-slate-100 focus:text-slate-900 cursor-pointer"
+            >
+              <LogOut className="mr-2 h-4 w-4 text-slate-500" />
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>

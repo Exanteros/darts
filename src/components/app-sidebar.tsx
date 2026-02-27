@@ -169,13 +169,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         icon: IconListDetails,
       }] : []),
       
-      // Theme Editor - wenn Settings-Berechtigung oder Admin
-      ...(canManageSettings ? [{
-        title: "Theme Editor",
-        url: "/dashboard/themes",
-        icon: IconPalette,
-      }] : []),
-      
       // Spieler-Verwaltung - wenn Player-Berechtigung
       ...(canViewPlayers ? [{
         title: "Spieler-Verwaltung",
