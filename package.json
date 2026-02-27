@@ -80,6 +80,7 @@
     "react-day-picker": "^9.9.0",
     "react-dom": "^19.2.3",
     "react-hook-form": "^7.62.0",
+    "react-qr-code": "^2.0.18",
     "react-resizable-panels": "^3.0.5",
     "react-server-dom-parcel": "^19.2.3",
     "react-server-dom-webpack": "^19.2.3",
