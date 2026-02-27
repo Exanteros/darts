@@ -383,7 +383,6 @@ export default function DisplayBoard({ params }: { params: Promise<{ code: strin
                 </div>
                 <div className="bg-white p-4 rounded-xl border border-slate-100">
                   {typeof window !== 'undefined' && (
-                    // @ts-expect-error React 19 type incompatibility
                     <QRCode 
                       value={`${window.location.origin}/testspiel/${code}?t=${qrToken}`} 
                       size={180}
