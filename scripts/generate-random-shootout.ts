@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new (require('@prisma/adapter-pg').PrismaPg)(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log('🎯 Generating random shootout results...');

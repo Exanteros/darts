@@ -215,12 +215,12 @@ function ImageCarouselSection() {
   const rotation = useTransform(scrollYProgress, [0, 1], [-15, 15]);
 
   const baseImages = [
-    "https://images.unsplash.com/photo-1572550081838-11d111086632?q=80&w=800&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=800&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1534158914592-062992fbe900?q=80&w=800&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1582657118090-af35eecce8bc?q=80&w=800&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1542652735873-fb2825bac6e2?q=80&w=800&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1518081461904-9d8f136351c2?q=80&w=800&auto=format&fit=crop",
+    "/darts/1.jpg",
+    "/darts/2.jpg",
+    "/darts/3.jpg",
+    "/darts/4.jpg",
+    "/darts/5.jpg",
+    "/darts/6.jpg"
   ];
   
   // 24 images to fill the ~9400px circumference
