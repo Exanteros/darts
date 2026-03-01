@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
 
-const prisma = new PrismaClient();
+
 
 // GET /api/admin/boards/[id] - Einzelnes Board abrufen
 export async function GET(

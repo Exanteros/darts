@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { encrypt, decrypt } from '@/lib/crypto';
 
-const prisma = new PrismaClient();
+
 
 export async function GET() {
   try {

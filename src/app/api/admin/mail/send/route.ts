@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { sendMail, renderHtml } from '@/lib/mail';
 import sanitizeHtml from 'sanitize-html';
 import { marked } from 'marked';
 import { getSession } from '@/lib/session';
 import { cookies } from 'next/headers';
 
-const prisma = new PrismaClient();
+
 
 export async function POST(request: NextRequest) {
   try {
