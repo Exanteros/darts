@@ -52,6 +52,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Prisma-Schema + Migrations für prisma migrate deploy zur Laufzeit
 COPY --from=builder /app/prisma ./prisma
+# prisma.config.ts wird von Prisma v7 benötigt – enthält datasource.url
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
 # Vollständige node_modules aus dem deps-Stage kopieren.
 # Prisma v7 legt WASM-Dateien direkt in node_modules/.bin/ ab – einzelne Dateien
