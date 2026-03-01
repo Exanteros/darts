@@ -53,13 +53,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 # Prisma-Schema + Migrations für prisma migrate deploy zur Laufzeit
 COPY --from=builder /app/prisma ./prisma
 
-# ws-Modul wird vom Next.js Standalone-Tracer nicht erfasst (nur vom WS-Server gebraucht)
-COPY --from=builder /app/node_modules/ws ./node_modules/ws
-
-# Prisma CLI + Engine für prisma migrate deploy zur Laufzeit
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+# Vollständige node_modules aus dem deps-Stage kopieren.
+# Prisma v7 legt WASM-Dateien direkt in node_modules/.bin/ ab – einzelne Dateien
+# zu kopieren ist fehleranfällig. Das standalone-Bundle hat eigene gebündelte
+# Module; dieses node_modules-Verzeichnis wird nur für `prisma migrate deploy`
+# und den WebSocket-Server (ws) verwendet.
+COPY --from=deps /app/node_modules ./node_modules
 
 # WebSocket-Server und Start-Script
 COPY --from=builder /app/websocket-game-server.js ./
