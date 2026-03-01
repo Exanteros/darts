@@ -7,6 +7,9 @@ RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 COPY package*.json ./
+# copy Prisma schema early so `npm ci`/postinstall can run prisma generate without failing
+COPY prisma/schema.prisma ./prisma/schema.prisma
+
 # npm-Cache zwischen Builds wiederverwenden → deutlich schneller bei Rebuilds
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --legacy-peer-deps
