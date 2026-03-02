@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
 
   # 1. PostgreSQL Datenbank
@@ -66,10 +64,10 @@ services:
     # --- Umgebungsvariablen für die App ---
     environment:
       # Database Connection String
-      DATABASE_URL: postgresql://dartsturnier:${DB_PASSWORD:-changeme123}@postgres:5432/dartsturnier
+      DATABASE_URL: ${DATABASE_URL:-postgresql://dartsturnier:changeme123@postgres:5432/dartsturnier}
       
       # Redis Connection String
-      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme123}@redis:6379
+      REDIS_URL: ${REDIS_URL:-redis://:changeme123@redis:6379}
       
       # NextAuth
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
