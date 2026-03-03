@@ -10,7 +10,12 @@ services:
       # Nutzt den Standardwert, wenn DB_PASSWORD nicht in der .env gesetzt ist
       POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme123} 
       POSTGRES_DB: dartsturnier
-    # Sicher: Port ist nur intern zugänglich
+    # Für den lokalen Rechner hilfreich: veröffentlicht Port 5432, damit
+    # `psql` oder `tsx`-Skripte direkt gegen die Datenbank laufen können.
+    # In Produktion kann das entfernt bleiben, da der Zugriff über das Docker
+    # Netzwerk erfolgt.
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

@@ -10,6 +10,7 @@
     "lint": "eslint",
     "db:migrate": "prisma migrate deploy",
     "db:generate": "prisma generate",
+    "admin:create": "tsx ./scripts/create-admin-user.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
