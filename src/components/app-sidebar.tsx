@@ -125,8 +125,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // Hilfsfunktionen für Berechtigung prüfen
   const hasPermission = (category: string, action: string) => {
     if (isAdmin) return true;
-    return tournamentAccess.some(access => {
-      const permissions = JSON.parse(access.permissions || '{}');
+    return tournamentAccess.some((access) => {
+      // permissions come from the backend, but they are stored as strings
+      // in some older deployments they might be malformed. guard against
+      // parse errors so the sidebar doesn't crash entirely.
+      let permissions: Record<string, any> = {};
+      try {
+        permissions = JSON.parse(access.permissions || "{}");
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn("Failed to parse permissions for access", access, err);
+        return false;
+      }
       return permissions[category]?.[action] === true;
     });
   };
@@ -143,7 +153,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const data = {
     user: {
       name: currentUser?.name || "FW Puschendorf",
-      email: currentUser?.email || "admin@fw-puschendorf.de",
+      email: currentUser?.email || "support@pudo-dartmasters.de",
       avatar: "/LogoFW-Pudo2013-.png",
     },
     navMain: [
@@ -255,6 +265,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         icon: IconHelp,
       },
     ],
+    // sidebar sections that are rendered by <NavDocuments /> further down
+    // (historically we used this for mail/document links).  keep the array
+    // here so that callers can populate it; when empty the section is omitted.
     documents: [],
   }
 
@@ -269,6 +282,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavMain items={data.navMain} />
         <NavClouds items={data.navClouds} />
+        {data.documents.length > 0 && (
+          <NavDocuments items={data.documents} />
+        )}
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

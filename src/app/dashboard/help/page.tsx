@@ -678,8 +678,8 @@ export default function HelpPage() {
                         <Separator />
                         <div>
                           <p className="text-sm font-medium mb-1">E-Mail Support</p>
-                          <a href="mailto:admin@fw-puschendorf.de" className="text-sm text-muted-foreground hover:underline">
-                            admin@fw-puschendorf.de
+                          <a href="mailto:support@pudo-dartmasters.de" className="text-sm text-muted-foreground hover:underline">
+                            support@pudo-dartmasters.de
                           </a>
                         </div>
                         <Separator />

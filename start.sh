@@ -6,6 +6,7 @@ set -e
 
 # Start WebSocket Server in background
 node websocket-game-server.js &
+npx tsx scripts/mail-listener.ts &
 
 # Start Next.js Server
 exec node server.js

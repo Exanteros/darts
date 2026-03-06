@@ -24,7 +24,8 @@ import {
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { IconMail, IconTemplate, IconSend, IconEdit, IconEye, IconTrash } from "@tabler/icons-react"
+import { IconMail, IconTemplate, IconSend, IconEdit, IconEye, IconTrash, IconInbox } from "@tabler/icons-react"
+import { InboxPanel } from "@/components/dashboard/InboxPanel"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog'
 // DOMPurify and marked are browser-only; import them dynamically in event handlers to avoid
 // server-side bundling / prerender issues (jsdom errors during build).
@@ -66,7 +67,7 @@ export default function MailPage() {
   const [batchSize, setBatchSize] = useState<number>(50)
   const [retries, setRetries] = useState<number>(2)
   const [batchDelayMs, setBatchDelayMs] = useState<number>(500)
-  const [activeTab, setActiveTab] = useState("compose")
+  const [activeTab, setActiveTab] = useState("inbox")
   const [previewHtml, setPreviewHtml] = useState<string | null>(null)
   const [previewSubject, setPreviewSubject] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -396,6 +397,10 @@ export default function MailPage() {
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TabsList>
+              <TabsTrigger value="inbox" className="flex items-center gap-2">
+                <IconInbox className="h-4 w-4" />
+                Support Posteingang
+              </TabsTrigger>
               <TabsTrigger value="compose" className="flex items-center gap-2">
                 <IconSend className="h-4 w-4" />
                 Nachricht verfassen
@@ -409,6 +414,10 @@ export default function MailPage() {
                 SMTP-Test
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="inbox" className="space-y-4">
+              <InboxPanel />
+            </TabsContent>
 
             <TabsContent value="compose" className="space-y-4">
               <Card>
@@ -773,7 +782,7 @@ export default function MailPage() {
                     <li><code className="bg-muted px-1 py-0.5 rounded">SMTP_PORT</code> - SMTP-Port (z.B. 587)</li>
                     <li><code className="bg-muted px-1 py-0.5 rounded">SMTP_USER</code> - SMTP-Benutzername</li>
                     <li><code className="bg-muted px-1 py-0.5 rounded">SMTP_PASS</code> - SMTP-Passwort</li>
-                    <li><code className="bg-muted px-1 py-0.5 rounded">SMTP_FROM</code> - Von-Adresse (z.B. noreply@dartsturnier.de)</li>
+                    <li><code className="bg-muted px-1 py-0.5 rounded">SMTP_FROM</code> - Von-Adresse (z.B. support@pudo-dartmasters.de)</li>
                   </ul>
                 </CardContent>
               </Card>

@@ -601,7 +601,7 @@ export default function SettingsPage() {
                             <Input 
                               id="newAdminEmail"
                               type="email"
-                              placeholder="admin@hallo.de" 
+                              placeholder="support@pudo-dartmasters.de" 
                               value={newAdminEmail}
                               onChange={(e) => setNewAdminEmail(e.target.value)}
                             />

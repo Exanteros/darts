@@ -39,27 +39,20 @@ export function NavMain({
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className="text-xs font-mono uppercase tracking-widest text-slate-500 mb-2">
-        Hauptmenü
-      </SidebarGroupLabel>
+      <SidebarGroupLabel>Hauptmenü</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
-          const isActive = pathname === item.url || pathname.startsWith(item.url + "/")
+          // Exactly match the URL or check if it's a prefix ONLY IF it's not the base /dashboard route
+          const isExactMatch = pathname === item.url
+          const isPrefixMatch = item.url !== "/dashboard" && item.url !== "/" && pathname.startsWith(item.url + "/")
+          const isActive = isExactMatch || isPrefixMatch
           
           return (
             <Collapsible key={item.title} asChild defaultOpen={item.isActive || isActive}>
               <SidebarMenuItem>
-                <SidebarMenuButton 
-                  asChild 
-                  tooltip={item.title}
-                  className={`rounded-sm transition-colors ${
-                    isActive 
-                      ? "bg-slate-100 text-slate-900 font-medium" 
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  }`}
-                >
+                <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>
                   <Link href={item.url}>
-                    <item.icon className={`h-4 w-4 ${isActive ? "text-slate-900" : "text-slate-500"}`} />
+                    <item.icon />
                     <span>{item.title}</span>
                   </Link>
                 </SidebarMenuButton>
@@ -67,24 +60,17 @@ export function NavMain({
                   <>
                     <CollapsibleTrigger asChild>
                       <SidebarMenuAction className="data-[state=open]:rotate-90 transition-transform">
-                        <ChevronRight className="h-4 w-4 text-slate-400" />
+                        <ChevronRight />
                         <span className="sr-only">Toggle</span>
                       </SidebarMenuAction>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                      <SidebarMenuSub className="border-l border-slate-200 ml-4 pl-2 mt-1">
+                      <SidebarMenuSub>
                         {item.items?.map((subItem) => {
-                          const isSubActive = pathname === subItem.url
+                          const isSubActive = pathname === subItem.url || (subItem.url !== "/dashboard" && subItem.url !== "/" && pathname.startsWith(subItem.url + "/"))
                           return (
                             <SidebarMenuSubItem key={subItem.title}>
-                              <SidebarMenuSubButton 
-                                asChild
-                                className={`rounded-sm text-sm ${
-                                  isSubActive
-                                    ? "text-slate-900 font-medium"
-                                    : "text-slate-500 hover:text-slate-900"
-                                }`}
-                              >
+                              <SidebarMenuSubButton asChild isActive={isSubActive}>
                                 <Link href={subItem.url}>
                                   <span>{subItem.title}</span>
                                 </Link>

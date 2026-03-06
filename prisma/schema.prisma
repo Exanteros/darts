@@ -417,3 +417,22 @@ model SystemSettings {
 
   @@map("system_settings")
 }
+
+model SupportEmail {
+  id        String   @id @default(cuid())
+  messageId String?  @unique
+  threadId  String?
+  subject   String
+  fromName  String?
+  fromEmail String
+  toEmail   String
+  bodyText  String?
+  bodyHtml  String?
+  isRead    Boolean  @default(false)
+  isReply   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([threadId])
+  @@index([fromEmail])
+  @@map("support_emails")
+}

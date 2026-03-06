@@ -77,43 +77,47 @@ function Header() {
 
 function Footer() {
   return (
-    <footer className="border-t border-slate-100 bg-white pt-16 pb-8">
-      <div className="container mx-auto px-4">
-        <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4 mb-12">
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="h-6 w-6 bg-black rounded-md flex items-center justify-center">
-                <Target className="h-3 w-3 text-white" />
-              </div>
-              <span className="font-bold">Darts Masters</span>
-            </div>
-            <p className="text-sm text-slate-500 leading-relaxed">
-              Puschendorf 2025. <br/>
-              High-End Darts Entertainment.
+    <footer className="bg-white py-16 lg:py-24 border-t border-slate-200">
+      <div className="container mx-auto px-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+          <div className="col-span-1 md:col-span-1">
+            <Link href="/">
+              <DynamicLogo />
+            </Link>
+            <p className="mt-6 text-slate-500 text-sm leading-relaxed font-medium">
+              Darts-Sport auf höchstem Niveau in Puschendorf. Organisiert für Spieler von Spielern.
             </p>
           </div>
-          
           <div>
-            <h4 className="font-semibold text-slate-900 mb-4">Turnier</h4>
-            <ul className="space-y-3 text-sm text-slate-500">
+            <h4 className="font-bold text-slate-900 mb-6 tracking-tight">Event</h4>
+            <ul className="space-y-4 text-sm font-medium text-slate-500">
               <li><Link href="/tournament/register" className="hover:text-slate-900 transition-colors">Anmeldung</Link></li>
-              <li><Link href="/user" className="hover:text-slate-900 transition-colors">Dashboard</Link></li>
+              <li><Link href="/tournament/participants" className="hover:text-slate-900 transition-colors">Teilnehmerliste</Link></li>
+              <li><Link href="/sponsors" className="hover:text-slate-900 transition-colors">Sponsoren</Link></li>
             </ul>
           </div>
-
           <div>
-            <h4 className="font-semibold text-slate-900 mb-4">Rechtliches</h4>
-            <ul className="space-y-3 text-sm text-slate-500">
+            <h4 className="font-bold text-slate-900 mb-6 tracking-tight">Support</h4>
+            <ul className="space-y-4 text-sm font-medium text-slate-500">
+              <li><Link href="/contact" className="hover:text-slate-900 transition-colors">Kontakt</Link></li>
+              <li><Link href="/faq" className="hover:text-slate-900 transition-colors">Häufige Fragen</Link></li>
+              <li><Link href="/anfahrt" className="hover:text-slate-900 transition-colors">Anfahrt</Link></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-bold text-slate-900 mb-6 tracking-tight">Rechtliches</h4>
+            <ul className="space-y-4 text-sm font-medium text-slate-500">
               <li><Link href="/impressum" className="hover:text-slate-900 transition-colors">Impressum</Link></li>
               <li><Link href="/datenschutz" className="hover:text-slate-900 transition-colors">Datenschutz</Link></li>
+              <li><Link href="/agb" className="hover:text-slate-900 transition-colors">AGB</Link></li>
             </ul>
           </div>
         </div>
-        
-        <Separator className="bg-slate-100 mb-8" />
-        
-        <div className="flex flex-col sm:flex-row justify-between items-center text-xs text-slate-400">
-          <p>© {new Date().getFullYear()} Darts Masters Puschendorf.</p>
+        <div className="pt-8 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-sm font-medium text-slate-400">© {new Date().getFullYear()} Darts Masters Puschendorf.</p>
+          <div className="flex gap-6">
+             <span className="text-sm font-mono text-slate-400 uppercase tracking-widest">Built for the game.</span>
+          </div>
         </div>
       </div>
     </footer>
@@ -133,139 +137,161 @@ export default function ImpressumPage() {
 
       <Header />
 
-      <main className="container mx-auto px-4 py-16 max-w-3xl">
-        <motion.div 
-          initial="hidden" 
-          animate="visible" 
-          variants={staggerContainer}
-          className="space-y-12"
-        >
-          
-          {/* Hero Section */}
-          <motion.div variants={fadeIn} className="text-center space-y-4">
-            <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 mb-2">
-              <Scale className="h-3 w-3 mr-1.5" /> Rechtliche Hinweise
-            </Badge>
-            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900">
-              Impressum
-            </h1>
-            <p className="text-lg text-slate-500 max-w-lg mx-auto">
-              Angaben gemäß § 5 TMG und Kontaktinformationen für das Darts Masters Turnier.
-            </p>
-          </motion.div>
-
-          <Separator className="bg-slate-100" />
-
-          {/* Contact Information Grid */}
-          <motion.div variants={fadeIn} className="grid md:grid-cols-2 gap-6">
+      <main className="flex-grow pt-32 pb-24">
+        <div className="container mx-auto px-6 max-w-4xl">
+          <motion.div 
+            initial="hidden" 
+            animate="visible" 
+            variants={staggerContainer}
+            className="space-y-12"
+          >
             
-            {/* Operator Card */}
-            <Card className="border-slate-200 shadow-sm bg-slate-50/50">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Building2 className="h-5 w-5 text-slate-700" />
-                  <h3 className="font-semibold text-slate-900">Betreiber</h3>
-                </div>
-                <div className="space-y-1 text-sm text-slate-600">
-                  <p className="font-medium text-slate-900">Freie Wähler Puschendorf e.V.</p>
-                  <p>Asternstrasse 17</p>
-                  <p>90617 Puschendorf</p>
-                  <p>Deutschland</p>
-                </div>
-                <div className="mt-6 pt-4 border-t border-slate-200/60">
-                  <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">Vertreten durch</p>
-                  <p className="text-sm text-slate-700">Dr.-Ing. Stefan Geissdörfer</p>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Hero Section */}
+            <motion.div variants={fadeIn} className="text-left space-y-4">
+              <div className="text-xs font-mono text-slate-500 tracking-widest uppercase mb-8">
+                / RECHTLICHES ■ IMPRESSUM
+              </div>
+              <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 mb-8">
+                Impressum
+              </h1>
+              <p className="text-xl text-slate-600 max-w-2xl leading-relaxed mb-12">
+                Angaben gemäß § 5 TMG und Kontaktinformationen für das Darts Masters Turnier.
+              </p>
+            </motion.div>
 
-            {/* Contact Card */}
-            <Card className="border-slate-200 shadow-sm bg-white">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Mail className="h-5 w-5 text-slate-700" />
-                  <h3 className="font-semibold text-slate-900">Kontakt</h3>
+            {/* Contact Information Grid */}
+            <motion.div variants={fadeIn} className="grid md:grid-cols-2 gap-6">
+              
+              {/* Operator Card */}
+              <Card className="border-slate-200 shadow-sm bg-slate-50/50 rounded-md">
+                <CardContent className="p-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <Building2 className="h-6 w-6 text-slate-900" />
+                    <h3 className="font-bold text-slate-900 text-lg">Betreiber</h3>
+                  </div>
+                  <div className="space-y-2 text-base text-slate-600">
+                    <p className="font-bold text-slate-900">Freie Wähler Puschendorf e.V.</p>
+                    <p>Asternstraße 17</p>
+                    <p>90617 Puschendorf</p>
+                    <p>Deutschland</p>
+                  </div>
+                  <div className="mt-8 pt-6 border-t border-slate-200/60">
+                    <p className="text-xs text-slate-500 uppercase tracking-widest font-mono mb-2">Vertreten durch</p>
+                    <p className="text-base text-slate-900 font-medium">Dr.-Ing. Stefan Geissdörfer</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Contact Card */}
+              <Card className="border-slate-200 shadow-sm bg-white rounded-md">
+                <CardContent className="p-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <Mail className="h-6 w-6 text-slate-900" />
+                    <h3 className="font-bold text-slate-900 text-lg">Kontakt</h3>
+                  </div>
+                  <div className="space-y-4">
+                    <a href="mailto:support@pudo-dartmasters.de" className="flex items-center gap-4 p-4 rounded-md bg-slate-50 hover:bg-slate-100 transition-colors border border-slate-100">
+                      <div className="h-10 w-10 rounded-md bg-white flex items-center justify-center text-slate-900 border border-slate-200 shrink-0">
+                        <Mail className="h-4 w-4" />
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="font-semibold text-slate-900 text-sm mb-0.5">E-Mail schreiben</p>
+                        <p className="text-slate-500 text-sm truncate">support@pudo-dartmasters.de</p>
+                      </div>
+                    </a>
+                    
+                    <a href="tel:091019059567" className="flex items-center gap-4 p-4 rounded-md bg-slate-50 hover:bg-slate-100 transition-colors border border-slate-100">
+                      <div className="h-10 w-10 rounded-md bg-white flex items-center justify-center text-slate-900 border border-slate-200 shrink-0">
+                        <Phone className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-slate-900 text-sm mb-0.5">Anrufen</p>
+                        <p className="text-slate-500 text-sm">09101 / 9059567</p>
+                      </div>
+                    </a>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Register Info */}
+            <motion.div variants={fadeIn} className="pt-8">
+               <div className="flex items-start gap-5">
+                <div className="mt-1 h-10 w-10 rounded-md bg-slate-100 flex items-center justify-center text-slate-900 shrink-0 border border-slate-200">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div className="space-y-3">
+                  <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Registereintrag</h3>
+                  <p className="text-base text-slate-600 leading-relaxed">
+                    Eintragung im Vereinsregister.<br/>
+                    Registergericht: Amtsgericht Fürth<br/>
+                    Registernummer: VR 200583
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Legal Texts Section */}
+            <motion.div variants={fadeIn} className="pt-8 space-y-12">
+              
+              <div className="flex items-start gap-5">
+                <div className="mt-1 h-10 w-10 rounded-md bg-slate-100 flex items-center justify-center text-slate-900 shrink-0 border border-slate-200">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div className="space-y-6 w-full">
+                  <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Haftung & Recht</h3>
+                  
+                  <div className="grid gap-6">
+                    <div className="p-6 rounded-md bg-white border border-slate-200">
+                      <h4 className="font-bold text-slate-900 mb-3 text-lg">Haftung für Inhalte</h4>
+                      <p className="text-base text-slate-600 leading-relaxed">
+                        Als Diensteanbieter sind wir gemäß § 7 Abs.1 TMG für eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich. Nach §§ 8 bis 10 TMG sind wir als Diensteanbieter jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde Informationen zu überwachen oder nach Umständen zu forschen, die auf eine rechtswidrige Tätigkeit hinweisen.
+                      </p>
+                    </div>
+
+                    <div className="p-6 rounded-md bg-white border border-slate-200">
+                      <h4 className="font-bold text-slate-900 mb-3 text-lg">Urheberrecht</h4>
+                      <p className="text-base text-slate-600 leading-relaxed">
+                        Die durch die Seitenbetreiber erstellten Inhalte und Werke auf diesen Seiten unterliegen dem deutschen Urheberrecht. Die Vervielfältigung, Bearbeitung, Verbreitung und jede Art der Verwertung außerhalb der Grenzen des Urheberrechtes bedürfen der schriftlichen Zustimmung des jeweiligen Autors bzw. Erstellers.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dispute Resolution */}
+              <div className="flex items-start gap-5">
+                <div className="mt-1 h-10 w-10 rounded-md bg-slate-100 flex items-center justify-center text-slate-900 shrink-0 border border-slate-200">
+                  <Scale className="h-5 w-5" />
                 </div>
                 <div className="space-y-4">
-                  <a href="mailto:geissdoerfer@fw-puschendorf.de" className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors group border border-transparent hover:border-slate-100">
-                    <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-white group-hover:text-blue-600 transition-colors">
-                      <Mail className="h-4 w-4" />
-                    </div>
-                    <div className="text-sm">
-                      <p className="font-medium text-slate-900">E-Mail schreiben</p>
-                      <p className="text-slate-500 text-xs">geissdoerfer@fw-puschendorf.de</p>
-                    </div>
-                  </a>
-                  
-                  <a href="tel:091019059567" className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors group border border-transparent hover:border-slate-100">
-                    <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-white group-hover:text-blue-600 transition-colors">
-                      <Phone className="h-4 w-4" />
-                    </div>
-                    <div className="text-sm">
-                      <p className="font-medium text-slate-900">Anrufen</p>
-                      <p className="text-slate-500 text-xs">09101 / 9059567</p>
-                    </div>
-                  </a>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Legal Texts Section */}
-          <motion.div variants={fadeIn} className="space-y-8">
-            
-            <div className="prose prose-slate max-w-none">
-              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2 mb-4">
-                <ShieldCheck className="h-5 w-5 text-slate-400" /> Haftung & Recht
-              </h3>
-              
-              <div className="space-y-6 text-sm text-slate-600 leading-relaxed">
-                <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100">
-                  <h4 className="font-semibold text-slate-900 mb-2">Haftung für Inhalte</h4>
-                  <p>
-                    Als Diensteanbieter sind wir gemäß § 7 Abs.1 TMG für eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich. Nach §§ 8 bis 10 TMG sind wir als Diensteanbieter jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde Informationen zu überwachen oder nach Umständen zu forschen, die auf eine rechtswidrige Tätigkeit hinweisen.
-                  </p>
-                </div>
-
-                <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100">
-                  <h4 className="font-semibold text-slate-900 mb-2">Urheberrecht</h4>
-                  <p>
-                    Die durch die Seitenbetreiber erstellten Inhalte und Werke auf diesen Seiten unterliegen dem deutschen Urheberrecht. Die Vervielfältigung, Bearbeitung, Verbreitung und jede Art der Verwertung außerhalb der Grenzen des Urheberrechtes bedürfen der schriftlichen Zustimmung des jeweiligen Autors bzw. Erstellers.
+                  <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Streitschlichtung</h3>
+                  <p className="text-base text-slate-600 leading-relaxed">
+                    Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit: <a href="https://ec.europa.eu/consumers/odr" className="text-slate-900 hover:underline" target="_blank" rel="noreferrer">https://ec.europa.eu/consumers/odr</a>.<br/>
+                    Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.
                   </p>
                 </div>
               </div>
-            </div>
 
-            {/* Dispute Resolution */}
-            <div className="border-t border-slate-200 pt-8">
-              <div className="flex flex-col sm:flex-row gap-6 justify-between items-start">
-                <div>
-                  <h4 className="font-semibold text-slate-900 mb-1">Streitbeilegung</h4>
-                  <p className="text-sm text-slate-500 max-w-md">
-                    Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit. 
-                    Wir sind nicht verpflichtet, an Streitbeilegungsverfahren teilzunehmen.
-                  </p>
-                </div>
-                <Button variant="outline" size="sm" asChild>
-                  <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noreferrer">
-                    Zur OS-Plattform <Globe className="ml-2 h-3 w-3" />
-                  </a>
+              <div className="pt-8">
+                <Button asChild className="rounded-sm bg-slate-900 text-white hover:bg-slate-800 h-11 px-8">
+                  <Link href="/">Zurück zur Startseite</Link>
                 </Button>
               </div>
-            </div>
 
-            {/* Tech Partner (Subtle) */}
-            <div className="flex items-center justify-center pt-8 opacity-60 hover:opacity-100 transition-opacity">
-               <div className="text-xs text-center">
-                  <span className="text-slate-400 block mb-1">Technische Realisierung</span>
-                  <span className="font-semibold text-slate-600">Contimore UG (haftungsbeschränkt)</span>
-               </div>
-            </div>
+              {/* Tech Partner */}
+              <div className="pt-12 mt-12 border-t border-slate-200">
+                <p className="text-sm text-slate-500 font-mono tracking-widest uppercase mb-2">Technische Realisierung</p>
+                <p className="text-base font-semibold text-slate-900">Contimore UG (haftungsbeschränkt)</p>
+              </div>
+
+            </motion.div>
 
           </motion.div>
-
-        </motion.div>
+        </div>
       </main>
+
+      <Footer />
     </div>
   );
 }

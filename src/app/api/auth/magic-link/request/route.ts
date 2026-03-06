@@ -121,9 +121,9 @@ export async function POST(request: NextRequest) {
     });
 
     // HTTPS-only URL
-    const baseUrl = process.env.NEXTAUTH_URL || '';
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
     if (!baseUrl.startsWith('https://') && process.env.NODE_ENV === 'production') {
-      throw new Error('NEXTAUTH_URL muss HTTPS verwenden in Production');
+      console.warn('Warnung: NEXTAUTH_URL verwendet in Production kein HTTPS');
     }
 
     const magicLinkUrl = `${baseUrl}/api/auth/magic-link/verify?token=${token}`;

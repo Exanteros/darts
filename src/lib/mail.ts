@@ -1,5 +1,5 @@
-import nodemailer from 'nodemailer';
-import { prisma } from '@/lib/prisma';
+import * as nodemailer from 'nodemailer';
+import { prisma } from './prisma';
 
 /* -------------------------------------------------------------------------- */
 /* CONFIGURATION                                                              */
@@ -41,7 +41,7 @@ export async function sendMail({ to, subject, text, html }: { to: string, subjec
 
   try {
     const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || '"Darts Masters" <noreply@example.com>',
+      from: process.env.SMTP_FROM || '"Darts Masters" <support@pudo-dartmasters.de>',
       to,
       subject,
       text,
@@ -116,9 +116,12 @@ export async function renderHtml(content: string, tournamentName?: string, isHtm
 
   if (!isHtml) {
     htmlContent = content
+      .replace(/\r\n/g, '\n')
       .replace(/\n\n/g, '</p><p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #475569;">')
       .replace(/\n/g, '<br/>')
       .replace(/\*\*([^*]+)\*\*/g, `<strong style="color: ${colors.textMain}; font-weight: 600;">$1</strong>`)
+      // italic (single asterisks)
+      .replace(/\*([^*]+)\*/g, `<em style="color: ${colors.textBody};">$1</em>`)
       
       // H1: Groß und fett wie auf der Hero-Page
       .replace(/^# (.+)$/gm, `<h1 style="color: ${colors.textMain}; margin: 0 0 16px 0; font-size: 28px; line-height: 1.2; font-weight: 800; letter-spacing: -0.02em;">$1</h1>`)
