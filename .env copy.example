@@ -39,7 +39,7 @@ IMAP_PASS=WCke?cs*8PNflD!3
 
 # --- BRANDING ---
 SMTP_LOGO_URL=https://contimore.de/img/logo-pudo-dm.png
-BRAND_NAME="Darts Masters"
+BRAND_NAME="Dart Masters"
 BRAND_COLOR=#dc2626
 
 # --- STRIPE (Optional) ---

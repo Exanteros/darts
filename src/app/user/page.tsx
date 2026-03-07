@@ -84,7 +84,7 @@ function DynamicLogo() {
           <Target className="h-4 w-4 text-white" />
         )}
       </div>
-      <span className="font-bold tracking-tight text-lg text-slate-900">Darts Masters</span>
+      <span className="font-bold tracking-tight text-lg text-slate-900">Dart Masters</span>
     </div>
   );
 }
@@ -476,7 +476,7 @@ export default function UserDashboard() {
       {/* Footer Reuse */}
       <footer className="border-t border-slate-100 bg-white py-12 mt-12">
         <div className="container mx-auto px-4 text-center">
-          <p className="text-sm text-slate-400">© 2025 Darts Masters Puschendorf</p>
+          <p className="text-sm text-slate-400">© 2025 Dart Masters Puschendorf</p>
         </div>
       </footer>
     </div>

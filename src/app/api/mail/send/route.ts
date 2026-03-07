@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     let finalHtml = html || text?.replace(/\n/g, '<br/>');
 
     if (isSupportReply) {
-      const brandName = process.env.BRAND_NAME || 'Darts Masters Support';
+      const brandName = process.env.BRAND_NAME || 'Dart Masters Support';
       const rawContent = html || text || '';
       
       // Wrap content nicely for the user and pass true so the inner HTML tags are kept intact.

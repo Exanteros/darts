@@ -142,7 +142,7 @@ export default function HelpPage() {
                           Navigieren Sie zu <strong>Turnier-Verwaltung</strong> im Menü.
                         </p>
                         <ul className="text-sm text-muted-foreground space-y-1 ml-4 list-disc">
-                          <li><strong>Name:</strong> z.B. "Darts Masters Puschendorf 2025"</li>
+                          <li><strong>Name:</strong> z.B. "Dart Masters Puschendorf 2025"</li>
                           <li><strong>Beschreibung:</strong> Optionale Details zum Turnier</li>
                           <li><strong>Start-/Enddatum:</strong> Zeitraum des Turniers</li>
                           <li><strong>Max. Spielerzahl:</strong> 16, 32, 64 oder 128</li>

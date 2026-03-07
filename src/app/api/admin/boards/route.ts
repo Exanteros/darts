@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
         // Erstelle ein Standard-Turnier falls keines existiert
         tournament = await prisma.tournament.create({
           data: {
-            name: 'Darts Masters 2025',
+            name: 'Dart Masters 2025',
             description: 'Standard Turnier',
             startDate: new Date(),
             maxPlayers: 64,

@@ -3,7 +3,7 @@
 **Professional Tournament Management Software**  
 **Tech Stack:** Next.js 15, React 19, TypeScript, Prisma, PostgreSQL/SQLite  
 
-**Darts Masters Puschendorf**
+**Dart Masters Puschendorf**
 
 ## 🚀 Quick Start
 
@@ -18,6 +18,22 @@ cp .env.example .env.local
 
 # Run database migrations
 npm run db:migrate
+
+# Start everything (web, websocket & mail listener)
+npm run dev:all
+```
+
+> ⚠️ **Important:** the admin inbox and auto‑reply system only work when the mail listener is running.  
+> The CLI script (`scripts/mail-listener.ts`) polls the IMAP account every few seconds and triggers the
+> AI response logic. In production this process is launched automatically via `start.sh`, but during
+> local development you must either run `npm run mail:listen` in a separate terminal or use the
+> updated `dev:all` script above. Without it you will only see new messages after refreshing the
+> admin portal (because the sync is otherwise triggered only by the `/api/mail/inbox` endpoint).
+
+### Production
+```bash
+# build and run via Docker or start.sh, the mail listener is already started there
+```
 
 # Start development server
 npm run dev

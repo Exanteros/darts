@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
 
     let content = template?.content || `Hallo {name}!
 
-Du hast einen Login-Link für das Darts Masters Puschendorf angefordert.
+Du hast einen Login-Link für das Dart Masters Puschendorf angefordert.
 
 [Jetzt anmelden]({link})
 
@@ -151,7 +151,7 @@ Falls du diese Anfrage nicht gestellt hast, ignoriere diese E-Mail.
 * Nach 15 Minuten wird der Link ungültig
 
 Viel Erfolg beim Turnier!
-Darts Masters Puschendorf`;
+Dart Masters Puschendorf`;
 
     let subject = template?.subject || 'Dein sicherer Login-Link';
 

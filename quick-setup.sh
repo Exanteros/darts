@@ -73,7 +73,7 @@ SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-app-password
 SMTP_FROM="Darts Turnier <noreply@$DOMAIN>"
-BRAND_NAME="Darts Masters Puschendorf"
+BRAND_NAME="Dart Masters Puschendorf"
 EOF
 
 # Services starten

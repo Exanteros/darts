@@ -76,7 +76,7 @@ export default function MagicLinkRequestPage() {
         >
           <div className="text-center mb-8">
             <Badge variant="outline" className="border-white/30 text-white backdrop-blur mb-4">
-              Darts Masters Puschendorf
+              Dart Masters Puschendorf
             </Badge>
             <h1 className="text-4xl font-bold mb-2">Magic Link</h1>
             <p className="text-white/70">

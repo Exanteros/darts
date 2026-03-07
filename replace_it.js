@@ -19,7 +19,7 @@ const replacement = `              const fromAddr = parsed.from?.value[0]?.addre
 
                   if (originalTicketUser && originalTicketUser.fromEmail !== adminAddr.toLowerCase()) {
                     const htmlContent = parsed.html || parsed.textAsHtml || parsed.text?.replace(/\\n/g, '<br/>') || '';
-                    const brandName = process.env.BRAND_NAME || 'Darts Masters Support';
+                    const brandName = process.env.BRAND_NAME || 'Dart Masters Support';
                     let finalHtmlContext = htmlContent + \`<br/><br/>\\n        <div style="margin-top:30px; padding-top:20px; border-top:1px solid #ccc; font-size:14px; color:#555;">\\n          <strong>Dein \${brandName} Support-Team</strong><br/>\\n          <a href="mailto:\${supportAddr}" style="color:#3b82f6; text-decoration:none;">\${supportAddr}</a><br/>\\n          <i>Bitte belasse bei Antworten immer die Ticket-ID im Betreff.</i>\\n        </div>\`;
                     
                     const htmlBody = await renderHtml(finalHtmlContext, brandName, true);
@@ -45,7 +45,7 @@ const replacement = `              const fromAddr = parsed.from?.value[0]?.addre
                     .replace(/\\{email\\}/gi, fromAddr)
                     .replace(/\\{ticket\\}/gi, ticketId);
 
-                  const brandName = process.env.BRAND_NAME || "Darts Masters Support";
+                  const brandName = process.env.BRAND_NAME || "Dart Masters Support";
                   let finalHtmlContext = filled + \`<br/><br/>\\n        <div style="margin-top:30px; padding-top:20px; border-top:1px solid #ccc; font-size:14px; color:#555;">\\n          <strong>Dein \${brandName} Support-Team</strong><br/>\\n          <a href="mailto:\${supportAddr}" style="color:#3b82f6; text-decoration:none;">\${supportAddr}</a><br/>\\n          <i>Bitte belasse bei Antworten immer die Ticket-ID im Betreff.</i>\\n        </div>\`;
                   
                   const plainText = filled.replace(/<[^>]+>/g, '');

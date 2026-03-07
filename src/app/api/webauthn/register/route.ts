@@ -11,7 +11,7 @@ import {
 import { WebAuthnCredential } from '@prisma/client';
 
 // Configure WebAuthn
-const rpName = 'Darts Masters Puschendorf';
+const rpName = 'Dart Masters Puschendorf';
 const rpID = process.env.NODE_ENV === 'production' ? 'your-domain.com' : 'localhost';
 const origin = process.env.NODE_ENV === 'production' ? 'https://your-domain.com' : 'http://localhost:3000';
 

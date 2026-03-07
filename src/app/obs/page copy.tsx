@@ -150,7 +150,7 @@ export default function DartsScoreboardMock() {
             <tfoot>
               <tr>
                 <td colSpan={4} className="px-4 py-2 text-sm text-white bg-black">
-                  Darts Masters Puschendorf 2025 - {currentGame?.boardName || 'Scheibe A'}
+                  Dart Masters Puschendorf 2025 - {currentGame?.boardName || 'Scheibe A'}
                 </td>
               </tr>
             </tfoot>

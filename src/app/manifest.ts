@@ -2,8 +2,8 @@ import { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Darts Masters Puschendorf',
-    short_name: 'Darts Masters',
+    name: 'Dart Masters Puschendorf',
+    short_name: 'Dart Masters',
     description: 'Das professionelle Darts-Turnier für 64 Spieler',
     start_url: '/',
     display: 'standalone',

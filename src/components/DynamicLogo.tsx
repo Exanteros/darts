@@ -31,7 +31,7 @@ export default function DynamicLogo({ className }: { className?: string }) {
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-white">
             <Target className="h-6 w-6" />
           </div>
-          <span className="font-bold text-lg tracking-tight text-slate-900">Darts Masters</span>
+          <span className="font-bold text-lg tracking-tight text-slate-900">Dart Masters</span>
         </>
       )}
     </div>

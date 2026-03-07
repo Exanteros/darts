@@ -53,7 +53,7 @@ function DynamicLogo() {
           <div className="flex h-8 w-8 items-center justify-center bg-slate-900 text-white rounded-sm">
             <Target className="h-5 w-5" />
           </div>
-          <span className="font-bold text-xl tracking-tight text-slate-900">Darts Masters</span>
+          <span className="font-bold text-xl tracking-tight text-slate-900">Dart Masters</span>
         </>
       )}
     </div>
@@ -147,7 +147,7 @@ function HeroSection() {
             <RegistrationBadge />
             
             <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold tracking-tighter text-slate-900 mb-6 lg:mb-8 leading-[1.1]">
-              Darts Masters <br />
+              Dart Masters <br />
               <span className="text-slate-400">Puschendorf</span>
             </h1>
             
@@ -175,7 +175,7 @@ function HeroSection() {
             <div className="flex items-center justify-center w-full max-w-md">
               <img 
                 src="/hero/hero.png" 
-                alt="Darts Masters Hero" 
+                alt="Dart Masters Hero" 
                 className="w-full h-auto object-contain drop-shadow-2xl"
               />
             </div>
@@ -449,7 +449,7 @@ function Footer() {
           </div>
         </div>
         <div className="pt-8 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm font-medium text-slate-400">© 2026 Darts Masters Puschendorf.</p>
+          <p className="text-sm font-medium text-slate-400">© 2026 Dart Masters Puschendorf.</p>
           <div className="flex gap-6">
              <span className="text-sm font-mono text-slate-400 uppercase tracking-widest">Built for the game.</span>
           </div>

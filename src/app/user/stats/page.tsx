@@ -76,7 +76,7 @@ function DynamicLogo() {
           <Target className="h-4 w-4 text-white" />
         )}
       </div>
-      <span className="font-bold tracking-tight text-lg text-slate-900">Darts Masters</span>
+      <span className="font-bold tracking-tight text-lg text-slate-900">Dart Masters</span>
     </div>
   );
 }

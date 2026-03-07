@@ -1,4 +1,4 @@
-# Security Übersicht - Darts Masters Puschendorf
+# Security Übersicht - Dart Masters Puschendorf
 
 ## Anmeldungssystem - Magic Link
 

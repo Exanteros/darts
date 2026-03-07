@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Berechne Statistiken
-    const mainTournament = tournaments[0]; // Nehme das erste Turnier (Darts Masters)
+    const mainTournament = tournaments[0]; // Nehme das erste Turnier (Dart Masters)
     const registeredPlayers = mainTournament?._count.players || 0;
     const maxPlayers = mainTournament?.maxPlayers || 64;
     const activeBoards = mainTournament?.boards.filter(b => b.isActive).length || 0;

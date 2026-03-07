@@ -284,4 +284,4 @@ SMTP_PASS=your-app-password
 SMTP_FROM="Darts Turnier <noreply@$DOMAIN>"
 
 # Branding
-BRAND_NAME="Darts Masters"
+BRAND_NAME="Dart Masters"

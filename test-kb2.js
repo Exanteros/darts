@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 (async ()=>{
   let knowledgeBase = process.env.LLM_KNOWLEDGE_BASE || '';
   const supportAddr = process.env.IMAP_USER || process.env.SMTP_USER || '';
-  const brandNameKb = process.env.BRAND_NAME || 'Darts Masters Support';
+  const brandNameKb = process.env.BRAND_NAME || 'Dart Masters Support';
   knowledgeBase += `\nSupport E-Mail: ${supportAddr}`;
   knowledgeBase += `\nBrand-Name: ${brandNameKb}`;
   try {

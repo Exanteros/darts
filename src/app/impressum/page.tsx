@@ -53,7 +53,7 @@ function DynamicLogo() {
           <Target className="h-4 w-4 text-white" />
         )}
       </div>
-      <span className="font-bold tracking-tight text-lg text-slate-900">Darts Masters</span>
+      <span className="font-bold tracking-tight text-lg text-slate-900">Dart Masters</span>
     </div>
   );
 }
@@ -114,7 +114,7 @@ function Footer() {
           </div>
         </div>
         <div className="pt-8 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm font-medium text-slate-400">© {new Date().getFullYear()} Darts Masters Puschendorf.</p>
+          <p className="text-sm font-medium text-slate-400">© {new Date().getFullYear()} Dart Masters Puschendorf.</p>
           <div className="flex gap-6">
              <span className="text-sm font-mono text-slate-400 uppercase tracking-widest">Built for the game.</span>
           </div>
@@ -155,7 +155,7 @@ export default function ImpressumPage() {
                 Impressum
               </h1>
               <p className="text-xl text-slate-600 max-w-2xl leading-relaxed mb-12">
-                Angaben gemäß § 5 TMG und Kontaktinformationen für das Darts Masters Turnier.
+                Angaben gemäß § 5 TMG und Kontaktinformationen für das Dart Masters Turnier.
               </p>
             </motion.div>
 

@@ -676,7 +676,7 @@ export default function TournamentPage() {
                             id="tournamentName"
                             value={settings.name}
                             onChange={(e) => setSettings(prev => ({ ...prev, name: e.target.value }))}
-                            placeholder="z.B. Darts Masters Puschendorf 2025"
+                            placeholder="z.B. Dart Masters Puschendorf 2025"
                           />
                         </div>
                         <div className="space-y-2">

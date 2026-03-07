@@ -150,7 +150,7 @@ SMTP_PASS="your-app-password"
 SMTP_FROM="Darts Turnier <noreply@yourdomain.com>"
 
 # Branding
-BRAND_NAME="Darts Masters Puschendorf"
+BRAND_NAME="Dart Masters Puschendorf"
 SMTP_LOGO_URL="https://yourdomain.com/logo.png"
 
 # Production

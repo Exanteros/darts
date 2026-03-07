@@ -41,7 +41,7 @@ export async function sendMail({ to, subject, text, html }: { to: string, subjec
 
   try {
     const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || '"Darts Masters" <support@pudo-dartmasters.de>',
+      from: process.env.SMTP_FROM || '"Dart Masters" <support@pudo-dartmasters.de>',
       to,
       subject,
       text,
@@ -93,9 +93,9 @@ export async function renderHtml(content: string, tournamentName?: string, isHtm
         where: { status: { in: ['ACTIVE', 'REGISTRATION_OPEN'] } },
         orderBy: { startDate: 'desc' }
       });
-      brandName = activeTournament?.name || process.env.BRAND_NAME || 'Darts Masters';
+      brandName = activeTournament?.name || process.env.BRAND_NAME || 'Dart Masters';
     } catch {
-      brandName = process.env.BRAND_NAME || 'Darts Masters';
+      brandName = process.env.BRAND_NAME || 'Dart Masters';
     }
   }
   
@@ -168,7 +168,7 @@ export async function renderHtml(content: string, tournamentName?: string, isHtm
                         <div style="background-color: ${colors.dark}; width: 32px; height: 32px; border-radius: 8px; display: inline-block; text-align: center; vertical-align: middle;">
                           <img src="${logo}" alt="🎯" width="20" height="20" style="margin-top: 6px;" />
                         </div>
-                        <span style="margin-left: 8px; font-weight: 700; color: ${colors.textMain}; font-size: 18px; vertical-align: middle;">Darts Masters</span>
+                        <span style="margin-left: 8px; font-weight: 700; color: ${colors.textMain}; font-size: 18px; vertical-align: middle;">Dart Masters</span>
                       </td>
                     </tr>
                    </table>
@@ -210,7 +210,7 @@ export async function renderHtml(content: string, tournamentName?: string, isHtm
 export async function sendWelcomeEmail(email: string, name: string) {
   try {
     const template = await prisma.emailTemplate.findUnique({ where: { id: 'registration' } });
-    let subject = template?.subject || "Willkommen beim Darts Masters! 🎯";
+    let subject = template?.subject || "Willkommen beim Dart Masters! 🎯";
     
     let content = template?.content || 
 `# Willkommen ${name}!
@@ -218,7 +218,7 @@ export async function sendWelcomeEmail(email: string, name: string) {
 ## Status
 > Erfolgreich registriert
 
-Vielen Dank für deine Registrierung beim Darts Masters. Wir freuen uns sehr, dich dabei zu haben!
+Vielen Dank für deine Registrierung beim Dart Masters. Wir freuen uns sehr, dich dabei zu haben!
 
 [Zum Dashboard](${process.env.NEXTAUTH_URL || 'http://localhost:3000'})`;
 

@@ -35,7 +35,7 @@ function DynamicLogo() {
     return (
       <div className="flex items-center gap-2">
         <Target className="h-8 w-8 text-primary" />
-        <span className="font-bold text-xl">Darts Masters</span>
+        <span className="font-bold text-xl">Dart Masters</span>
       </div>
     );
   }
@@ -142,7 +142,7 @@ function Footer() {
         <Separator className="my-8" />
 
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} Darts Masters Puschendorf. Alle Rechte vorbehalten.</p>
+          <p>© {new Date().getFullYear()} Dart Masters Puschendorf. Alle Rechte vorbehalten.</p>
           <div className="flex items-center gap-4">
             <Link href="/datenschutz" className="hover:text-foreground transition-colors">Datenschutz</Link>
             <Link href="/impressum" className="hover:text-foreground transition-colors">Impressum</Link>
@@ -179,7 +179,7 @@ export default function RulesPage() {
               Turnierregeln
             </h1>
             <p className="text-xl text-muted-foreground">
-              Offizielles Regelwerk für das Darts Masters Puschendorf 2025
+              Offizielles Regelwerk für das Dart Masters Puschendorf 2025
             </p>
           </div>
 

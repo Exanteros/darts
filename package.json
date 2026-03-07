@@ -4,13 +4,14 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "ws": "node websocket-game-server.js",
-    "dev:all": "concurrently \"npm run dev\" \"npm run ws\"",
+    "dev:all": "concurrently \"npm run dev\" \"npm run ws\" \"npm run mail:listen\"",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "db:migrate": "prisma migrate deploy",
     "db:generate": "prisma generate",
     "admin:create": "tsx ./scripts/create-admin-user.ts",
+    "mail:listen": "tsx ./scripts/mail-listener.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

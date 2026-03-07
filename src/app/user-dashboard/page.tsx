@@ -43,7 +43,7 @@ function DynamicLogo() {
   return (
     <div className="flex items-center gap-2">
       <Target className="h-8 w-8 text-primary" />
-      <span className="font-bold text-xl">Darts Masters</span>
+      <span className="font-bold text-xl">Dart Masters</span>
     </div>
   );
 }
@@ -94,7 +94,7 @@ function Footer() {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <Target className="h-6 w-6 text-primary" />
-              <span className="font-bold text-lg">Darts Masters</span>
+              <span className="font-bold text-lg">Dart Masters</span>
             </div>
             <p className="text-sm text-muted-foreground">
               Professionelles Darts-Turnier<br />
@@ -150,7 +150,7 @@ function Footer() {
         <Separator className="my-8" />
 
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} Darts Masters Puschendorf. Alle Rechte vorbehalten.</p>
+          <p>© {new Date().getFullYear()} Dart Masters Puschendorf. Alle Rechte vorbehalten.</p>
           <div className="flex items-center gap-4">
             <a href="/datenschutz" className="hover:text-foreground transition-colors">Datenschutz</a>
             <a href="/impressum" className="hover:text-foreground transition-colors">Impressum</a>

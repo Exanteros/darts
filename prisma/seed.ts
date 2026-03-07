@@ -55,7 +55,7 @@ async function main() {
   //   update: {},
   //   create: {
   //     id: 'darts-masters-2026',
-  //     name: 'Darts Masters Puschendorf 2026',
+  //     name: 'Dart Masters Puschendorf 2026',
   //     description: 'Das professionelle Darts-Turnier für 64 Spieler im Februar 2026. Single-Elimination Format mit Live-Scoring.',
   //     startDate: new Date('2026-02-15T10:00:00Z'),
   //     maxPlayers: 64,

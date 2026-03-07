@@ -316,7 +316,7 @@ export default function DisplayBoard({ params }: { params: Promise<{ code: strin
               <div className="h-8 w-8 bg-slate-900 rounded-lg flex items-center justify-center">
                 <Target className="h-4 w-4 text-white" />
               </div>
-              <span className="font-bold tracking-tight text-lg">Darts Masters</span>
+              <span className="font-bold tracking-tight text-lg">Dart Masters</span>
             </div>
           )}
         </div>
