@@ -26,7 +26,8 @@ async function startListener() {
   const client = new ImapFlow(imapConfig as any);
   try {
     await client.connect();
-    await client.selectMailbox('INBOX');
+    // ImapFlow uses mailboxOpen rather than selectMailbox
+    await client.mailboxOpen('INBOX');
 
     client.on('exists', async () => {
       console.log('[Mail Listener] new message detected via IMAP IDLE, syncing');
@@ -47,7 +48,7 @@ async function startListener() {
         await new Promise((r) => setTimeout(r, 5000));
         try {
           await client.connect();
-          await client.selectMailbox('INBOX');
+          await client.mailboxOpen('INBOX');
         } catch (e) {
           console.error('[Mail Listener] reconnect failed', e);
         }
