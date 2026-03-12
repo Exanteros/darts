@@ -70,6 +70,7 @@ RUN chmod +x start.sh
 # copied into the runner image so they can be executed with
 # `docker-compose exec app npx tsx scripts/create-admin-user.ts` or similar.
 COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/src ./src
 USER nextjs
 
 EXPOSE 3000
