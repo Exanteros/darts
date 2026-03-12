@@ -11,7 +11,7 @@
     "db:migrate": "prisma migrate deploy",
     "db:generate": "prisma generate",
     "admin:create": "tsx ./scripts/create-admin-user.ts",
-    "mail:listen": "tsx ./scripts/mail-listener.ts",
+    "mail:listen": "tsx -r dotenv/config ./scripts/mail-listener.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -115,6 +115,7 @@
     "@types/styled-components": "^5.1.34",
     "@types/ws": "^8.18.1",
     "concurrently": "^9.2.1",
+    "dotenv": "^17.3.1",
     "eslint": "^9",
     "eslint-config-next": "15.5.0",
     "tailwindcss": "^4",

@@ -69,15 +69,18 @@ export async function syncEmails() {
     tls: {
       rejectUnauthorized: false
     },
-    logger: false as const
+    logger: true // <-- Geändert für Debugging
   };
 
   const client = new ImapFlow(imapConfig);
 
   try {
+    console.log('[IMAP] Attempting to connect...');
     await client.connect();
+    console.log('[IMAP] Connected successfully! Securing mailbox lock...');
     
     let lock = await client.getMailboxLock('INBOX');
+    console.log('[IMAP] Mailbox locked! Fetching messages...');
     try {
       const msgs = await client.search({ seen: false });
       const messages = Array.isArray(msgs) ? msgs : [];
