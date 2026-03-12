@@ -69,7 +69,7 @@ export async function syncEmails() {
     tls: {
       rejectUnauthorized: false
     },
-    logger: true // <-- Geändert für Debugging
+    logger: false as const
   };
 
   const client = new ImapFlow(imapConfig);
