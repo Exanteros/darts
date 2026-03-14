@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Trophy, Calendar, Euro, Users, ArrowRight, CreditCard, CheckCircle2, ChevronLeft, Lock, ArrowLeft, XCircle, MapPin, ChevronDown, Target } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { Elements, CardElement, PaymentRequestButtonElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { cn } from "@/lib/utils";
 import DynamicLogo from "@/components/DynamicLogo";
 
@@ -197,15 +197,18 @@ export default function TournamentRegistrationPage() {
     const stripe = useStripe();
     const elements = useElements();
     const [payLoading, setPayLoading] = useState(false);
+    const [paymentRequest, setPaymentRequest] = useState<any>(null);
+    const [canUsePaymentRequest, setCanUsePaymentRequest] = useState(false);
 
     const handlePay = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!stripe || !elements) return;
       setPayLoading(true);
       
+      const card = elements.getElement(CardElement);
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
-          card: elements.getElement(CardElement)!,
+          card: card!,
           billing_details: { name: playerName, email }
         }
       });
@@ -228,6 +231,64 @@ export default function TournamentRegistrationPage() {
       }
     };
 
+    useEffect(() => {
+      if (!stripe || !paymentAmountDetails || !clientSecret) return;
+      try {
+        const total = Math.round(((paymentAmountDetails?.totalAmount ?? selectedTournament?.entryFee ?? 0) || 0) * 100);
+        const pr = stripe.paymentRequest({
+          country: 'DE',
+          currency: 'eur',
+          total: { label: selectedTournament?.name || 'Startgebühr', amount: total },
+          requestPayerName: true,
+          requestPayerEmail: true,
+        });
+
+        pr.canMakePayment().then((res: any) => {
+          if (res) {
+            setPaymentRequest(pr);
+            setCanUsePaymentRequest(true);
+
+            pr.on('paymentmethod', async (ev: any) => {
+              setPayLoading(true);
+              try {
+                const confirm = await stripe.confirmCardPayment(clientSecret, { payment_method: ev.paymentMethod.id }, { handleActions: false });
+                if (confirm.error) {
+                  ev.complete('fail');
+                  setError(confirm.error.message || 'Zahlung fehlgeschlagen');
+                } else {
+                  ev.complete('success');
+                  if (confirm.paymentIntent && confirm.paymentIntent.status === 'requires_action') {
+                    const final = await stripe.confirmCardPayment(clientSecret);
+                    if (final.error) setError(final.error.message || 'Authentifizierung fehlgeschlagen');
+                    else {
+                      // register
+                      await fetch('/api/tournament/register/public', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tournamentId: selectedTournament?.id, playerName, email, paymentIntentId: final.paymentIntent?.id })
+                      });
+                      setStep('SUCCESS');
+                    }
+                  } else {
+                    await fetch('/api/tournament/register/public', {
+                      method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ tournamentId: selectedTournament?.id, playerName, email, paymentIntentId: confirm.paymentIntent?.id })
+                    });
+                    setStep('SUCCESS');
+                  }
+                }
+              } catch (err) {
+                console.error('PaymentRequest error', err);
+                ev.complete('fail');
+                setError('Zahlung fehlgeschlagen');
+              } finally {
+                setPayLoading(false);
+              }
+            });
+          }
+        }).catch(() => {});
+      } catch (err) {}
+    }, [stripe, paymentAmountDetails, clientSecret]);
+
     return (
       <form onSubmit={handlePay} className="space-y-6">
         <div className="p-4 rounded-sm border border-slate-200 bg-slate-50 transition-colors focus-within:bg-white focus-within:border-slate-400">
@@ -248,6 +309,11 @@ export default function TournamentRegistrationPage() {
           <CardElement options={{
             style: { base: { fontSize: '16px', color: '#0f172a', '::placeholder': { color: '#94a3b8' }, fontFamily: 'monospace' } }
           }} />
+        {canUsePaymentRequest && paymentRequest ? (
+          <div className="mb-4">
+            <PaymentRequestButtonElement options={{ paymentRequest }} />
+          </div>
+        ) : null}
         </div>
         <Button disabled={!stripe || payLoading} className="w-full h-14 bg-slate-900 text-white hover:bg-slate-800 rounded-sm text-lg font-semibold">
           {payLoading ? <Loader2 className="animate-spin" /> : `Jetzt ${(paymentAmountDetails?.totalAmount ?? selectedTournament?.entryFee ?? 0).toFixed(2)}€ bezahlen`}

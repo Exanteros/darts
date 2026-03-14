@@ -46,11 +46,15 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js benötigt unsafe-eval für HMR
+              // Erlaube Stripe.js (externes Script) zusätzlich
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "font-src 'self' data:",
-              `connect-src 'self' ws: wss: ${wsUrls}`, // WebSocket für Echtzeit-Updates
+              // Stripe benötigt api/connect und ggf. webhook/callbacks
+              `connect-src 'self' ws: wss: ${wsUrls} https://api.stripe.com https://hooks.stripe.com https://js.stripe.com`,
+              // Erlaube ggf. Checkout/embedded frames
+              "frame-src https://js.stripe.com https://checkout.stripe.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

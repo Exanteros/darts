@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { loadStripe, Stripe } from '@stripe/stripe-js';
 import {
   Elements,
-  PaymentElement,
+  CardElement,
+  PaymentRequestButtonElement,
   useStripe,
   useElements
 } from '@stripe/react-stripe-js';
@@ -67,6 +68,71 @@ function PaymentForm({
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
+  const [paymentRequest, setPaymentRequest] = useState<any>(null);
+  const [canUsePaymentRequest, setCanUsePaymentRequest] = useState(false);
+
+  useEffect(() => {
+    if (!stripe || !amountDetails || !clientSecret) return;
+
+    try {
+      const totalAmount = Math.round(((amountDetails?.totalAmount ?? entryFee) || 0) * 100);
+      const pr = stripe.paymentRequest({
+        country: 'DE',
+        currency: 'eur',
+        total: {
+          label: tournamentName,
+          amount: totalAmount,
+        },
+        requestPayerName: true,
+        requestPayerEmail: true,
+      });
+
+      pr.canMakePayment().then((result: any) => {
+        if (result) {
+          setPaymentRequest(pr);
+          setCanUsePaymentRequest(true);
+
+          pr.on('paymentmethod', async (ev: any) => {
+            setIsProcessing(true);
+            try {
+              const confirm = await stripe.confirmCardPayment(clientSecret, {
+                payment_method: ev.paymentMethod.id
+              }, { handleActions: false });
+
+              if (confirm.error) {
+                ev.complete('fail');
+                toast({ title: 'Zahlung fehlgeschlagen', description: confirm.error.message || 'Fehler', variant: 'destructive' });
+              } else {
+                ev.complete('success');
+                if (confirm.paymentIntent && confirm.paymentIntent.status === 'requires_action') {
+                  const final = await stripe.confirmCardPayment(clientSecret);
+                  if (final.error) {
+                    toast({ title: 'Fehler', description: final.error.message || 'Authentifizierung fehlgeschlagen', variant: 'destructive' });
+                  } else {
+                    setPaymentStatus('success');
+                    toast({ title: 'Zahlung erfolgreich!', description: 'Du wurdest erfolgreich registriert.' });
+                    setTimeout(() => { window.location.href = '/tournament/registration/success'; }, 1200);
+                  }
+                } else {
+                  setPaymentStatus('success');
+                  toast({ title: 'Zahlung erfolgreich!', description: 'Du wurdest erfolgreich registriert.' });
+                  setTimeout(() => { window.location.href = '/tournament/registration/success'; }, 1200);
+                }
+              }
+            } catch (err) {
+              console.error('PaymentRequest error', err);
+              ev.complete('fail');
+              toast({ title: 'Fehler', description: 'Zahlung fehlgeschlagen', variant: 'destructive' });
+            } finally {
+              setIsProcessing(false);
+            }
+          });
+        }
+      }).catch(() => {});
+    } catch (err) {
+      // ignore
+    }
+  }, [stripe, amountDetails, clientSecret]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,42 +145,32 @@ function PaymentForm({
     setPaymentStatus('processing');
 
     try {
-      const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/tournament/payment/success`,
-        },
-        redirect: 'if_required',
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) throw new Error('Kartenfeld nicht gefunden');
+
+      const result = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            name: playerName,
+            email: email
+          }
+        }
       });
 
-      if (error) {
-        console.error('Payment error:', error);
+      if (result.error) {
+        console.error('Payment error:', result.error);
         setPaymentStatus('error');
-        toast({
-          title: 'Zahlung fehlgeschlagen',
-          description: error.message || 'Es ist ein Fehler aufgetreten',
-          variant: 'destructive',
-        });
-      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+        toast({ title: 'Zahlung fehlgeschlagen', description: result.error.message || 'Es ist ein Fehler aufgetreten', variant: 'destructive' });
+      } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
         setPaymentStatus('success');
-        toast({
-          title: 'Zahlung erfolgreich!',
-          description: 'Du wurdest erfolgreich für das Turnier registriert.',
-        });
-        
-        // Redirect nach Erfolg
-        setTimeout(() => {
-          window.location.href = '/tournament/registration/success';
-        }, 2000);
+        toast({ title: 'Zahlung erfolgreich!', description: 'Du wurdest erfolgreich für das Turnier registriert.' });
+        setTimeout(() => { window.location.href = '/tournament/registration/success'; }, 1200);
       }
     } catch (err) {
       console.error('Unexpected error:', err);
       setPaymentStatus('error');
-      toast({
-        title: 'Fehler',
-        description: 'Ein unerwarteter Fehler ist aufgetreten',
-        variant: 'destructive',
-      });
+      toast({ title: 'Fehler', description: (err as Error).message || 'Ein unerwarteter Fehler ist aufgetreten', variant: 'destructive' });
     } finally {
       setIsProcessing(false);
     }
@@ -166,7 +222,28 @@ function PaymentForm({
         </div>
       </div>
 
-      <PaymentElement />
+      {canUsePaymentRequest && paymentRequest ? (
+        <div className="mb-4">
+          <PaymentRequestButtonElement options={{
+            paymentRequest,
+          }} />
+        </div>
+      ) : null}
+
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Kreditkarte</Label>
+        <div className="border rounded-md p-3">
+          <CardElement options={{
+            style: {
+              base: {
+                fontSize: '16px',
+                color: '#000',
+                '::placeholder': { color: '#a0aec0' },
+              }
+            }
+          }} />
+        </div>
+      </div>
 
       <Button 
         type="submit" 
@@ -203,6 +280,7 @@ export function TournamentPayment({
   const [amountDetails, setAmountDetails] = useState<PaymentAmountDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [stripeConfigured, setStripeConfigured] = useState<boolean | null>(null);
+  const [stripeObj, setStripeObj] = useState<any>(null);
 
   useEffect(() => {
     // Prüfe ob Stripe konfiguriert ist
@@ -214,6 +292,11 @@ export function TournamentPayment({
       .catch(() => {
         setStripeConfigured(false);
       });
+  }, []);
+
+  useEffect(() => {
+    // pre-load stripe promise object for payment request creation
+    getStripePromise().then(s => setStripeObj(s)).catch(() => {});
   }, []);
 
   const handleStartPayment = async (e: React.FormEvent) => {
@@ -364,7 +447,7 @@ export function TournamentPayment({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Elements 
+        <Elements
           stripe={getStripePromise()}
           options={{
             clientSecret,
@@ -373,7 +456,7 @@ export function TournamentPayment({
             },
           }}
         >
-          <PaymentForm
+          <EnhancedPaymentForm
             tournamentId={tournamentId}
             tournamentName={tournamentName}
             entryFee={entryFee}
@@ -381,9 +464,15 @@ export function TournamentPayment({
             clientSecret={clientSecret}
             playerName={playerName}
             email={email}
+            stripeObj={stripeObj}
           />
         </Elements>
       </CardContent>
     </Card>
   );
+}
+
+function EnhancedPaymentForm(props: any) {
+  // shim to pass stripeObj into PaymentForm behavior (backwards compatible)
+  return <PaymentForm {...props} />;
 }

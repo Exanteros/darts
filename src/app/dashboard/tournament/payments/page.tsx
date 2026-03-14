@@ -10,6 +10,7 @@ import {
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { CheckCircle2 } from 'lucide-react';
@@ -242,6 +243,49 @@ export default function TournamentPaymentsPage() {
                         }}
                       />
                       <Label htmlFor="stripeEnabled">Stripe-Zahlungen aktivieren</Label>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                      <div>
+                        <Label htmlFor="stripePublishableKey">Publishable Key</Label>
+                        <Input
+                          id="stripePublishableKey"
+                          placeholder="pk_test_xxx"
+                          value={settings.stripePublishableKey || ''}
+                          onChange={(e) => setSettings(prev => ({ ...prev, stripePublishableKey: e.target.value }))}
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="stripeSecretKey">Secret Key</Label>
+                        <Input
+                          id="stripeSecretKey"
+                          type="password"
+                          placeholder="sk_test_xxx"
+                          value={settings.stripeSecretKey || ''}
+                          onChange={(e) => setSettings(prev => ({ ...prev, stripeSecretKey: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <Label htmlFor="stripeWebhookSecret">Webhook Secret</Label>
+                        <Input
+                          id="stripeWebhookSecret"
+                          type="password"
+                          placeholder="whsec_xxx"
+                          value={settings.stripeWebhookSecret || ''}
+                          onChange={(e) => setSettings(prev => ({ ...prev, stripeWebhookSecret: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2 flex gap-2 mt-1">
+                        <Button size="sm" onClick={() => saveStripeSettings({
+                          stripePublishableKey: settings.stripePublishableKey,
+                          stripeSecretKey: settings.stripeSecretKey,
+                          stripeWebhookSecret: settings.stripeWebhookSecret,
+                        })} disabled={saving}>
+                          Stripe-Keys speichern
+                        </Button>
+                      </div>
                     </div>
 
                     {settings.stripeConnected ? (
