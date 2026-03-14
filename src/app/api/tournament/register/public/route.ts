@@ -8,7 +8,7 @@ import Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
   try {
-    const { tournamentId, playerName, email, paymentIntentId } = await request.json();
+    const { tournamentId, playerName, email, paymentIntentId, payOnSite } = await request.json();
 
     if (!tournamentId || !playerName || !email) {
       return NextResponse.json({
@@ -78,8 +78,8 @@ export async function POST(request: NextRequest) {
     const stripeEnabled = settings?.stripeEnabled ?? false;
 
     // Wenn Stripe aktiviert ist und das Turnier etwas kostet, muss eine Zahlung vorliegen
-    // ABER NICHT WENN WARTELISTE
-    if (tournament.entryFee > 0 && stripeEnabled && !paymentIntentId && !isWaitingList) {
+    // ABER NICHT WENN WARTELISTE ODER BEZAHLUNG VOR ORT
+    if (tournament.entryFee > 0 && stripeEnabled && !paymentIntentId && !isWaitingList && !payOnSite) {
       return NextResponse.json({
         success: false,
         message: 'Zahlung erforderlich. Bitte schließen Sie den Bezahlvorgang ab.'
@@ -192,6 +192,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: successMessage,
+      isWaitingList,
       registration: {
         id: registration.id,
         playerName: registration.playerName,
