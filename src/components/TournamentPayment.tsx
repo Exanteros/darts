@@ -22,6 +22,12 @@ interface TournamentPaymentProps {
   onSuccess?: () => void;
 }
 
+interface PaymentAmountDetails {
+  baseAmount: number;
+  feeAmount: number;
+  totalAmount: number;
+}
+
 let stripePromise: Promise<Stripe | null> | null = null;
 
 function getStripePromise() {
@@ -43,6 +49,7 @@ function PaymentForm({
   tournamentId, 
   tournamentName, 
   entryFee,
+  amountDetails,
   clientSecret,
   playerName,
   email 
@@ -50,6 +57,7 @@ function PaymentForm({
   tournamentId: string;
   tournamentName: string;
   entryFee: number;
+  amountDetails: PaymentAmountDetails | null;
   clientSecret: string;
   playerName: string;
   email: string;
@@ -145,7 +153,15 @@ function PaymentForm({
         <div className="border-t pt-4">
           <div className="flex justify-between items-center">
             <Label className="text-sm font-medium">Startgebühr</Label>
-            <p className="text-xl font-bold">{entryFee.toFixed(2)} €</p>
+            <p className="text-xl font-bold">{(amountDetails?.baseAmount ?? entryFee).toFixed(2)} €</p>
+          </div>
+          <div className="mt-2 flex justify-between items-center text-sm text-muted-foreground">
+            <span>Stripe-Transaktionskosten</span>
+            <span>{(amountDetails?.feeAmount ?? 0).toFixed(2)} €</span>
+          </div>
+          <div className="mt-2 flex justify-between items-center font-semibold">
+            <span>Gesamtbetrag</span>
+            <span>{(amountDetails?.totalAmount ?? entryFee).toFixed(2)} €</span>
           </div>
         </div>
       </div>
@@ -163,7 +179,7 @@ function PaymentForm({
             Zahlung wird verarbeitet...
           </>
         ) : (
-          `${entryFee.toFixed(2)} € bezahlen`
+          `${(amountDetails?.totalAmount ?? entryFee).toFixed(2)} € bezahlen`
         )}
       </Button>
 
@@ -184,6 +200,7 @@ export function TournamentPayment({
   const [playerName, setPlayerName] = useState('');
   const [email, setEmail] = useState('');
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [amountDetails, setAmountDetails] = useState<PaymentAmountDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [stripeConfigured, setStripeConfigured] = useState<boolean | null>(null);
 
@@ -223,7 +240,6 @@ export function TournamentPayment({
           tournamentId,
           playerName,
           email,
-          amount: entryFee,
         }),
       });
 
@@ -234,6 +250,7 @@ export function TournamentPayment({
       }
 
       setClientSecret(data.clientSecret);
+      setAmountDetails(data.amountDetails || null);
     } catch (error: any) {
       console.error('Error creating payment:', error);
       toast({
@@ -360,6 +377,7 @@ export function TournamentPayment({
             tournamentId={tournamentId}
             tournamentName={tournamentName}
             entryFee={entryFee}
+            amountDetails={amountDetails}
             clientSecret={clientSecret}
             playerName={playerName}
             email={email}

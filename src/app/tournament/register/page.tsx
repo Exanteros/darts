@@ -29,6 +29,12 @@ interface Tournament {
   _count: { players: number };
 }
 
+interface PaymentAmountDetails {
+  baseAmount: number;
+  feeAmount: number;
+  totalAmount: number;
+}
+
 /* ================= MAIN COMPONENT ================= */
 
 export default function TournamentRegistrationPage() {
@@ -42,6 +48,7 @@ export default function TournamentRegistrationPage() {
   const [playerName, setPlayerName] = useState("");
   const [email, setEmail] = useState("");
   const [clientSecret, setClientSecret] = useState("");
+  const [paymentAmountDetails, setPaymentAmountDetails] = useState<PaymentAmountDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isWaitingListSuccess, setIsWaitingListSuccess] = useState(false);
@@ -143,13 +150,13 @@ export default function TournamentRegistrationPage() {
           tournamentId: selectedTournament.id,
           playerName,
           email,
-          amount: selectedTournament.entryFee
         }),
       });
       const data = await res.json();
       
       if (data.success) {
         setClientSecret(data.clientSecret);
+        setPaymentAmountDetails(data.amountDetails || null);
         setStep('PAYMENT');
       } else {
         setError(data.message || "Fehler bei der Initialisierung");
@@ -224,12 +231,26 @@ export default function TournamentRegistrationPage() {
     return (
       <form onSubmit={handlePay} className="space-y-6">
         <div className="p-4 rounded-sm border border-slate-200 bg-slate-50 transition-colors focus-within:bg-white focus-within:border-slate-400">
+          <div className="mb-4 space-y-1 rounded-sm border bg-white p-3 text-sm">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>Startgebühr</span>
+              <span>{(paymentAmountDetails?.baseAmount ?? selectedTournament?.entryFee ?? 0).toFixed(2)}€</span>
+            </div>
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>Stripe-Transaktionskosten</span>
+              <span>{(paymentAmountDetails?.feeAmount ?? 0).toFixed(2)}€</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between border-t pt-2 font-semibold text-foreground">
+              <span>Gesamt</span>
+              <span>{(paymentAmountDetails?.totalAmount ?? selectedTournament?.entryFee ?? 0).toFixed(2)}€</span>
+            </div>
+          </div>
           <CardElement options={{
             style: { base: { fontSize: '16px', color: '#0f172a', '::placeholder': { color: '#94a3b8' }, fontFamily: 'monospace' } }
           }} />
         </div>
         <Button disabled={!stripe || payLoading} className="w-full h-14 bg-slate-900 text-white hover:bg-slate-800 rounded-sm text-lg font-semibold">
-          {payLoading ? <Loader2 className="animate-spin" /> : `Jetzt ${selectedTournament?.entryFee}€ bezahlen`}
+          {payLoading ? <Loader2 className="animate-spin" /> : `Jetzt ${(paymentAmountDetails?.totalAmount ?? selectedTournament?.entryFee ?? 0).toFixed(2)}€ bezahlen`}
         </Button>
       </form>
     );

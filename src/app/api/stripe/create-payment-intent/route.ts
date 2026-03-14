@@ -1,32 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import Stripe from 'stripe';
+import { calculateStripePaymentAmounts, centsToEuro } from '@/lib/stripe-fees';
 
 
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { tournamentId, playerName, email, amount } = body;
+    const { tournamentId, playerName, email } = body;
 
     if (!tournamentId || !playerName || !email) {
       return NextResponse.json({
         success: false,
         message: 'Fehlende erforderliche Felder'
-      }, { status: 400 });
-    }
-
-    if (amount === undefined || amount === null) {
-       return NextResponse.json({
-        success: false,
-        message: 'Betrag fehlt'
-      }, { status: 400 });
-    }
-
-    if (amount <= 0) {
-       return NextResponse.json({
-        success: false,
-        message: 'Betrag muss größer als 0 sein'
       }, { status: 400 });
     }
 
@@ -40,6 +27,13 @@ export async function POST(request: NextRequest) {
         success: false,
         message: 'Turnier nicht gefunden'
       }, { status: 404 });
+    }
+
+    if (tournament.entryFee <= 0) {
+      return NextResponse.json({
+        success: false,
+        message: 'Für dieses Turnier ist keine Stripe-Zahlung erforderlich'
+      }, { status: 400 });
     }
 
     const activePlayerCount = await prisma.tournamentPlayer.count({
@@ -71,21 +65,30 @@ export async function POST(request: NextRequest) {
     }
 
     const stripe = new Stripe(tournamentSettings.stripeSecretKey);
+    const amountDetails = calculateStripePaymentAmounts(Math.round(tournament.entryFee * 100));
 
     // Erstelle Payment Intent
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Stripe erwartet Cent-Beträge
+      amount: amountDetails.totalAmountCents,
       currency: 'eur',
       metadata: {
         tournamentId,
         playerName,
-        email
+        email,
+        baseAmountCents: String(amountDetails.baseAmountCents),
+        feeAmountCents: String(amountDetails.feeAmountCents),
+        totalAmountCents: String(amountDetails.totalAmountCents),
       }
     });
 
     return NextResponse.json({
       success: true,
-      clientSecret: paymentIntent.client_secret
+      clientSecret: paymentIntent.client_secret,
+      amountDetails: {
+        baseAmount: centsToEuro(amountDetails.baseAmountCents),
+        feeAmount: centsToEuro(amountDetails.feeAmountCents),
+        totalAmount: centsToEuro(amountDetails.totalAmountCents),
+      }
     });
 
   } catch (error) {
