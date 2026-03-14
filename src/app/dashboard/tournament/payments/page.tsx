@@ -125,6 +125,40 @@ export default function TournamentPaymentsPage() {
     }
   };
 
+  const saveStripeSettings = async (updated: Partial<TournamentSettings>) => {
+    setSaving(true);
+    try {
+      const payload = {
+        id: 'default',
+        stripeEnabled: updated.stripeEnabled ?? settings.stripeEnabled,
+        stripePublishableKey: updated.stripePublishableKey ?? settings.stripePublishableKey,
+        stripeSecretKey: updated.stripeSecretKey ?? settings.stripeSecretKey,
+        stripeWebhookSecret: updated.stripeWebhookSecret ?? settings.stripeWebhookSecret,
+      };
+
+      const res = await fetch('/api/admin/tournament/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        console.error('Failed to save stripe settings', res.status, body);
+        toast({ title: 'Fehler', description: body.error || 'Konnte Stripe-Einstellungen nicht speichern.', variant: 'destructive' });
+        return;
+      }
+
+      // Refresh settings from server to ensure persisted state
+      await fetchSettings();
+    } catch (e) {
+      console.error('SaveStripeSettings error', e);
+      toast({ title: 'Fehler', description: 'Konnte Stripe-Einstellungen nicht speichern.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if(params.get('success') === 'stripe_connected') {
@@ -202,7 +236,10 @@ export default function TournamentPaymentsPage() {
                       <Switch
                         id="stripeEnabled"
                         checked={settings.stripeEnabled}
-                        onCheckedChange={(checked) => setSettings(prev => ({ ...prev, stripeEnabled: checked }))}
+                        onCheckedChange={async (checked) => {
+                          setSettings(prev => ({ ...prev, stripeEnabled: checked }));
+                          await saveStripeSettings({ ...settings, stripeEnabled: checked });
+                        }}
                       />
                       <Label htmlFor="stripeEnabled">Stripe-Zahlungen aktivieren</Label>
                     </div>

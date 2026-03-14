@@ -122,10 +122,13 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) {
+      console.log('PUT /api/admin/tournament/settings: No session found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const isAdmin = session.role === 'ADMIN';
+    console.log(`PUT /api/admin/tournament/settings: User ${session.email} (Start), isAdmin=${isAdmin}`);
+
     let allowedTournamentIds: string[] = [];
 
     if (!isAdmin) {
@@ -146,22 +149,28 @@ export async function PUT(request: NextRequest) {
     let settings;
 
     if (isAdmin) {
-      settings = await (prisma as any).tournamentSettings.upsert({
-        where: { id: 'default' },
+      console.log('Using robust upsert logic for admin');
+      const val = (v: any) => v === undefined ? undefined : v;
+      const nullableStr = (v: any) => v === undefined ? undefined : (v === '' ? null : v);
+      const jsonStr = (v: any) => v === undefined ? undefined : (v ? JSON.stringify(v) : null);
+
+      try {
+        settings = await (prisma as any).tournamentSettings.upsert({
+          where: { id: 'default' },
         update: {
-          defaultMaxPlayers: data.maxPlayers || 64,
-          defaultEntryFee: data.entryFee || 0,
-          allowLateRegistration: data.allowLateRegistration ?? true,
-          autoStartGames: data.autoStartGames ?? false,
-          showLiveScores: data.showLiveScores ?? true,
-          enableStatistics: data.enableStatistics ?? true,
-          stripeEnabled: data.stripeEnabled ?? false,
-          stripePublishableKey: data.stripePublishableKey || null,
-          stripeSecretKey: data.stripeSecretKey || null,
-          stripeWebhookSecret: data.stripeWebhookSecret || null,
-          mainLogo: data.mainLogo || null,
-          sponsorLogos: data.sponsorLogos ? JSON.stringify(data.sponsorLogos) : null,
-          backgroundImage: data.backgroundImage || null,
+          defaultMaxPlayers: val(data.maxPlayers),
+          defaultEntryFee: val(data.entryFee),
+          allowLateRegistration: val(data.allowLateRegistration),
+          autoStartGames: val(data.autoStartGames),
+          showLiveScores: val(data.showLiveScores),
+          enableStatistics: val(data.enableStatistics),
+          stripeEnabled: val(data.stripeEnabled),
+          stripePublishableKey: nullableStr(data.stripePublishableKey),
+          stripeSecretKey: nullableStr(data.stripeSecretKey),
+          stripeWebhookSecret: nullableStr(data.stripeWebhookSecret),
+          mainLogo: nullableStr(data.mainLogo),
+          sponsorLogos: jsonStr(data.sponsorLogos),
+          backgroundImage: nullableStr(data.backgroundImage),
           updatedAt: new Date(),
         },
         create: {
@@ -181,6 +190,10 @@ export async function PUT(request: NextRequest) {
           backgroundImage: data.backgroundImage || null,
         },
       });
+      } catch (upsertError) {
+        console.error('ERROR in upsert tournamentSettings:', upsertError);
+        throw upsertError;
+      }
     } else {
       // Non-admins cannot update global settings, just fetch them
       settings = await prisma.tournamentSettings.findUnique({
