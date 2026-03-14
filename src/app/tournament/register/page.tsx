@@ -8,9 +8,13 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Trophy, Calendar, Euro, Users, ArrowRight, CreditCard, CheckCircle2, ChevronLeft, Lock, ArrowLeft, XCircle, MapPin, ChevronDown, Target } from "lucide-react";
+import { 
+  Loader2, Trophy, Calendar, Euro, Users, ArrowRight, 
+  CreditCard, CheckCircle2, ChevronLeft, Lock, ArrowLeft, 
+  XCircle, MapPin, ChevronDown, Target, Zap 
+} from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardElement, PaymentRequestButtonElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { cn } from "@/lib/utils";
 import DynamicLogo from "@/components/DynamicLogo";
 
@@ -197,102 +201,51 @@ export default function TournamentRegistrationPage() {
     const stripe = useStripe();
     const elements = useElements();
     const [payLoading, setPayLoading] = useState(false);
-    const [paymentRequest, setPaymentRequest] = useState<any>(null);
-    const [canUsePaymentRequest, setCanUsePaymentRequest] = useState(false);
 
     const handlePay = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!stripe || !elements) return;
       setPayLoading(true);
-      
-      const card = elements.getElement(CardElement);
-      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: card!,
-          billing_details: { name: playerName, email }
-        }
+
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: window.location.origin, // Fallback URL
+          payment_method_data: {
+            billing_details: { name: playerName, email }
+          }
+        },
+        redirect: 'if_required',
       });
 
-      if (stripeError) {
-        setError(stripeError.message || "Zahlung fehlgeschlagen");
+      if (error) {
+        setError(error.message || "Zahlung fehlgeschlagen");
         setPayLoading(false);
-      } else if (paymentIntent?.status === 'succeeded') {
-        await fetch('/api/tournament/register/public', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tournamentId: selectedTournament?.id,
-            playerName,
-            email,
-            paymentIntentId: paymentIntent.id
-          }),
-        });
-        setStep('SUCCESS');
+      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+        try {
+          await fetch('/api/tournament/register/public', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              tournamentId: selectedTournament?.id,
+              playerName,
+              email,
+              paymentIntentId: paymentIntent.id
+            }),
+          });
+          setStep('SUCCESS');
+        } catch (err) {
+          setError("Fehler bei der Anmeldung nach erfolgreicher Zahlung");
+        }
+      } else {
+        setPayLoading(false); // Should not happen with redirect: if_required unless requires_action was not fully handled by stripe.js automatically
       }
     };
-
-    useEffect(() => {
-      if (!stripe || !paymentAmountDetails || !clientSecret) return;
-      try {
-        const total = Math.round(((paymentAmountDetails?.totalAmount ?? selectedTournament?.entryFee ?? 0) || 0) * 100);
-        const pr = stripe.paymentRequest({
-          country: 'DE',
-          currency: 'eur',
-          total: { label: selectedTournament?.name || 'Startgebühr', amount: total },
-          requestPayerName: true,
-          requestPayerEmail: true,
-        });
-
-        pr.canMakePayment().then((res: any) => {
-          if (res) {
-            setPaymentRequest(pr);
-            setCanUsePaymentRequest(true);
-
-            pr.on('paymentmethod', async (ev: any) => {
-              setPayLoading(true);
-              try {
-                const confirm = await stripe.confirmCardPayment(clientSecret, { payment_method: ev.paymentMethod.id }, { handleActions: false });
-                if (confirm.error) {
-                  ev.complete('fail');
-                  setError(confirm.error.message || 'Zahlung fehlgeschlagen');
-                } else {
-                  ev.complete('success');
-                  if (confirm.paymentIntent && confirm.paymentIntent.status === 'requires_action') {
-                    const final = await stripe.confirmCardPayment(clientSecret);
-                    if (final.error) setError(final.error.message || 'Authentifizierung fehlgeschlagen');
-                    else {
-                      // register
-                      await fetch('/api/tournament/register/public', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ tournamentId: selectedTournament?.id, playerName, email, paymentIntentId: final.paymentIntent?.id })
-                      });
-                      setStep('SUCCESS');
-                    }
-                  } else {
-                    await fetch('/api/tournament/register/public', {
-                      method: 'POST', headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ tournamentId: selectedTournament?.id, playerName, email, paymentIntentId: confirm.paymentIntent?.id })
-                    });
-                    setStep('SUCCESS');
-                  }
-                }
-              } catch (err) {
-                console.error('PaymentRequest error', err);
-                ev.complete('fail');
-                setError('Zahlung fehlgeschlagen');
-              } finally {
-                setPayLoading(false);
-              }
-            });
-          }
-        }).catch(() => {});
-      } catch (err) {}
-    }, [stripe, paymentAmountDetails, clientSecret]);
 
     return (
       <form onSubmit={handlePay} className="space-y-6">
         <div className="p-4 rounded-sm border border-slate-200 bg-slate-50 transition-colors focus-within:bg-white focus-within:border-slate-400">
-          <div className="mb-4 space-y-1 rounded-sm border bg-white p-3 text-sm">
+          <div className="mb-6 space-y-1 rounded-sm border bg-white p-3 text-sm">
             <div className="flex items-center justify-between text-muted-foreground">
               <span>Startgebühr</span>
               <span>{(paymentAmountDetails?.baseAmount ?? selectedTournament?.entryFee ?? 0).toFixed(2)}€</span>
@@ -306,15 +259,10 @@ export default function TournamentRegistrationPage() {
               <span>{(paymentAmountDetails?.totalAmount ?? selectedTournament?.entryFee ?? 0).toFixed(2)}€</span>
             </div>
           </div>
-          <CardElement options={{
-            style: { base: { fontSize: '16px', color: '#0f172a', '::placeholder': { color: '#94a3b8' }, fontFamily: 'monospace' } }
-          }} />
-        {canUsePaymentRequest && paymentRequest ? (
-          <div className="mb-4">
-            <PaymentRequestButtonElement options={{ paymentRequest }} />
-          </div>
-        ) : null}
+
+          <PaymentElement options={{ layout: "tabs" }} />
         </div>
+        
         <Button disabled={!stripe || payLoading} className="w-full h-14 bg-slate-900 text-white hover:bg-slate-800 rounded-sm text-lg font-semibold">
           {payLoading ? <Loader2 className="animate-spin" /> : `Jetzt ${(paymentAmountDetails?.totalAmount ?? selectedTournament?.entryFee ?? 0).toFixed(2)}€ bezahlen`}
         </Button>
@@ -335,147 +283,200 @@ export default function TournamentRegistrationPage() {
         </div>
       </nav>
 
-      <main className="flex-1 container mx-auto px-6 py-8 md:py-12 max-w-5xl flex flex-col">
+      <main className="flex-1 flex flex-col">
         <AnimatePresence mode="wait">
           
           {step === 'SELECTION' && (
-            <motion.div key="selection" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="flex flex-col h-full">
-              <div className="mb-8">
-                <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 text-xs font-mono font-medium bg-slate-100 text-slate-600 border border-slate-200 rounded-sm uppercase tracking-widest">
-                  / SAISON 2026 ■
+            <motion.div key="selection" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col lg:flex-row min-h-full">
+              
+              {/* --- SIDEBAR START --- */}
+              <div className="w-full lg:w-[450px] bg-slate-900 p-8 md:p-12 text-white flex flex-col border-r border-white/10 relative overflow-hidden shrink-0">
+                <div className="relative z-10">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full mb-8">
+                    <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-300">Community & Fun</span>
+                  </div>
+
+                  <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-[0.85] mb-8">
+                    GAME <br /> ON! <br /> <span className="text-slate-500 italic">VIEL GLÜCK.</span>
+                  </h1>
+
+                  <div className="space-y-6 mb-12">
+                    <p className="text-slate-400 text-sm font-mono leading-relaxed">
+                      Egal ob du zum ersten Mal am Oche stehst oder der Champion deiner Stammkneipe bist – bei uns zählt vor allem der Spaß am Spiel.
+                    </p>
+                    <p className="text-slate-400 text-sm font-mono leading-relaxed">
+                      Pack deine Pfeile ein, schnapp dir ein Kaltgetränk und genieß die Atmosphäre. Keine Profi-Lizenz nötig!
+                    </p>
+                  </div>
+
+                  <div className="space-y-8">
+                    <div className="flex gap-4 items-start group">
+                      <div className="w-10 h-10 border border-white/20 rounded-sm flex items-center justify-center shrink-0 group-hover:border-amber-400 transition-colors">
+                        <Trophy size={20} className="text-amber-400" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold uppercase">Hobby-Ehre</div>
+                        <div className="text-[10px] font-mono text-slate-500 uppercase mt-1">Sammle Punkte für unsere Community-Rangliste und werde zur Legende.</div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4 items-start group">
+                      <div className="w-10 h-10 border border-white/20 rounded-sm flex items-center justify-center shrink-0 group-hover:border-blue-400 transition-colors">
+                        <Zap size={20} className="text-blue-400" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold uppercase">Best-of-Vibe</div>
+                        <div className="text-[10px] font-mono text-slate-500 uppercase mt-1">Faire Spiele, gute Musik und Kaltgetränke. Wir sorgen für den Rahmen.</div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4 items-start group">
+                      <div className="w-10 h-10 border border-white/20 rounded-sm flex items-center justify-center shrink-0 group-hover:border-green-400 transition-colors">
+                        <Lock size={18} className="text-green-400" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold uppercase">Stressfrei Anmelden</div>
+                        <div className="text-[10px] font-mono text-slate-500 uppercase mt-1">Sicherer Platz in 2 Minuten via Stripe oder Barzahlung vor Ort.</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter text-slate-900 leading-[1.1]">
-                  Wähle deine <br />
-                  <span className="text-slate-400">Challenge</span>
-                </h1>
+
+                <div className="mt-auto pt-8 opacity-20 hidden lg:block">
+                  <div className="text-[9px] font-mono uppercase tracking-[0.3em]">
+                    Dart-Community • Saison 2026 • Jeder ist willkommen
+                  </div>
+                </div>
               </div>
+              {/* --- SIDEBAR END --- */}
 
-              <div className="border border-slate-200 rounded-sm bg-white flex flex-col">
-                <div className="hidden md:grid grid-cols-12 gap-4 px-8 py-4 bg-slate-50 border-b border-slate-200 text-xs font-mono text-slate-400 uppercase tracking-widest">
-                  <div className="col-span-6">Turnier</div>
-                  <div className="col-span-2 text-center">Datum</div>
-                  <div className="col-span-2 text-center">Status</div>
-                  <div className="col-span-2 text-right">Startgeld</div>
+              <div className="flex-1 p-6 md:p-12">
+                <div className="mb-8">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 text-xs font-mono font-medium bg-slate-100 text-slate-600 border border-slate-200 rounded-sm uppercase tracking-widest">
+                    / SAISON 2026 ■
+                  </div>
+                  <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter text-slate-900 leading-[1.1]">
+                    Wähle deine <br />
+                    <span className="text-slate-400">Challenge</span>
+                  </h1>
                 </div>
 
-                <div className="divide-y divide-slate-200">
-                  {tournaments.map((t) => {
-                    const isExpanded = expandedIds.includes(t.id);
-                    const isFull = t._count.players >= t.maxPlayers || t.status === 'WAITLIST';
-                    const isClosed = t.status !== 'REGISTRATION_OPEN' && t.status !== 'WAITLIST';
+                <div className="border border-slate-200 rounded-sm bg-white flex flex-col">
+                  <div className="hidden md:grid grid-cols-12 gap-4 px-8 py-4 bg-slate-50 border-b border-slate-200 text-xs font-mono text-slate-400 uppercase tracking-widest">
+                    <div className="col-span-6">Turnier</div>
+                    <div className="col-span-2 text-center">Datum</div>
+                    <div className="col-span-2 text-center">Status</div>
+                    <div className="col-span-2 text-right">Startgeld</div>
+                  </div>
 
-                    return (
-                      <div 
-                        key={t.id} 
-                        className={cn(
-                          "group relative bg-white transition-colors hover:bg-slate-50",
-                          isExpanded && "bg-slate-50",
-                          isClosed && "opacity-60 pointer-events-none grayscale"
-                        )}
-                        onClick={() => {
-                          if (isClosed) return;
-                          setExpandedIds(prev => {
-                            const topId = tournaments[0]?.id;
-                            if (prev.includes(t.id)) {
-                              if (t.id === topId) return prev;
-                              return prev.filter(id => id !== t.id);
-                            }
-                            return [...prev, t.id];
-                          });
-                        }}
-                      >
-                        <div className="px-4 md:px-6 py-4 cursor-pointer">
-                          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                            <div className="col-span-6 flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-sm bg-slate-900 flex items-center justify-center text-white shrink-0">
-                                <Target className="h-5 w-5" />
-                              </div>
-                              <div>
-                                <h3 className="text-base font-bold text-slate-900 leading-tight">{t.name}</h3>
-                                <div className="md:hidden flex items-center gap-3 mt-1 text-xs font-mono text-slate-500">
-                                  <span>{new Date(t.startDate).toLocaleDateString('de-DE')}</span>
-                                  <span className="w-1 h-1 bg-slate-300 rounded-full" />
-                                  <span>{t.entryFee}€</span>
+                  <div className="divide-y divide-slate-200">
+                    {tournaments.map((t) => {
+                      const isExpanded = expandedIds.includes(t.id);
+                      const isFull = t._count.players >= t.maxPlayers || t.status === 'WAITLIST';
+                      const isClosed = t.status !== 'REGISTRATION_OPEN' && t.status !== 'WAITLIST';
+
+                      return (
+                        <div 
+                          key={t.id} 
+                          className={cn(
+                            "group relative bg-white transition-colors hover:bg-slate-50",
+                            isExpanded && "bg-slate-50",
+                            isClosed && "opacity-60 pointer-events-none grayscale"
+                          )}
+                          onClick={() => {
+                            if (isClosed) return;
+                            setExpandedIds(prev => {
+                              const topId = tournaments[0]?.id;
+                              if (prev.includes(t.id)) {
+                                if (t.id === topId) return prev;
+                                return prev.filter(id => id !== t.id);
+                              }
+                              return [...prev, t.id];
+                            });
+                          }}
+                        >
+                          <div className="px-4 md:px-6 py-4 cursor-pointer">
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                              <div className="col-span-6 flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-sm bg-slate-900 flex items-center justify-center text-white shrink-0">
+                                  <Target className="h-5 w-5" />
+                                </div>
+                                <div>
+                                  <h3 className="text-base font-bold text-slate-900 leading-tight">{t.name}</h3>
+                                  <div className="md:hidden flex items-center gap-3 mt-1 text-xs font-mono text-slate-500">
+                                    <span>{new Date(t.startDate).toLocaleDateString('de-DE')}</span>
+                                    <span className="w-1 h-1 bg-slate-300 rounded-full" />
+                                    <span>{t.entryFee}€</span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                            <div className="hidden md:block col-span-2 text-center text-sm font-mono text-slate-600">
-                              {new Date(t.startDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })}
-                            </div>
-                            <div className="hidden md:flex col-span-2 justify-center">
-                              <div className={cn(
-                                "text-[10px] font-mono px-2 py-1 uppercase tracking-widest border rounded-sm", 
-                                t.status === 'REGISTRATION_OPEN' 
-                                  ? (isFull ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-green-50 text-green-700 border-green-200") 
-                                  : "bg-slate-100 text-slate-500 border-slate-200"
-                              )}>
-                                {t.status === 'REGISTRATION_OPEN' ? (isFull ? 'Warteliste' : 'Offen') : 'Ende'}
+                              <div className="hidden md:block col-span-2 text-center text-sm font-mono text-slate-600">
+                                {new Date(t.startDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              </div>
+                              <div className="hidden md:flex col-span-2 justify-center">
+                                <div className={cn(
+                                  "text-[10px] font-mono px-2 py-1 uppercase tracking-widest border rounded-sm", 
+                                  t.status === 'REGISTRATION_OPEN' 
+                                    ? (isFull ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-green-50 text-green-700 border-green-200") 
+                                    : "bg-slate-100 text-slate-500 border-slate-200"
+                                )}>
+                                  {t.status === 'REGISTRATION_OPEN' ? (isFull ? 'Warteliste' : 'Offen') : 'Ende'}
+                                </div>
+                              </div>
+                              <div className="hidden md:flex col-span-2 items-center justify-end gap-4">
+                                <span className="font-bold text-slate-900 text-lg">{t.entryFee}€</span>
+                                <ChevronDown className={cn("h-5 w-5 text-slate-400 transition-transform duration-300", isExpanded && "rotate-180")} />
                               </div>
                             </div>
-                            <div className="hidden md:flex col-span-2 items-center justify-end gap-4">
-                              <span className="font-bold text-slate-900 text-lg">{t.entryFee}€</span>
-                              <ChevronDown className={cn("h-5 w-5 text-slate-400 transition-transform duration-300", isExpanded && "rotate-180")} />
-                            </div>
-                          </div>
-                          <AnimatePresence>
-                            {isExpanded && (
-                              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                <div className="pt-4 pb-2 grid grid-cols-1 md:grid-cols-12 gap-6">
-                                  <div className="md:col-span-8 space-y-4">
-                                    <p className="text-sm text-slate-600 leading-relaxed">{t.description || "Ein spannendes Turnier im K.O.-System. Zeig dein Können am Oche."}</p>
-                                    <div className="flex flex-wrap gap-x-6 gap-y-2">
-                                      <div className="flex items-center text-xs font-mono text-slate-500 uppercase tracking-wider">
-                                        <MapPin className="h-3 w-3 mr-2 text-slate-400" />
-                                        {t.location || "Location folgt"}
-                                      </div>
-                                      <div className="flex items-center text-xs font-mono text-slate-500 uppercase tracking-wider">
-                                        <Users className="h-3 w-3 mr-2 text-slate-400" />
-                                        {t._count.players} / {t.maxPlayers}
+                            <AnimatePresence>
+                              {isExpanded && (
+                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                                  <div className="pt-4 pb-2 grid grid-cols-1 md:grid-cols-12 gap-6">
+                                    <div className="md:col-span-8 space-y-4">
+                                      <p className="text-sm text-slate-600 leading-relaxed">{t.description || "Ein spannendes Turnier im K.O.-System. Zeig dein Können am Oche."}</p>
+                                      <div className="flex flex-wrap gap-x-6 gap-y-2">
+                                        <div className="flex items-center text-xs font-mono text-slate-500 uppercase tracking-wider">
+                                          <MapPin className="h-3 w-3 mr-2 text-slate-400" />
+                                          {t.location || "Location folgt"}
+                                        </div>
+                                        <div className="flex items-center text-xs font-mono text-slate-500 uppercase tracking-wider">
+                                          <Users className="h-3 w-3 mr-2 text-slate-400" />
+                                          {t._count.players} / {t.maxPlayers}
+                                        </div>
                                       </div>
                                     </div>
+                                    <div className="md:col-span-4 flex items-end justify-end">
+                                      <Button 
+                                        onClick={(e) => { e.stopPropagation(); handleSelect(t); }} 
+                                        className="w-full md:w-auto h-10 bg-slate-900 text-white hover:bg-slate-800 rounded-sm px-6 font-semibold text-sm"
+                                      >
+                                        {isFull ? 'Zur Warteliste' : 'Anmelden'} <ArrowRight className="ml-2 h-4 w-4" />
+                                      </Button>
+                                    </div>
                                   </div>
-                                  <div className="md:col-span-4 flex items-end justify-end">
-                                    <Button 
-                                      onClick={(e) => { e.stopPropagation(); handleSelect(t); }} 
-                                      className="w-full md:w-auto h-10 bg-slate-900 text-white hover:bg-slate-800 rounded-sm px-6 font-semibold text-sm"
-                                    >
-                                      {isFull ? 'Zur Warteliste' : 'Anmelden'} <ArrowRight className="ml-2 h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-
-                  {tournaments.length === 0 && (
-                    <div className="p-12 text-center text-slate-500 font-mono text-sm uppercase tracking-widest">
-                      Keine Turniere verfügbar.
-                    </div>
-                  )}
-
-                  {tournaments.length > 0 && tournaments.length < 4 && (
-                    <div className="p-6 bg-slate-50 text-center text-slate-500 font-mono text-xs uppercase tracking-widest">
-                      Weitere Turniere werden bald angekündigt.
-                    </div>
-                  )}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </motion.div>
           )}
 
           {(step === 'FORM' || step === 'PAYMENT' || step === 'PAY_ON_SITE') && selectedTournament && (
-            <motion.div key="process" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="max-w-2xl mx-auto w-full">
-              <div className="flex justify-center mb-12">
+            <motion.div key="process" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="max-w-2xl mx-auto w-full p-4 md:p-6">
+              <div className="flex justify-center mb-8 md:mb-12">
                 <div className="flex items-center gap-4 text-xs font-mono uppercase tracking-widest">
                   <div className={cn("flex items-center gap-2", step === 'FORM' ? "text-slate-900 font-bold" : "text-slate-400")}>
                     <span className={cn("flex items-center justify-center w-6 h-6 rounded-sm border", step === 'FORM' ? "bg-slate-900 text-white border-slate-900" : "bg-white border-slate-200")}>1</span>
                     DATEN
                   </div>
-                  <div className="w-12 h-[1px] bg-slate-200" />
+                  <div className="w-8 md:w-12 h-[1px] bg-slate-200" />
                   <div className={cn("flex items-center gap-2", (step === 'PAYMENT' || step === 'PAY_ON_SITE') ? "text-slate-900 font-bold" : "text-slate-400")}>
                     <span className={cn("flex items-center justify-center w-6 h-6 rounded-sm border", (step === 'PAYMENT' || step === 'PAY_ON_SITE') ? "bg-slate-900 text-white border-slate-900" : "bg-white border-slate-200")}>2</span>
                     {step === 'PAY_ON_SITE' ? 'BESTÄTIGUNG' : 'ZAHLUNG'}
@@ -483,8 +484,8 @@ export default function TournamentRegistrationPage() {
                 </div>
               </div>
 
-              <div className="border border-slate-200 bg-white rounded-sm p-8 md:p-12">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-200 pb-8 mb-8 gap-4">
+              <div className="border border-slate-200 bg-white rounded-sm p-5 md:p-12 shadow-sm">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-200 pb-6 md:pb-8 mb-6 md:mb-8 gap-4">
                   <div>
                     <div className="text-xs font-mono text-slate-400 uppercase tracking-widest mb-2">/ TURNIER ■</div>
                     <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">{selectedTournament.name}</h2>
@@ -530,14 +531,26 @@ export default function TournamentRegistrationPage() {
                         <Lock className="h-4 w-4" /> Sichere und verschlüsselte Zahlung.
                       </div>
                       {stripePromise && clientSecret && (
-                        <Elements stripe={stripePromise} options={{ clientSecret }}><PaymentForm /></Elements>
+                        <Elements stripe={stripePromise} options={{ clientSecret }}>
+                          <PaymentForm />
+                        </Elements>
                       )}
+                      
+                      <div className="relative my-6">
+                        <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-slate-200"></span></div>
+                        <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-slate-400 font-mono">Oder</span></div>
+                      </div>
+
+                      <Button variant="outline" onClick={() => setStep('PAY_ON_SITE')} className="w-full h-14 border-slate-200 text-slate-900 font-bold uppercase hover:bg-slate-50">
+                        <Euro size={16} className="mr-2" /> Bar vor Ort bezahlen
+                      </Button>
+
                       <button onClick={() => setStep('FORM')} className="mt-8 text-sm font-mono text-slate-400 hover:text-slate-900 w-full flex justify-center items-center gap-2 uppercase tracking-widest transition-colors">
                         <ArrowLeft className="h-4 w-4" /> Daten korrigieren
                       </button>
                     </motion.div>
                   ) : (
-                    <motion.div key="pay-on-site" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                    <motion.div key="pay-on-site" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
                       <div className="p-8 bg-slate-50 rounded-sm border border-slate-200 text-center">
                         <div className="w-16 h-16 bg-white border border-slate-200 text-slate-900 rounded-sm flex items-center justify-center mx-auto mb-6">
                           <Euro className="h-8 w-8" />
@@ -545,11 +558,6 @@ export default function TournamentRegistrationPage() {
                         <h3 className="text-xl font-bold text-slate-900 mb-3">Zahlung vor Ort</h3>
                         <p className="text-base text-slate-600">Das Startgeld von <strong className="text-slate-900">{selectedTournament.entryFee}€</strong> wird am Turniertag vor Ort in bar beglichen.</p>
                       </div>
-                      {error && (
-                        <div className="p-4 rounded-sm bg-red-50 text-red-700 text-sm border border-red-200 flex items-center gap-2 font-medium">
-                          <XCircle className="h-5 w-5" /> {error}
-                        </div>
-                      )}
                       <Button onClick={handlePayOnSiteRegistration} disabled={loading} className="w-full h-14 bg-slate-900 text-white hover:bg-slate-800 rounded-sm text-lg font-semibold">
                         {loading ? <Loader2 className="animate-spin" /> : "Kostenpflichtig anmelden"}
                       </Button>
@@ -564,7 +572,7 @@ export default function TournamentRegistrationPage() {
           )}
 
           {step === 'SUCCESS' && (
-            <motion.div key="success" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center py-20">
+            <motion.div key="success" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center py-20 px-6">
               <div className={cn(
                 "w-24 h-24 rounded-sm flex items-center justify-center text-white mb-8", 
                 isWaitingListSuccess ? "bg-amber-500" : "bg-slate-900"
