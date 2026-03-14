@@ -9,10 +9,12 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Trophy, Target, TrendingUp, Calendar, Award, Zap, BarChart3, Activity, Timer } from "lucide-react";
+import { Users, Trophy, Target, TrendingUp, Zap, Activity, Timer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { StatsChart } from "@/components/stats-chart";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface ChartData {
   name: string;
@@ -69,6 +71,7 @@ export default function StatsPage() {
   const { isAdmin, hasTournamentAccess, tournamentAccess, isLoading: authLoading, isAuthenticated } = useTournamentAccess();
   const [stats, setStats] = useState<TournamentStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // Prüfe Berechtigung für Statistiken
   const canViewStats = isAdmin || tournamentAccess.some(access => {
@@ -96,6 +99,7 @@ export default function StatsPage() {
       if (response.ok) {
         const data = await response.json();
         setStats(data);
+        setLastUpdated(new Date());
       } else {
          console.error("Failed to fetch stats:", response.statusText);
       }
@@ -165,6 +169,14 @@ export default function StatsPage() {
     );
   }
 
+  const progressPercentage = stats && stats.totalGames > 0
+    ? Math.round((stats.finishedGames / stats.totalGames) * 100)
+    : 0;
+
+  const roundProgress = stats && stats.maxRounds > 0
+    ? Math.round((stats.currentRound / stats.maxRounds) * 100)
+    : 0;
+
   return (
     <SidebarProvider
       className="font-sans"
@@ -193,7 +205,7 @@ export default function StatsPage() {
                 <div className="flex items-center gap-2">
                    <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground mr-4">
                       <Activity className="h-3 w-3" />
-                      Updated: Just now
+                     Updated: {lastUpdated ? lastUpdated.toLocaleTimeString("de-DE") : "--:--"}
                    </div>
                    <Badge variant={stats?.tournamentStatus === "LIVE" ? "destructive" : "secondary"} className="text-sm px-3 py-1">
                       {stats?.tournamentStatus || "OFFLINE"}
@@ -213,9 +225,7 @@ export default function StatsPage() {
                     <p className="text-xs text-muted-foreground">
                       {stats?.finishedGames} beendet, {stats?.activeGames} aktiv
                     </p>
-                    <div className="h-[4px] w-full bg-secondary mt-3 rounded-full overflow-hidden">
-                       <div className="h-full bg-primary" style={{ width: `${((stats && stats.totalGames > 0) ? (stats.finishedGames / stats.totalGames * 100) : 0)}%` }} />
-                    </div>
+                    <Progress className="mt-3 h-1" value={progressPercentage} />
                   </CardContent>
                 </Card>
 
@@ -255,6 +265,63 @@ export default function StatsPage() {
                     <p className="text-xs text-muted-foreground">
                       Erfolgreiche Finishes
                     </p>
+                  </CardContent>
+                </Card>
+             </div>
+
+             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card className="overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Spieler Aktiv</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats?.activePlayers}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {stats?.totalPlayers} gemeldet, {stats?.withdrawnPlayers} abgemeldet
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Trefferquote</CardTitle>
+                    <Target className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats?.accuracyRate.toFixed(1)}%</div>
+                    <p className="text-xs text-muted-foreground">
+                      {stats?.missedThrows} Fehlwürfe von {stats?.totalThrows} Aufnahmen
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Würfe / Spiel</CardTitle>
+                    <Timer className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats?.avgThrowsPerGame}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Durchschnitt bei beendeten Spielen
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Rundenfortschritt</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {stats?.currentRound}/{stats?.maxRounds}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Aktuelle Bracket-Runde
+                    </p>
+                    <Progress className="mt-3 h-1" value={roundProgress} />
                   </CardContent>
                 </Card>
              </div>
@@ -365,6 +432,119 @@ export default function StatsPage() {
                          )}
                       </div>
                    </CardContent>
+                </Card>
+             </div>
+
+             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+                <Card className="col-span-3">
+                  <CardHeader>
+                    <CardTitle>Würfe pro Spieler</CardTitle>
+                    <CardDescription>Wer war am häufigsten an der Scheibe</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[220px]">
+                      {stats?.charts?.mostThrows && stats.charts.mostThrows.length > 0 ? (
+                        <StatsChart
+                          data={stats.charts.mostThrows}
+                          type="bar"
+                          color="hsl(var(--chart-4))"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                          Keine Daten verfügbar
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="col-span-3">
+                  <CardHeader>
+                    <CardTitle>Checkout Champions</CardTitle>
+                    <CardDescription>Meiste Checkouts im Turnier</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[220px]">
+                      {stats?.charts?.checkoutChamp && stats.charts.checkoutChamp.length > 0 ? (
+                        <StatsChart
+                          data={stats.charts.checkoutChamp}
+                          type="line"
+                          color="hsl(var(--chart-5))"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                          Keine Daten verfügbar
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+             </div>
+
+             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+                <Card className="col-span-4">
+                  <CardHeader>
+                    <CardTitle>Recent Games</CardTitle>
+                    <CardDescription>Zuletzt abgeschlossene Spiele</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="rounded-md border">
+                      {stats?.recentGames && stats.recentGames.length > 0 ? (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Spiel</TableHead>
+                              <TableHead>Gewinner</TableHead>
+                              <TableHead className="text-right">Score</TableHead>
+                              <TableHead className="text-right">Uhrzeit</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {stats.recentGames.map((game) => (
+                              <TableRow key={game.id}>
+                                <TableCell className="font-medium">
+                                  {game.player1Name} vs {game.player2Name}
+                                </TableCell>
+                                <TableCell>{game.winnerName || "-"}</TableCell>
+                                <TableCell className="text-right">
+                                  {game.player1Score} : {game.player2Score}
+                                </TableCell>
+                                <TableCell className="text-right text-muted-foreground">
+                                  {new Date(game.finishedAt).toLocaleTimeString("de-DE")}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      ) : (
+                        <div className="text-sm text-muted-foreground text-center py-8">
+                          Noch keine abgeschlossenen Spiele
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="col-span-3">
+                  <CardHeader>
+                    <CardTitle>Luck Index</CardTitle>
+                    <CardDescription>Siegquote-basierter Momentum-Wert</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[240px]">
+                      {stats?.charts?.luckIndex && stats.charts.luckIndex.length > 0 ? (
+                        <StatsChart
+                          data={stats.charts.luckIndex}
+                          type="bar"
+                          color="hsl(var(--chart-1))"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                          Keine Daten verfügbar
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
                 </Card>
              </div>
 

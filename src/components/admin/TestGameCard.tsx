@@ -111,14 +111,12 @@ export function TestGameCard({ boards }: TestGameCardProps) {
   };
 
   return (
-    <Card className="border-2 border-dashed border-indigo-200 dark:border-indigo-800 bg-indigo-50/20 dark:bg-indigo-950/10">
+    <Card>
       <CardHeader>
-        <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400">
-              <MonitorPlay className="h-5 w-5" />
-            </div>
-            <CardTitle>Testspiel-Simulator</CardTitle>
-        </div>
+        <CardTitle className="flex items-center gap-2">
+          <MonitorPlay className="h-5 w-5" />
+          Testspiel-Simulator
+        </CardTitle>
         <CardDescription>
           Starten Sie ein virtuelles Spiel, um Displays und Eingabegeräte zu testen.
         </CardDescription>
@@ -158,10 +156,10 @@ export function TestGameCard({ boards }: TestGameCardProps) {
 
         <div className="flex gap-2 justify-end pt-2">
            <LoadingButton 
-              variant="destructive" 
+              variant="outline"
               onClick={handleStopGame} 
               loading={loading}
-              className="w-full sm:w-auto bg-red-100 text-red-700 hover:bg-red-200 border-red-200"
+              className="w-full sm:w-auto text-destructive hover:text-destructive hover:bg-destructive/10"
               disabled={!selectedBoardId}
             >
               <StopCircle className="mr-2 h-4 w-4" />
@@ -170,7 +168,7 @@ export function TestGameCard({ boards }: TestGameCardProps) {
            <LoadingButton 
               onClick={handleStartGame} 
               loading={loading}
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+              className="w-full sm:w-auto"
               disabled={!selectedBoardId}
            >
               <MonitorPlay className="mr-2 h-4 w-4" />

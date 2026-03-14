@@ -9,6 +9,7 @@ import {
   Sparkles,
 } from "lucide-react"
 import { signOut } from "next-auth/react"
+import Link from "next/link"
 
 import {
   Avatar,
@@ -83,9 +84,11 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem className="cursor-pointer">
-                <BadgeCheck className="mr-2 h-4 w-4" />
-                Account
+              <DropdownMenuItem className="cursor-pointer" asChild>
+                <Link href="/dashboard/account">
+                  <BadgeCheck className="mr-2 h-4 w-4" />
+                  Account
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem className="cursor-pointer">
                 <Bell className="mr-2 h-4 w-4" />

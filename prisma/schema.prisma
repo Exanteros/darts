@@ -314,6 +314,9 @@ model TournamentSettings {
   stripeSecretKey       String? // Stripe Secret Key
   stripeWebhookSecret   String? // Stripe Webhook Secret
 
+  stripeAccountId String? // Connected Account ID
+  stripeConnected Boolean @default(false)
+
   // Logo-Einstellungen
   mainLogo        String? // Hauptlogo für Turnier-Bildschirme
   sponsorLogos    String? // Sponsor-Logos (JSON Array von URLs)

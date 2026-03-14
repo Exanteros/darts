@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -187,6 +188,28 @@ function HeroSection() {
 }
 
 function StatsSection() {
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/public/stats');
+        if (!res.ok) throw new Error('Failed to load stats');
+        const json = await res.json();
+        if (mounted && json?.success) setStats(json.stats);
+      } catch (e) {
+        console.error('Failed to fetch stats', e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    load();
+    return () => { mounted = false; };
+  }, []);
+
   return (
     <section className="py-16 border-b border-slate-200 bg-slate-50">
       <div className="container mx-auto px-6">
@@ -194,10 +217,10 @@ function StatsSection() {
           / BY THE NUMBERS ■
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          <StatDisplay value="64" label="Teilnehmer" />
-          <StatDisplay value="8" label="Profi-Boards" />
-          <StatDisplay value="501" label="Double Out" />
-          <StatDisplay value="1" label="Champion" />
+          <StatDisplay value={loading ? '...' : (stats?.participants ?? 0)} label="Teilnehmer" />
+          <StatDisplay value={loading ? '...' : (stats?.boards ?? 0)} label="Profi-Boards" />
+          <StatDisplay value={loading ? '...' : (stats?.gameMode ?? '501')} label="Double Out" />
+          <StatDisplay value={loading ? '...' : (stats?.champions ?? 0)} label="Champion" />
         </div>
       </div>
     </section>
@@ -324,6 +347,125 @@ function FeaturesSection() {
   );
 }
 
+/* ======================== RULES DIALOG (dynamic) ======================== */
+
+function RulesDialog() {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [tournament, setTournament] = useState<any>(null);
+
+  const fetchTournament = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/tournament/public');
+      if (!res.ok) throw new Error('Fehler beim Laden der Turnierdaten');
+      const data = await res.json();
+      // Wähle das relevanteste Turnier (Anmeldung offen > Warteliste > nächstes kommendes > erstes)
+      const tournaments = Array.isArray(data?.tournaments) ? data.tournaments : [];
+      const now = new Date();
+      let t = tournaments.find((x: any) => x.status === 'REGISTRATION_OPEN' || x.status === 'WAITLIST');
+      if (!t) {
+        const upcoming = tournaments.filter((x: any) => new Date(x.startDate) > now).sort((a: any, b: any) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+        t = upcoming[0] || tournaments[0] || null;
+      }
+      setTournament(t);
+    } catch (e: any) {
+      setError(e?.message || 'Unbekannter Fehler');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Lade beim Öffnen
+  useEffect(() => {
+    if (open) fetchTournament();
+  }, [open]);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <Button onClick={() => setOpen(true)} variant="outline" className="h-12 px-6 rounded-sm border-slate-700 text-white hover:bg-slate-800 hover:text-white bg-transparent">
+        Regelwerk lesen <ArrowRight className="ml-2 h-4 w-4" />
+      </Button>
+
+      <DialogContent className="w-full max-w-2xl mx-4 sm:mx-auto bg-white rounded-lg p-4 sm:p-6 shadow-xl border border-slate-200">
+        <DialogHeader>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <DialogTitle className="text-lg">Regelwerk</DialogTitle>
+              <DialogDescription className="text-sm text-slate-500 mt-1">
+                {loading ? 'Lade Turnierdaten...' : (error ? '' : 'Alles Wichtige zum Turnier auf einen Blick')}
+              </DialogDescription>
+            </div>
+            <div className="text-right">
+              {error && <div className="text-sm text-red-500">{error}</div>}
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="mt-4">
+          <div className="max-h-[80vh] overflow-y-auto pr-2">
+            {!loading && !error && tournament && (
+              <div className="space-y-4">
+                <div className="flex items-start gap-6">
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-slate-900">{tournament.name || 'Turnier'}</h3>
+                    {tournament.description && <p className="text-sm text-slate-600 mt-1">{tournament.description}</p>}
+
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-700">
+                      {tournament.startDate && <div>Datum: <span className="font-medium text-slate-900">{new Date(tournament.startDate).toLocaleString('de-DE')}</span></div>}
+                      {(tournament.location || tournament.street) && <div>Ort: <span className="font-medium text-slate-900">{`${tournament.location || ''}${tournament.street ? ', ' + tournament.street : ''}`}</span></div>}
+                      <div>Teilnehmer: <span className="font-medium text-slate-900">{tournament.maxPlayers ?? (tournament._count?.players ?? 0)}</span></div>
+                      <div>Profi-Boards: <span className="font-medium text-slate-900">{tournament._count?.boards ?? tournament.boards ?? '—'}</span></div>
+                      <div>Startgeld: <span className="font-medium text-slate-900">{tournament.entryFee ? `${tournament.entryFee} €` : '—'}</span></div>
+                      <div>Status: <span className="font-medium text-slate-900">{tournament.status || '—'}</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator className="my-2" />
+
+                <div>
+                  <h4 className="font-semibold text-slate-900 mb-2">Regelwerk</h4>
+                  <ol className="list-decimal pl-6 space-y-2 text-slate-700 text-sm mb-4">
+                    <li>
+                      Spielmodus: Die genaue Spielordnung steht in der Turnierbeschreibung. Standardmäßig wird 501 gespielt (Double Out), sofern nicht anders angegeben.
+                    </li>
+                    <li>
+                      Spielaufbau: Matches werden im K.O.-System ausgetragen, genaue Satz- und Leg-Regelungen richtet die Turnierleitung ein.
+                    </li>
+                    <li>
+                      Spielzeit & Pace: Spieler haben regulär 2 Minuten pro Aufnahme; Verzögerungen führen zu Verwarnungen.
+                    </li>
+                    <li>
+                      Registrierung & Nachrücken: Aktuelle Teilnehmerzahl wird angezeigt; Nachmeldungen und Wartelisten werden nach Verfügbarkeit berücksichtigt.
+                    </li>
+                    <li>
+                      Preise: {tournament.prizes || 'Sachpreise und Pokale'} — detaillierte Verteilung wird vor Turnierbeginn veröffentlicht.
+                    </li>
+                    <li>
+                      Entscheidungen: Die Turnierleitung trifft endgültige Entscheidungen bei Regelunklarheiten.
+                    </li>
+                  </ol>
+                </div>
+              </div>
+            )}
+
+            {!loading && !error && !tournament && (
+              <div className="text-slate-700">Keine Turnierdaten verfügbar.</div>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col sm:flex-row justify-end gap-2">
+          <Button variant="outline" onClick={() => setOpen(false)} className="px-4 h-10 w-full sm:w-auto">Schließen</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ComparisonSection() {
   return (
     <section className="py-24 lg:py-32 bg-slate-900 text-white">
@@ -331,7 +473,6 @@ function ComparisonSection() {
         <div className="text-xs font-mono text-slate-500 mb-12 tracking-widest uppercase">
           / THE EXPERIENCE ■
         </div>
-        
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div>
             <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-6">
@@ -340,11 +481,8 @@ function ComparisonSection() {
             <p className="text-xl text-slate-400 mb-8">
               Single-Elimination K.O. System ab der ersten Runde — jedes Spiel zählt. Das ist ein Darts‑Turnier, wie es sein sollte.
             </p>
-            <Button variant="outline" className="h-12 px-6 rounded-sm border-slate-700 text-white hover:bg-slate-800 hover:text-white bg-transparent" asChild>
-              <a href="#rules">Regelwerk lesen <ArrowRight className="ml-2 h-4 w-4" /></a>
-            </Button>
+            <RulesDialog />
           </div>
-          
           <div className="border border-slate-800 bg-slate-950 p-8 font-mono text-sm">
             <div className="flex justify-between border-b border-slate-800 pb-4 mb-4 text-slate-500">
               <span>FEATURE</span>

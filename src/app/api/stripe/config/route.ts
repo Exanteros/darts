@@ -5,9 +5,11 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    const systemSettings = await prisma.systemSettings.findFirst();
+    const tournamentSettings = await prisma.tournamentSettings.findUnique({
+      where: { id: 'default' }
+    });
 
-    if (!systemSettings?.stripeEnabled || !systemSettings?.stripePublishableKey) {
+    if (!tournamentSettings?.stripeEnabled || !tournamentSettings?.stripePublishableKey) {
       return NextResponse.json({
         success: false,
         message: 'Stripe ist nicht konfiguriert'
@@ -16,8 +18,8 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      stripeEnabled: systemSettings.stripeEnabled,
-      stripePublishableKey: systemSettings.stripePublishableKey
+      stripeEnabled: tournamentSettings.stripeEnabled,
+      stripePublishableKey: tournamentSettings.stripePublishableKey
     });
 
   } catch (error) {

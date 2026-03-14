@@ -1,19 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+// Google Fonts werden lokal eingebunden, daher keine next/font/google-Imports mehr
 import "./globals.css";
 import AuthProvider from "@/components/AuthProvider";
 import { Toaster } from "@/components/toaster";
 import Script from "next/script";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 const baseUrl = process.env.NEXTAUTH_URL || "https://dartsturnier-puschendorf.de";
 
@@ -130,9 +122,7 @@ export default function RootLayout({
 
   return (
     <html lang="de">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className="antialiased">
         <Script
           id="json-ld"
           type="application/ld+json"

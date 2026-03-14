@@ -58,17 +58,19 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Hole Stripe-Schlüssel aus System-Einstellungen
-    const systemSettings = await prisma.systemSettings.findFirst();
+    // Hole Stripe-Schlüssel aus Turnier-Einstellungen
+    const tournamentSettings = await prisma.tournamentSettings.findUnique({
+      where: { id: 'default' }
+    });
 
-    if (!systemSettings?.stripeEnabled || !systemSettings?.stripeSecretKey) {
+    if (!tournamentSettings?.stripeEnabled || !tournamentSettings?.stripeSecretKey) {
       return NextResponse.json({
         success: false,
         message: 'Stripe ist nicht konfiguriert'
       }, { status: 500 });
     }
 
-    const stripe = new Stripe(systemSettings.stripeSecretKey);
+    const stripe = new Stripe(tournamentSettings.stripeSecretKey);
 
     // Erstelle Payment Intent
     const paymentIntent = await stripe.paymentIntents.create({

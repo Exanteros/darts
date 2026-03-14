@@ -62,14 +62,17 @@ export default function TournamentRegistrationPage() {
         }
       });
 
-    fetch('/api/admin/tournament/settings')
+    fetch('/api/stripe/config')
       .then(res => res.json())
       .then(data => {
-        setStripeEnabled(!!data.stripeEnabled);
-        if (data.stripeEnabled && data.stripePublishableKey) {
-          setStripePromise(loadStripe(data.stripePublishableKey));
+        if (data && data.success) {
+          setStripeEnabled(!!data.stripeEnabled);
+          if (data.stripeEnabled && data.stripePublishableKey) {
+            setStripePromise(loadStripe(data.stripePublishableKey));
+          }
         }
-      });
+      })
+      .catch(err => console.error("Error loading stripe config", err));
 
     fetch('/api/user/profile')
       .then(res => res.ok ? res.json() : null)

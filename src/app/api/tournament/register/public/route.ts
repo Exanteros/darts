@@ -4,6 +4,8 @@ import bcrypt from 'bcryptjs';
 import { sendWelcomeEmail, sendTournamentRegistrationEmail } from '@/lib/mail';
 import { createSession, getSession } from '@/lib/session';
 
+import Stripe from 'stripe';
+
 export async function POST(request: NextRequest) {
   try {
     const { tournamentId, playerName, email, paymentIntentId } = await request.json();
@@ -83,6 +85,30 @@ export async function POST(request: NextRequest) {
         message: 'Zahlung erforderlich. Bitte schließen Sie den Bezahlvorgang ab.'
       }, { status: 400 });
     }
+    
+    // Verifiziere Payment Intent falls vorhanden und Stripe konfiguriert
+    if (paymentIntentId && stripeEnabled && settings?.stripeSecretKey) {
+      try {
+        const stripe = new Stripe(settings.stripeSecretKey);
+        const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+        
+        if (intent.status !== 'succeeded') {
+          return NextResponse.json({
+            success: false, 
+            message: 'Zahlung wurde nicht erfolgreich abgeschlossen.'
+          }, { status: 400 });
+        }
+        
+        // Optional: Betrag prüfen
+        // if (intent.amount !== tournament.entryFee * 100) { ... }
+      } catch (error) {
+        console.error('Fehler bei der Zahlungs-Verifizierung:', error);
+        return NextResponse.json({
+          success: false,
+          message: 'Fehler bei der Überprüfung der Zahlung.'
+        }, { status: 500 });
+      }
+    }
 
     // Überprüfe, ob bereits ein Benutzer mit dieser E-Mail existiert
     let user = await prisma.user.findUnique({
@@ -132,7 +158,10 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         playerName: playerName.trim(),
         status: playerStatus as any,
-        paid: paymentIntentId ? true : false
+        paid: paymentIntentId ? true : false,
+        paymentStatus: paymentIntentId ? 'PAID' : (tournament.entryFee > 0 ? 'PENDING' : 'FREE'),
+        paymentMethod: paymentIntentId ? 'STRIPE' : (tournament.entryFee > 0 ? 'CASH' : 'FREE'),
+        stripePaymentIntentId: paymentIntentId || null
       },
       include: {
         tournament: true,

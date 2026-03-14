@@ -17,6 +17,7 @@ import {
   IconListDetails,
   IconMail,
   IconPalette,
+  IconUser,
 } from "@tabler/icons-react"
 import Link from "next/link"
 
@@ -170,6 +171,41 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         url: "/dashboard/tournament",
         icon: IconTrophy,
         iconColor: "text-amber-600",
+        items: [
+          {
+            title: "Übersicht",
+            url: "/dashboard/tournament",
+            exact: true,
+          },
+          {
+            title: "Einstellungen",
+            url: "/dashboard/tournament/settings",
+          },
+          {
+            title: "Turnierbaum-Konfig.",
+            url: "/dashboard/tournament/bracket-config",
+          },
+          {
+            title: "Dartscheiben",
+            url: "/dashboard/tournament/boards",
+          },
+          {
+            title: "Logos",
+            url: "/dashboard/tournament/logos",
+          },
+          {
+            title: "Bilder",
+            url: "/dashboard/tournament/images",
+          },
+          {
+            title: "Zahlungen",
+            url: "/dashboard/tournament/payments",
+          },
+          {
+            title: "Simulator",
+            url: "/dashboard/tournament/simulator",
+          },
+        ]
       }] : []),
       
       // Turnierbaum - wenn Bracket-Berechtigung
@@ -257,6 +293,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         url: "/dashboard/settings",
         icon: IconSettings,
       }] : []),
+
+      // Mein Account - immer verfügbar
+      {
+        title: "Mein Account",
+        url: "/dashboard/account",
+        icon: IconUser,
+      },
       
       // Hilfe - immer verfügbar
       {

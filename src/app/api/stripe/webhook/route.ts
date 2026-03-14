@@ -9,16 +9,18 @@ import { decrypt } from '@/lib/crypto';
 export async function POST(request: NextRequest) {
   try {
     // Hole Stripe-Konfiguration
-    const systemSettings = await prisma.systemSettings.findFirst();
+    const tournamentSettings = await prisma.tournamentSettings.findUnique({
+      where: { id: 'default' }
+    });
 
-    if (!systemSettings?.stripeEnabled || !systemSettings?.stripeSecretKey || !systemSettings?.stripeWebhookSecret) {
+    if (!tournamentSettings?.stripeEnabled || !tournamentSettings?.stripeSecretKey || !tournamentSettings?.stripeWebhookSecret) {
       return NextResponse.json({
         success: false,
         message: 'Stripe ist nicht vollständig konfiguriert'
       }, { status: 500 });
     }
 
-    const stripe = new Stripe(decrypt(systemSettings.stripeSecretKey));
+    const stripe = new Stripe(decrypt(tournamentSettings.stripeSecretKey));
 
     // Hole Raw Body für Signature Verification
     const body = await request.text();
@@ -39,7 +41,7 @@ export async function POST(request: NextRequest) {
       event = stripe.webhooks.constructEvent(
         body,
         sig,
-        decrypt(systemSettings.stripeWebhookSecret)
+        decrypt(tournamentSettings.stripeWebhookSecret)
       );
     } catch (err: any) {
       console.error('⚠️  Webhook signature verification failed:', err.message);

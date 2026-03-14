@@ -573,61 +573,6 @@ export default function SettingsPage() {
                     </CardContent>
                   </Card>
 
-                  {/* Create New Admin Section */}
-                  {isAdmin && (
-                    <Card className="border-blue-500/50 bg-blue-500/5">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-blue-600 dark:text-blue-500">
-                            <IconUser className="h-5 w-5" />
-                            Neuen Admin anlegen
-                        </CardTitle>
-                        <CardDescription>
-                          Erstellen Sie einen neuen Benutzer mit vollen Administrator-Rechten.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="grid gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="newAdminName">Name (Optional)</Label>
-                            <Input 
-                              id="newAdminName"
-                              placeholder="Vorname Nachname" 
-                              value={newAdminName}
-                              onChange={(e) => setNewAdminName(e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="newAdminEmail">E-Mail *</Label>
-                            <Input 
-                              id="newAdminEmail"
-                              type="email"
-                              placeholder="support@pudo-dartmasters.de" 
-                              value={newAdminEmail}
-                              onChange={(e) => setNewAdminEmail(e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="newAdminPassword">Passwort *</Label>
-                            <Input 
-                              id="newAdminPassword"
-                              type="password"
-                              placeholder="Sicheres Passwort" 
-                              value={newAdminPassword}
-                              onChange={(e) => setNewAdminPassword(e.target.value)}
-                            />
-                          </div>
-                          <Button 
-                              onClick={handleCreateAdmin} 
-                              disabled={creatingAdmin || !newAdminEmail || !newAdminPassword}
-                              className="bg-blue-600 hover:bg-blue-700 text-white"
-                          >
-                            {creatingAdmin ? 'Erstelle...' : 'Admin erstellen'}
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
                   {/* Statistiken-Einstellungen */}
                   <Card>
                     <CardHeader>
@@ -769,77 +714,6 @@ export default function SettingsPage() {
                         <Button onClick={saveBroadcastingSettings} disabled={saving}>
                           {saving ? 'Wird gespeichert...' : 'Broadcasting-Einstellungen speichern'}
                         </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Turnierbaum-Einstellungen */}
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle>Turnierbaum & Scheiben-Zuordnung</CardTitle>
-                        <Button asChild variant="outline">
-                          <a href="/dashboard/tournament">
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            Konfigurieren
-                          </a>
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium">Setzlisten-Algorithmus</Label>
-                            <div className="p-3 bg-gray-50 rounded-md">
-                              <p className="font-medium">Standard (1vs64, 2vs63, ...)</p>
-                              <p className="text-sm text-muted-foreground">Ausgewogene Paarungen nach Setzposition</p>
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium">Mindest-Pausenzeit</Label>
-                            <div className="p-3 bg-gray-50 rounded-md">
-                              <p className="font-medium">10 Minuten</p>
-                              <p className="text-sm text-muted-foreground">Zwischen den Spielen</p>
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium">Haupt-Scheibe Priorität</Label>
-                            <div className="p-3 bg-gray-50 rounded-md">
-                              <p className="font-medium">Finale & Halbfinale</p>
-                              <p className="text-sm text-muted-foreground">Wichtige Spiele auf bester Scheibe</p>
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium">Automatische Zuordnung</Label>
-                            <div className="p-3 bg-gray-50 rounded-md">
-                              <p className="font-medium">Aktiviert</p>
-                              <p className="text-sm text-muted-foreground">Spiele werden automatisch zugeordnet</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                          <div className="flex items-start gap-3">
-                            <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                            </div>
-                            <div>
-                              <h4 className="font-medium text-blue-900">Turnierbaum-Konfiguration</h4>
-                              <p className="text-sm text-blue-700 mt-1">
-                                Die detaillierte Konfiguration des Turnierbaums, Setzlisten-Algorithmus und
-                                Scheiben-Zuordnung erfolgt in der Turnier-Verwaltung für eine optimale Übersicht.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
                       </div>
                     </CardContent>
                   </Card>
