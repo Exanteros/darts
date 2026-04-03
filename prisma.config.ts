@@ -5,6 +5,7 @@ import { loadEnvFile } from 'node:process';
 try { loadEnvFile('.env'); } catch { /* no .env present (e.g. in Docker with real env vars) */ }
 
 export default defineConfig({
+  // @ts-ignore Prisma Config type has issues with the seed property in current version
   seed: 'tsx prisma/seed.ts',
   datasource: {
     url: process.env.DATABASE_URL!,

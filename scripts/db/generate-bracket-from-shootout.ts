@@ -54,7 +54,6 @@ async function generateBracketFromShootout() {
         // Fallback: Best of 3 -> First to 2
         return round >= 5 ? 3 : 2;
     };
-    };
 
     // 3. Lösche alle bestehenden Spiele
     const deletedGames = await prisma.game.deleteMany({
