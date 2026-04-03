@@ -439,3 +439,22 @@ model SupportEmail {
   @@index([fromEmail])
   @@map("support_emails")
 }
+
+model Champion {
+  imageUrl   String?  // NEU: Bild-URL für das Profilbild
+  imagePosY  String   @default("50%") // Ausrichtung des Panorama-Bildes (Y-Achse)
+  id         String   @id @default(cuid())
+  name       String
+  tournament String
+  date       String
+  avg        String
+  checkout   String
+  tag        String?
+  colorClass String   @default("bg-amber-400")
+  iconColor  String   @default("text-amber-500")
+  order      Int      @default(0) // Für eigene Sortierung
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("champions")
+}

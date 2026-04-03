@@ -54,7 +54,7 @@ const nextConfig: NextConfig = {
               // Stripe benötigt api/connect und ggf. webhook/callbacks
               `connect-src 'self' ws: wss: ${wsUrls} https://api.stripe.com https://hooks.stripe.com https://js.stripe.com`,
               // Erlaube ggf. Checkout/embedded frames
-              "frame-src https://js.stripe.com https://checkout.stripe.com",
+              "frame-src https://js.stripe.com https://checkout.stripe.com https://www.google.com https://maps.google.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

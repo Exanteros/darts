@@ -17,7 +17,6 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { cn } from "@/lib/utils";
 import DynamicLogo from "@/components/DynamicLogo";
-import { FlickeringGrid } from "@/components/ui/flickering-grid";
 
 /* ================= TYPES ================= */
 
@@ -265,7 +264,7 @@ export default function TournamentRegistrationPage() {
         </div>
         
         <Button disabled={!stripe || payLoading} className="w-full h-14 bg-slate-900 text-white hover:bg-slate-800 rounded-sm text-lg font-semibold">
-          {payLoading ? <Loader2 className="animate-spin h-5 w-5" /> : `Jetzt ${(paymentAmountDetails?.totalAmount ?? selectedTournament?.entryFee ?? 0).toFixed(2)}€ bezahlen`}
+          {payLoading ? <Loader2 className="animate-spin" /> : `Jetzt ${(paymentAmountDetails?.totalAmount ?? selectedTournament?.entryFee ?? 0).toFixed(2)}€ bezahlen`}
         </Button>
       </form>
     );
@@ -309,7 +308,7 @@ export default function TournamentRegistrationPage() {
            )}
 
            <div className="w-full">
-             {renderContentArea("mobile")}
+             <ContentArea />
            </div>
         </div>
       </div>
@@ -317,15 +316,7 @@ export default function TournamentRegistrationPage() {
       {/* Desktop Layout - Hidden on mobile, matching /login */}
       <div className="hidden lg:grid lg:grid-cols-2 min-h-screen">
         {/* Left Side */}
-        <div className="relative hidden lg:flex flex-col justify-between p-10 bg-slate-900 border-r border-slate-800 text-white overflow-hidden">
-          <FlickeringGrid
-            className="absolute inset-0 z-0 size-full"
-            squareSize={4}
-            gridGap={6}
-            color="#6B7280"
-            maxOpacity={0.5}
-            flickerChance={0.1}
-          />
+        <div className="relative hidden lg:flex flex-col justify-between p-10 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,rgba(79,70,229,0.1)_0%,transparent_50%)] pointer-events-none" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,rgba(139,92,246,0.1)_0%,transparent_50%)] pointer-events-none" />
 
@@ -340,19 +331,22 @@ export default function TournamentRegistrationPage() {
           </div>
 
           {/* Testimonial / Title left */}
-          <div className="relative z-10 max-w-lg mt-auto pb-4">
+          <div className="relative z-10 max-w-lg mb-20">
             <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 text-xs font-mono font-medium bg-slate-800 text-slate-300 border border-slate-700 rounded-full">
               <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
               SAISON 2026
             </div>
             
-            <p className="text-slate-300 text-xl leading-relaxed mb-12">
+            <h1 className="text-5xl font-black tracking-tighter leading-tight mb-4">
+              Game <br /> On! <br /> <span className="text-slate-400 italic">Viel Glück.</span>
+            </h1>
+            <p className="text-slate-400 text-lg leading-relaxed">
               Jeder Spieler willkommen – wähle das passende Turnier und sichere dir deinen Startplatz.
             </p>
+          </div>
 
-            <div className="text-sm text-slate-500">
-              <p>© 2026 Dart Masters Puschendorf</p>
-            </div>
+          <div className="relative z-10 text-sm text-slate-400">
+            <p>© 2026 Dart Masters Puschendorf</p>
           </div>
         </div>
 
@@ -380,7 +374,7 @@ export default function TournamentRegistrationPage() {
              </div>
             )}
 
-            {renderContentArea("desktop")}
+            <ContentArea />
 
           </div>
         </div>
@@ -389,11 +383,11 @@ export default function TournamentRegistrationPage() {
   );
 
   // Separate inner content for reuse in Mobile and Desktop Right-side
-  function renderContentArea(prefix: string = "mobile") {
+  function ContentArea() {
     return (
       <AnimatePresence mode="wait">
         {step === 'SELECTION' && (
-          <motion.div key={`${prefix}-selection`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="w-full">
+          <motion.div key="selection" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="w-full">
             <div className="space-y-2 mb-8">
               <h2 className="text-3xl font-bold text-slate-900">Welches Turnier?</h2>
               <p className="text-slate-600">Wähle unten ein Event aus, um dich anzumelden.</p>
@@ -478,7 +472,7 @@ export default function TournamentRegistrationPage() {
         )}
 
         {step === 'FORM' && selectedTournament && (
-          <motion.div key={`${prefix}-form`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="w-full">
+          <motion.div key="form" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="w-full">
             <div className="space-y-2 mb-8">
               <div className="inline-flex items-center text-sm text-slate-500 mb-2 hover:text-slate-900 cursor-pointer transition-colors" onClick={() => setStep('SELECTION')}>
                 <ArrowLeft className="h-4 w-4 mr-1" /> Zurück zur Auswahl
@@ -513,7 +507,7 @@ export default function TournamentRegistrationPage() {
         )}
 
         {step === 'PAYMENT' && selectedTournament && (
-          <motion.div key={`${prefix}-payment`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="w-full">
+          <motion.div key="payment" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="w-full">
             <div className="space-y-2 mb-8">
               <div className="inline-flex items-center text-sm text-slate-500 mb-2 hover:text-slate-900 cursor-pointer transition-colors" onClick={() => setStep('FORM')}>
                 <ArrowLeft className="h-4 w-4 mr-1" /> Daten ändern
@@ -544,7 +538,7 @@ export default function TournamentRegistrationPage() {
         )}
 
         {step === 'PAY_ON_SITE' && selectedTournament && (
-          <motion.div key={`${prefix}-pay-on-site`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="w-full space-y-8">
+          <motion.div key="pay-on-site" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="w-full space-y-8">
             <div className="space-y-2 mb-8 text-center">
               <div className="inline-flex items-center text-sm text-slate-500 mb-2 hover:text-slate-900 cursor-pointer transition-colors" onClick={() => setStep('FORM')}>
                 <ArrowLeft className="h-4 w-4 mr-1" /> Zurück
@@ -572,7 +566,7 @@ export default function TournamentRegistrationPage() {
         )}
 
         {step === 'SUCCESS' && (
-          <motion.div key={`${prefix}-success`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full flex flex-col items-center text-center">
+          <motion.div key="success" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full flex flex-col items-center text-center">
             <div className={cn(
               "w-20 h-20 rounded-full flex items-center justify-center text-white mb-6", 
               isWaitingListSuccess ? "bg-amber-500 shadow-amber-200 shadow-lg" : "bg-slate-900 shadow-slate-200 shadow-lg"

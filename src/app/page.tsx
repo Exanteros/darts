@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from "react";
+import Link from "next/link";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
@@ -136,8 +137,8 @@ export default function Home() {
 
 function HeroSection() {
   return (
-    <section className="relative min-h-[calc(100dvh-4rem)] lg:min-h-[calc(100dvh-6rem)] flex items-center py-8 lg:py-16 overflow-hidden border-b border-slate-200">
-      <div className="container mx-auto px-6">
+    <section className="relative min-h-[calc(100dvh-4rem)] lg:min-h-[calc(100dvh-6rem)] flex items-center pt-24 pb-16 lg:py-32 overflow-hidden border-b border-slate-200">
+      <div className="container mx-auto px-6 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -170,10 +171,11 @@ function HeroSection() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="relative hidden lg:flex justify-center"
+            className="relative flex justify-center"
           >
             {/* Hero Image */}
-            <div className="flex items-center justify-center w-full max-w-md">
+            <div className="flex items-center justify-center w-full max-w-md relative">
+              <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/20 to-purple-500/20 blur-3xl -z-10 rounded-full" />
               <img 
                 src="/hero/hero.png" 
                 alt="Dart Masters Hero" 
@@ -517,12 +519,26 @@ function ComparisonSection() {
 
 function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const checkScroll = () => setIsScrolled(window.scrollY > 10);
     window.addEventListener("scroll", checkScroll);
     return () => window.removeEventListener("scroll", checkScroll);
   }, []);
+
+  useEffect(() => {
+    const closeOnDesktop = () => {
+      if (window.innerWidth >= 768) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", closeOnDesktop);
+    return () => window.removeEventListener("resize", closeOnDesktop);
+  }, []);
+
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
   return (
     <header className={cn(
@@ -534,18 +550,42 @@ function Header() {
         
         <nav className="hidden md:flex items-center gap-8">
           <a href="#features" className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">Features</a>
-          <a href="/login" className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">Login</a>
+          <Link href="/faq" className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">FAQ</Link>
+          <Link href="/login" className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">Login</Link>
         </nav>
 
         <div className="flex items-center gap-4">
           <Button className="rounded-sm bg-slate-900 text-white px-6 hidden sm:flex hover:bg-slate-800 font-semibold" asChild>
-            <a href="/tournament/register">Anmelden</a>
+            <Link href="/tournament/register">Anmelden</Link>
           </Button>
-          <Button variant="ghost" size="icon" className="md:hidden text-slate-900">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden text-slate-900"
+            aria-label="Menü öffnen"
+            aria-expanded={isMobileMenuOpen}
+            aria-controls="mobile-main-nav"
+            onClick={() => setIsMobileMenuOpen(prev => !prev)}
+          >
             <Menu className="h-6 w-6" />
           </Button>
         </div>
       </div>
+
+      {isMobileMenuOpen && (
+        <div id="mobile-main-nav" className="md:hidden border-t border-slate-200 bg-white/95 backdrop-blur px-6 py-4">
+          <nav className="flex flex-col gap-3">
+            <a href="#features" className="text-sm font-semibold text-slate-700 hover:text-slate-900" onClick={closeMobileMenu}>Features</a>
+            <Link href="/faq" className="text-sm font-semibold text-slate-700 hover:text-slate-900" onClick={closeMobileMenu}>FAQ</Link>
+            <Button variant="outline" className="w-full rounded-sm border-slate-300 text-slate-900 font-semibold hover:bg-slate-100" asChild>
+              <Link href="/login" onClick={closeMobileMenu}>In Account einloggen</Link>
+            </Button>
+            <Button className="mt-2 w-full rounded-sm bg-slate-900 text-white hover:bg-slate-800 font-semibold" asChild>
+              <Link href="/tournament/register" onClick={closeMobileMenu}>Anmelden</Link>
+            </Button>
+          </nav>
+        </div>
+      )}
     </header>
   );
 }
@@ -565,7 +605,7 @@ function Footer() {
             <h4 className="font-bold text-slate-900 mb-6 tracking-tight">Event</h4>
             <ul className="space-y-4 text-sm font-medium text-slate-500">
               <li><a href="/tournament/register" className="hover:text-slate-900 transition-colors">Anmeldung</a></li>
-              <li><a href="/tournament/participants" className="hover:text-slate-900 transition-colors">Teilnehmerliste</a></li>
+              <li><a href="/tournament/champions" className="hover:text-slate-900 transition-colors">Champions</a></li>
               <li><a href="/sponsors" className="hover:text-slate-900 transition-colors">Sponsoren</a></li>
             </ul>
           </div>

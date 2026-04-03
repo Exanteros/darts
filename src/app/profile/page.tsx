@@ -1,19 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PageHeader } from "@/components/page-header";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { 
-  User, Mail, ArrowLeft, Save, Loader2, 
+  User, Mail, ArrowLeft, Loader2,
   Target, LogOut, Upload, Shield, Lock, Bell
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useToast } from "@/hooks/use-toast";
+import { signOut } from "next-auth/react";
 
 /* ================= TYPES ================= */
 
@@ -27,103 +30,92 @@ interface UserProfile {
 
 /* ================= COMPONENTS ================= */
 
-function DynamicLogo() {
-  const [mainLogo, setMainLogo] = useState<string>('');
-  
-  useEffect(() => {
-    fetch('/api/public/logo')
-      .then(res => res.ok ? res.json() : null)
-      .then(data => data && setMainLogo(data.mainLogo || ''))
-      .catch(console.error);
-  }, []);
-
-  return (
-    <div className="flex items-center gap-2 group cursor-pointer">
-      <div className="h-8 w-8 bg-black rounded-lg flex items-center justify-center transition-transform group-hover:scale-105">
-        {mainLogo ? (
-          <img src={mainLogo} alt="Logo" className="h-5 w-5 object-contain" />
-        ) : (
-          <Target className="h-4 w-4 text-white" />
-        )}
-      </div>
-      <span className="font-bold tracking-tight text-lg text-slate-900">Dart Masters</span>
-    </div>
-  );
-}
-
-function Header() {
-  return (
-    <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link href="/" className="hover:opacity-80 transition-opacity">
-          <DynamicLogo />
-        </Link>
-        <Link href="/user">
-            <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900">
-            <ArrowLeft className="h-4 w-4 mr-2" /> Dashboard
-            </Button>
-        </Link>
-      </div>
-    </header>
-  );
-}
-
-/* ================= MAIN PAGE ================= */
-
 export default function ProfilePage() {
+  const router = useRouter();
+  const { toast } = useToast();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('general');
-  
-  const [formData, setFormData] = useState({
-    name: '',
-    email: ''
-  });
-
-  useEffect(() => {
-    fetchProfile();
-  }, []);
+  const [activeTab, setActiveTab] = useState<'general' | 'security' | 'notifications'>('general');
+  const [name, setName] = useState("");
 
   const fetchProfile = async () => {
     try {
-      const response = await fetch('/api/user/profile');
-      const data = await response.json();
-      if (data.success) {
-        setProfile(data.user);
-        setFormData({ name: data.user.name || '', email: data.user.email || '' });
+      const res = await fetch('/api/user/profile');
+      if (!res.ok) {
+        setErrorMessage("Du bist nicht angemeldet. Bitte melde dich zuerst an.");
+        setLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error(error);
+      const data = await res.json();
+      if (data.success && data.user) {
+        setProfile(data.user);
+        setName(data.user.name || "");
+      } else {
+        setErrorMessage(data.message || "Profil konnte nicht geladen werden");
+      }
+    } catch (err) {
+      setErrorMessage("Verbindungsfehler beim Laden des Profils");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSaveName = async () => {
+    if (!name.trim()) {
+      toast({ title: "Fehler", description: "Name darf nicht leer sein", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
-      await fetch('/api/user/profile', {
-        method: 'PUT',
+      const res = await fetch('/api/user/profile', {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ name })
       });
-      // Simulate slight delay for UX
-      await new Promise(r => setTimeout(r, 500));
+      const data = await res.json();
+      if (data.success) {
+        setProfile({ ...profile!, name });
+        toast({ title: "Erfolg", description: "Name wurde aktualisiert" });
+      } else {
+        toast({ title: "Fehler", description: data.message || "Fehler beim Speichern", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Fehler", description: "Verbindungsfehler", variant: "destructive" });
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+
+
+  if (errorMessage && !profile) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
+      <div className="min-h-screen bg-[#FAFAFA] font-sans text-slate-900">
+        <PageHeader />
+        <main className="container mx-auto px-4 py-12 max-w-3xl">
+          <div className="rounded-xl border border-red-200 bg-white p-6">
+            <h1 className="text-xl font-semibold text-slate-900 mb-2">Profil konnte nicht geladen werden</h1>
+            <p className="text-slate-600 mb-4">{errorMessage}</p>
+            <div className="flex items-center gap-3">
+              <Button onClick={fetchProfile}>Erneut versuchen</Button>
+              <Button variant="outline" asChild>
+                <Link href="/user">Zum Dashboard</Link>
+              </Button>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
 
-  const tabs = [
+  const tabs: { id: 'general' | 'security' | 'notifications'; label: string }[] = [
     { id: 'general', label: 'Allgemein' },
     { id: 'security', label: 'Sicherheit' },
     { id: 'notifications', label: 'Benachrichtigungen' },
@@ -131,7 +123,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] font-sans text-slate-900">
-      <Header />
+      <PageHeader />
 
       <main className="container mx-auto px-4 py-12 max-w-4xl">
         
@@ -191,10 +183,17 @@ export default function ProfilePage() {
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <Button variant="outline" className="border-slate-200 bg-slate-50 text-slate-600 hover:bg-white">
+                        <Button
+                          variant="outline"
+                          className="border-slate-200 bg-slate-50 text-slate-600 hover:bg-white"
+                          onClick={() => toast({ title: "Info", description: "Profilbild-Verwaltung folgt in Kürze." })}
+                        >
                             Entfernen
                         </Button>
-                        <Button className="bg-slate-900 text-white hover:bg-slate-800">
+                        <Button
+                          className="bg-slate-900 text-white hover:bg-slate-800"
+                          onClick={() => toast({ title: "Info", description: "Profilbild-Upload folgt in Kürze." })}
+                        >
                             <Upload className="h-4 w-4 mr-2" /> Hochladen
                         </Button>
                     </div>
@@ -219,8 +218,8 @@ export default function ProfilePage() {
                              <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                              <Input 
                                 id="name"
-                                value={formData.name}
-                                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
                                 className="pl-9 h-10 bg-white border-slate-200 focus:ring-slate-900"
                              />
                            </div>
@@ -237,9 +236,10 @@ export default function ProfilePage() {
                             <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                             <Input 
                                 id="email"
-                                value={formData.email}
-                                onChange={(e) => setFormData({...formData, email: e.target.value})}
-                                className="pl-9 h-10 bg-white border-slate-200 focus:ring-slate-900"
+                                value={profile?.email || ""}
+                                readOnly
+                                disabled
+                                className="pl-9 h-10 bg-slate-50 border-slate-200 text-slate-500"
                             />
                         </div>
                     </div>
@@ -261,7 +261,7 @@ export default function ProfilePage() {
                         Zuletzt aktualisiert: {new Date().toLocaleDateString()}
                     </p>
                     <Button 
-                        onClick={handleSubmit} 
+                        onClick={handleSaveName} 
                         disabled={saving}
                         className="bg-slate-900 text-white hover:bg-slate-800 shadow-sm min-w-[120px]"
                     >
@@ -273,13 +273,17 @@ export default function ProfilePage() {
               {/* Danger Zone */}
               <section className="border border-red-200 rounded-xl overflow-hidden bg-white">
                  <div className="p-6">
-                    <h3 className="text-lg font-semibold text-red-900">Gefahrenzone</h3>
+                    <h3 className="text-lg font-semibold text-red-900">Sitzung</h3>
                     <p className="text-sm text-slate-500 mt-1 mb-4">
-                        Einmal gelöschte Konten können nicht wiederhergestellt werden. Alle deine Turnierdaten gehen verloren.
+                      Melde dich auf diesem Gerät sicher von deinem Account ab.
                     </p>
                     <div className="flex items-center justify-end">
-                       <Button variant="destructive" className="bg-red-600 hover:bg-red-700">
-                          <LogOut className="h-4 w-4 mr-2" /> Konto löschen
+                      <Button
+                      variant="destructive"
+                      className="bg-red-600 hover:bg-red-700"
+                      onClick={() => signOut({ callbackUrl: '/' })}
+                      >
+                          <LogOut className="h-4 w-4 mr-2" /> Abmelden
                        </Button>
                     </div>
                  </div>

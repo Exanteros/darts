@@ -205,6 +205,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "Simulator",
             url: "/dashboard/tournament/simulator",
           },
+          {
+            title: "Champions (HoF)",
+            url: "/dashboard/tournament/champions",
+          },
         ]
       }] : []),
       

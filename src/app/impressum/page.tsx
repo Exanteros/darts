@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { 
   Target, ArrowLeft, Mail, Phone, MapPin, 
-  Scale, ShieldCheck, Globe, Building2, FileText 
+  Scale, ShieldCheck, Globe, Building2, FileText, Menu 
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -58,23 +59,6 @@ function DynamicLogo() {
   );
 }
 
-function Header() {
-  return (
-    <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link href="/" className="hover:opacity-80 transition-opacity">
-          <DynamicLogo />
-        </Link>
-        <Link href="/">
-            <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900">
-            <ArrowLeft className="h-4 w-4 mr-2" /> Startseite
-            </Button>
-        </Link>
-      </div>
-    </header>
-  );
-}
-
 function Footer() {
   return (
     <footer className="bg-white py-16 lg:py-24 border-t border-slate-200">
@@ -92,7 +76,7 @@ function Footer() {
             <h4 className="font-bold text-slate-900 mb-6 tracking-tight">Event</h4>
             <ul className="space-y-4 text-sm font-medium text-slate-500">
               <li><Link href="/tournament/register" className="hover:text-slate-900 transition-colors">Anmeldung</Link></li>
-              <li><Link href="/tournament/participants" className="hover:text-slate-900 transition-colors">Teilnehmerliste</Link></li>
+              <li><Link href="/tournament/champions" className="hover:text-slate-900 transition-colors">Champions</Link></li>
               <li><Link href="/sponsors" className="hover:text-slate-900 transition-colors">Sponsoren</Link></li>
             </ul>
           </div>
@@ -135,7 +119,7 @@ export default function ImpressumPage() {
         <div className="absolute left-1/2 top-0 -translate-x-1/2 -z-10 h-[600px] w-[600px] bg-slate-50 opacity-80 blur-[100px]" />
       </div>
 
-      <Header />
+      <PageHeader />
 
       <main className="flex-grow pt-32 pb-24">
         <div className="container mx-auto px-6 max-w-4xl">

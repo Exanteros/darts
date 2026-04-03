@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -50,33 +51,6 @@ function DynamicLogo() {
 }
 
 /* ======================== HEADER ======================== */
-
-function Header() {
-  return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-          <DynamicLogo />
-        </Link>
-
-        <nav className="hidden md:flex items-center gap-1">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/user-dashboard">Dashboard</Link>
-          </Button>
-        </nav>
-
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="ghost" className="hidden sm:inline-flex" asChild>
-            <Link href="/login">Anmelden</Link>
-          </Button>
-          <Button size="sm" asChild>
-            <Link href="/tournament/register">Jetzt anmelden</Link>
-          </Button>
-        </div>
-      </div>
-    </header>
-  );
-}
 
 /* ======================== FOOTER ======================== */
 
@@ -158,7 +132,7 @@ function Footer() {
 export default function RulesPage() {
   return (
     <div className="flex min-h-screen flex-col">
-      <Header />
+      <PageHeader />
       <main className="flex-1 bg-gradient-to-b from-background to-muted/20">
         <div className="container mx-auto px-4 py-12 max-w-4xl">
           {/* Header Section */}
