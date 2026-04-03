@@ -64,7 +64,7 @@ COPY --from=deps /app/node_modules ./node_modules
 
 # WebSocket-Server und Start-Script
 COPY --from=builder /app/websocket-game-server.js ./
-COPY --from=builder /app/start.sh ./
+COPY --from=builder /app/scripts/deploy/start.sh ./
 RUN chmod +x start.sh
 # helper scripts (user creation, migrations, etc.)
 # copied into the runner image so they can be executed with
