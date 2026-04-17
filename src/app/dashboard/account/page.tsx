@@ -112,7 +112,7 @@ export default function AccountPage() {
       // 2. Rufe WebAuthn Modal im Browser auf
       let passkeyResp;
       try {
-         passkeyResp = await startRegistration(options);
+         passkeyResp = await startRegistration({ optionsJSON: options });
       } catch (error: any) {
          if (error.name === 'NotAllowedError') {
              throw new Error('Abgebrochen oder Gerät wird nicht unterstützt');

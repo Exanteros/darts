@@ -222,7 +222,7 @@ export default function UserDashboard() {
 
       let passkeyResp;
       try {
-         passkeyResp = await startRegistration(options);
+         passkeyResp = await startRegistration({ optionsJSON: options });
       } catch (error: any) {
          if (error.name === 'NotAllowedError') {
              throw new Error('Abgebrochen oder Gerät wird nicht unterstützt');
