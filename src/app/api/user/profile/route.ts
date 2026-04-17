@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
         email: true,
         name: true,
         role: true,
-        createdAt: true
+        createdAt: true,
+        webAuthnCredentials: { select: { id: true, createdAt: true } }
       }
     });
 
@@ -42,7 +43,8 @@ export async function GET(request: NextRequest) {
         email: user.email,
         name: user.name,
         role: user.role,
-        memberSince: user.createdAt.toISOString()
+        memberSince: user.createdAt.toISOString(),
+        hasPasskey: (user.webAuthnCredentials?.length || 0) > 0
       }
     });
 
@@ -116,7 +118,8 @@ export async function PUT(request: NextRequest) {
         email: true,
         name: true,
         role: true,
-        createdAt: true
+        createdAt: true,
+        webAuthnCredentials: { select: { id: true, createdAt: true } }
       }
     });
 

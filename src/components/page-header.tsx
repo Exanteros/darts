@@ -77,11 +77,11 @@ export function PageHeader({ showBackButton = false, title, description }: PageH
 
           {/* Desktop Right Actions */}
           <div className="hidden md:flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/login">Anmelden</Link>
-            </Button>
             <Button size="sm" asChild>
-              <Link href="/tournament/register">Jetzt anmelden</Link>
+              <Link href="/tournament/register">Registrieren</Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/login">Login</Link>
             </Button>
           </div>
 
@@ -111,14 +111,14 @@ export function PageHeader({ showBackButton = false, title, description }: PageH
                     </Link>
                   ))}
                   <div className="border-t border-slate-200 pt-4 mt-2 flex flex-col gap-2">
-                    <Button variant="outline" className="w-full" asChild>
-                      <Link href="/login" onClick={() => setIsOpen(false)}>
-                        Anmelden
-                      </Link>
-                    </Button>
                     <Button className="w-full" asChild>
                       <Link href="/tournament/register" onClick={() => setIsOpen(false)}>
-                        Jetzt anmelden
+                        Registrieren
+                      </Link>
+                    </Button>
+                    <Button variant="outline" className="w-full" asChild>
+                      <Link href="/login" onClick={() => setIsOpen(false)}>
+                        Login
                       </Link>
                     </Button>
                   </div>

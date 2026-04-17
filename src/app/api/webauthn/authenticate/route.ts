@@ -7,42 +7,43 @@ const rpID = process.env.NODE_ENV === 'production' ? 'your-domain.com' : 'localh
 
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const email = body.email;
 
-    if (!email) {
-      return NextResponse.json({
-        success: false,
-        message: 'E-Mail ist erforderlich'
-      }, { status: 400 });
-    }
+    let options;
+    let userId = null;
 
-    // Find user by email
-    const user = await prisma.user.findUnique({
+    if (email) {
+
+      const user = await prisma.user.findUnique({
       where: { email },
       include: { webAuthnCredentials: true }
     });
 
-    if (!user || user.webAuthnCredentials.length === 0) {
-      return NextResponse.json({
-        success: false,
-        message: 'Keine Touch ID-Anmeldedaten gefunden'
-      }, { status: 404 });
+      if (!user || user.webAuthnCredentials.length === 0) {
+        return NextResponse.json({
+          success: false,
+          message: 'Keine Touch ID-Anmeldedaten gefunden'
+        }, { status: 404 });
+      }
+      userId = user.id;
+      options = await generateAuthenticationOptions({
+        rpID,
+        allowCredentials: user.webAuthnCredentials.map((cred: WebAuthnCredential) => ({
+          id: cred.credentialId,
+          type: 'public-key',
+        })),
+        userVerification: 'preferred',
+      });
+    } else {
+      // Conditional UI without email
+      options = await generateAuthenticationOptions({
+        rpID,
+        userVerification: 'preferred',
+      });
     }
 
-    const options = await generateAuthenticationOptions({
-      rpID,
-      allowCredentials: user.webAuthnCredentials.map((cred: WebAuthnCredential) => ({
-        id: cred.credentialId,
-        type: 'public-key',
-      })),
-      userVerification: 'preferred',
-    });
-
-    return NextResponse.json({
-      success: true,
-      options,
-      userId: user.id
-    });
+    return NextResponse.json({ success: true, options, userId });
   } catch (error) {
     console.error('WebAuthn authentication options error:', error);
     return NextResponse.json({

@@ -1,5 +1,6 @@
 // @ts-nocheck
 "use client";
+import { InstagramCanvas } from "@/components/dashboard/InstagramCanvas";
 
 import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import { useTournamentEvents } from '@/hooks/useTournamentEvents';
@@ -33,7 +34,8 @@ import {
   Filter,
   RotateCcw,
   Maximize,
-  ShieldAlert
+  ShieldAlert,
+  Camera,
 } from 'lucide-react';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -794,6 +796,7 @@ export default function TournamentBracket() {
     }
   };
 
+  const [instagramDialogOpen, setInstagramDialogOpen] = useState(false);
   const [matchDialogOpen, setMatchDialogOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<Game | null>(null);
   const [newBoardId, setNewBoardId] = useState<string>('');
@@ -2064,7 +2067,17 @@ export default function TournamentBracket() {
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
             <p className="mt-4 text-muted-foreground">Lade Turnierdaten...</p>
           </div>
-        </SidebarInset>
+  
+        {selectedMatch && (
+          <InstagramCanvas 
+             isOpen={instagramDialogOpen} 
+             onClose={() => setInstagramDialogOpen(false)} 
+             gameId={selectedMatch.id} 
+             tournamentId={tournamentId as string} 
+          />
+        )}
+      </SidebarInset>
+
       </SidebarProvider>
     );
   }
@@ -2085,7 +2098,17 @@ export default function TournamentBracket() {
           <div className="flex flex-1 flex-col items-center justify-center">
             <p className="text-muted-foreground">Zugriff verweigert</p>
           </div>
-        </SidebarInset>
+  
+        {selectedMatch && (
+          <InstagramCanvas 
+             isOpen={instagramDialogOpen} 
+             onClose={() => setInstagramDialogOpen(false)} 
+             gameId={selectedMatch.id} 
+             tournamentId={tournamentId as string} 
+          />
+        )}
+      </SidebarInset>
+
       </SidebarProvider>
     );
   }
@@ -2225,7 +2248,17 @@ export default function TournamentBracket() {
               </p>
             </div>
           </div>
-        </SidebarInset>
+  
+        {selectedMatch && (
+          <InstagramCanvas 
+             isOpen={instagramDialogOpen} 
+             onClose={() => setInstagramDialogOpen(false)} 
+             gameId={selectedMatch.id} 
+             tournamentId={tournamentId as string} 
+          />
+        )}
+      </SidebarInset>
+
       </SidebarProvider>
     );
   }
@@ -2275,7 +2308,17 @@ export default function TournamentBracket() {
         }`}>
           {renderContent()}
         </div>
+
+        {selectedMatch && (
+          <InstagramCanvas 
+             isOpen={instagramDialogOpen} 
+             onClose={() => setInstagramDialogOpen(false)} 
+             gameId={selectedMatch.id} 
+             tournamentId={tournamentId as string} 
+          />
+        )}
       </SidebarInset>
+
 
       <Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
         <DialogContent className="fixed inset-x-0 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[98vw] h-[95vh] max-w-none p-0 m-0 rounded-lg border-gray-200 flex flex-col">
@@ -2379,6 +2422,7 @@ export default function TournamentBracket() {
                         className="flex-1 ml-4"
                     >
                         <Play className="mr-2 h-4 w-4" />
+
                         Spiel Starten
                     </Button>
                 )}

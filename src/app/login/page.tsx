@@ -3,22 +3,93 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Mail, ArrowRight, Target, Sparkles, CheckCircle2 } from "lucide-react";
+import { Loader2, Mail, ArrowRight, Target, Sparkles, CheckCircle2, Fingerprint } from "lucide-react";
 import DynamicLogo from "@/components/DynamicLogo";
 import { Separator } from "@/components/ui/separator";
 import { FlickeringGrid } from "@/components/ui/flickering-grid";
+import { startAuthentication } from "@simplewebauthn/browser";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    // Attempt Conditional UI (Passkey Autofill) on load
+    const initConditionalUI = async () => {
+      try {
+        const isAutofillAvailable = await window.PublicKeyCredential?.isConditionalMediationAvailable?.();
+        if (!isAutofillAvailable) return;
+
+        const optionsRes = await fetch('/api/webauthn/authenticate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}), // No email => conditional UI mode
+        });
+        
+        if (!optionsRes.ok) return;
+        const optionsParams = await optionsRes.json();
+        
+        // This will wait in the background until the user selects a passkey from the autofill dropdown
+        const authResp = await startAuthentication({ optionsJSON: optionsParams.options, useBrowserAutofill: true });
+        
+        setIsPasskeyLoading(true);
+        // Verify
+        const verificationRes = await fetch('/api/webauthn/authenticate/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            credential: authResp,
+            challenge: optionsParams.options.challenge,
+            // userId is absent, server will look up by credential Id
+          }),
+        });
+
+        const verificationData = await verificationRes.json();
+      if (verificationRes.ok && verificationData.success) {
+        // Create session via NextAuth using the magic link credential token
+        const signInResult = await signIn('credentials', {
+          isMagicLink: 'true',
+          token: verificationData.token,
+          redirect: false,
+        });
+        
+        if (signInResult?.ok) {
+          // Do not trigger "Magic Link sent" screen for Passkeys
+          // Keep showing loading state on the button
+          setMessage({ type: 'success', text: 'Anmeldung erfolgreich! Leite weiter...' });
+          if (verificationData.user.role === 'ADMIN') {
+            router.push('/dashboard');
+          } else {
+            router.push('/user');
+          }
+        } else {
+          setMessage({ type: 'error', text: 'Sitzung konnte nicht erstellt werden.' });
+        }
+      } else {
+          setMessage({ type: 'error', text: verificationData.message || 'Passkey-Verifizierung fehlgeschlagen.' });
+        }
+      } catch (error) {
+        // Intentionally ignore abort errors for conditional UI
+        console.log("Conditional UI cancelled or failed", error);
+      } finally {
+        setIsPasskeyLoading(false);
+      }
+    };
+    
+    initConditionalUI();
+  }, [router]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,6 +120,77 @@ export default function LoginPage() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePasskeyLogin = async () => {
+    if (!email) {
+      setMessage({ type: 'error', text: 'Bitte gib zuerst deine E-Mail-Adresse ein.' });
+      return;
+    }
+
+    setIsPasskeyLoading(true);
+    setMessage(null);
+
+    try {
+      // Start Authentication Request
+      const optionsRes = await fetch('/api/webauthn/authenticate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!optionsRes.ok) {
+        const errData = await optionsRes.json();
+        throw new Error(errData.message || 'Passkey-Optionen konnten nicht geladen werden.');
+      }
+
+      const optionsParams = await optionsRes.json();
+
+      // Browser WebAuthn prompt
+      const authResp = await startAuthentication({ optionsJSON: optionsParams.options });
+
+      // Verify the response
+      const verificationRes = await fetch('/api/webauthn/authenticate/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          credential: authResp,
+          userId: optionsParams.userId,
+          challenge: optionsParams.options.challenge,
+        }),
+      });
+
+      const verificationData = await verificationRes.json();
+
+      if (verificationRes.ok && verificationData.success) {
+        // Create session via NextAuth using the magic link credential token
+        const signInResult = await signIn('credentials', {
+          isMagicLink: 'true',
+          token: verificationData.token,
+          redirect: false,
+        });
+        
+        if (signInResult?.ok) {
+          // Do not trigger "Magic Link sent" screen for Passkeys
+          // Keep showing loading state on the button
+          setMessage({ type: 'success', text: 'Anmeldung erfolgreich! Leite weiter...' });
+          if (verificationData.user.role === 'ADMIN') {
+            router.push('/dashboard');
+          } else {
+            router.push('/user');
+          }
+        } else {
+          setMessage({ type: 'error', text: 'Sitzung konnte nicht erstellt werden.' });
+        }
+      } else {
+        setMessage({ type: 'error', text: verificationData.message || 'Passkey-Verifizierung fehlgeschlagen.' });
+      }
+    } catch (error: any) {
+      console.error(error);
+      setMessage({ type: 'error', text: error.message || 'Passkey-Anmeldung abgebrochen oder fehlgeschlagen.' });
+    } finally {
+      setIsPasskeyLoading(false);
     }
   };
 
@@ -94,19 +236,25 @@ export default function LoginPage() {
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                     DART MASTERS 2026
                   </div>
-                  <h1 className="text-3xl font-bold text-slate-900 mb-2">Anmelden</h1>
-                  <p className="text-slate-600">Gib deine E-Mail ein, um Magic Link zu erhalten</p>
+                  <h1 className="text-3xl font-bold text-slate-900 flex items-center justify-center gap-3">
+                    Registrieren
+                    <span className="text-sm font-normal text-slate-500 bg-slate-100 px-2 py-1 rounded-md border border-slate-200">
+                      Login
+                    </span>
+                  </h1>
+                  <p className="text-slate-600 mt-2">Gib deine E-Mail ein, um dich mit Passkey oder Magic Link anzumelden.</p>
                 </div>
 
                 <div className="space-y-4">
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="email" className="text-slate-700 font-semibold">E-Mail</Label>
+                      <Label htmlFor="email-mobile" className="text-slate-700 font-semibold">E-Mail</Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <Input
-                          id="email"
+                          id="email-mobile"
                           type="email"
+                          autoComplete="username webauthn"
                           placeholder="name@example.com"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
@@ -116,23 +264,54 @@ export default function LoginPage() {
                       </div>
                     </div>
 
-                    <Button
-                      type="submit"
-                      className="w-full h-11 bg-slate-900 text-white hover:bg-slate-800 rounded-lg text-base font-semibold"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Wird gesendet...
-                        </>
-                      ) : (
-                        <>
-                          Magic Link anfordern
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </>
-                      )}
-                    </Button>
+                    <div className="space-y-3">
+                      <Button
+                        type="button"
+                        onClick={handlePasskeyLogin}
+                        className="w-full h-11 bg-slate-600 text-white hover:bg-slate-700 rounded-lg text-base font-semibold"
+                        disabled={isLoading || isPasskeyLoading}
+                      >
+                        {isPasskeyLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Wird geprüft...
+                          </>
+                        ) : (
+                          <>
+                            Mit Passkey anmelden
+                            <Fingerprint className="ml-2 h-4 w-4" />
+                          </>
+                        )}
+                      </Button>
+
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <span className="w-full border-t border-slate-200" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-slate-50 px-2 text-slate-500">oder</span>
+                        </div>
+                      </div>
+
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        className="w-full h-11 bg-white text-slate-900 border-slate-200 hover:bg-slate-50 rounded-lg text-base font-semibold"
+                        disabled={isLoading || isPasskeyLoading}
+                      >
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Wird gesendet...
+                          </>
+                        ) : (
+                          <>
+                            Magic Link anfordern
+                            <Mail className="ml-2 h-4 w-4" />
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </form>
 
                   {message && (
@@ -167,25 +346,18 @@ export default function LoginPage() {
                 <div className="mx-auto mb-6 inline-flex items-center justify-center h-16 w-16 rounded-full bg-green-100">
                   <CheckCircle2 className="h-8 w-8 text-green-600" />
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-2">Link versendet!</h2>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">Erfolgreich!</h2>
                 <p className="text-slate-600 mb-2">
-                  Wir haben einen Magic Link an
+                  Du wirst weitergeleitet oder hast einen Magic Link an
                 </p>
                 <p className="font-semibold text-slate-900 mb-8 break-all">{email}</p>
                 
                 <div className="space-y-2">
                   <Button 
                     className="w-full h-11 bg-slate-900 text-white hover:bg-slate-800 rounded-lg font-semibold"
-                    onClick={() => window.location.href = 'https://mail.google.com'}
+                    onClick={() => router.push('/')}
                   >
-                    E-Mail öffnen
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    className="w-full h-11 rounded-lg font-semibold text-slate-900"
-                    onClick={() => setIsSuccess(false)}
-                  >
-                    Andere E-Mail verwenden
+                    Zurück zur Startseite
                   </Button>
                 </div>
               </motion.div>
@@ -249,20 +421,25 @@ export default function LoginPage() {
                 <div className="space-y-2 text-center">
                   <div className="inline-flex items-center gap-2 px-3 py-1 text-xs font-mono font-medium bg-slate-100 text-slate-600 border border-slate-200 rounded-full">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                    ANMELDEN
+                    REGISTRIEREN
                   </div>
-                  <h1 className="text-3xl font-bold text-slate-900">Willkommen zurück</h1>
-                  <p className="text-slate-600">Gib deine E-Mail-Adresse ein, um dich anzumelden</p>
+                  <h1 className="text-3xl font-bold text-slate-900 flex items-center justify-center gap-3">
+                    Willkommen zurück
+                    <span className="text-sm font-normal text-slate-500 bg-slate-100 px-2 py-1 rounded-md border border-slate-200 mt-1">
+                      Login
+                    </span>
+                  </h1>
+                  <p className="text-slate-600 mt-2">Gib deine E-Mail-Adresse ein, um dich mit Passkey anzumelden</p>
                 </div>
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-slate-700 font-semibold">E-Mail</Label>
+                    <Label htmlFor="email-desktop" className="text-slate-700 font-semibold">E-Mail</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <Input
-                        id="email"
+                        id="email-desktop"
                         type="email"
                         placeholder="name@example.com"
                         value={email}
@@ -273,23 +450,54 @@ export default function LoginPage() {
                     </div>
                   </div>
 
-                  <Button
-                    type="submit"
-                    className="w-full h-11 bg-slate-900 text-white hover:bg-slate-800 rounded-lg text-base font-semibold"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Wird gesendet...
-                      </>
-                    ) : (
-                      <>
-                        Mit E-Mail anmelden
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </>
-                    )}
-                  </Button>
+                  <div className="space-y-3">
+                    <Button
+                      type="button"
+                      onClick={handlePasskeyLogin}
+                      variant="secondary" className="w-full h-11 text-base font-semibold"
+                      disabled={isLoading || isPasskeyLoading}
+                    >
+                      {isPasskeyLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Wird geprüft...
+                        </>
+                      ) : (
+                        <>
+                          Mit Passkey anmelden
+                          <Fingerprint className="ml-2 h-4 w-4" />
+                        </>
+                      )}
+                    </Button>
+
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t border-slate-200" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-white px-2 text-slate-500">oder</span>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      className="w-full h-11 bg-white text-slate-900 border-slate-200 hover:bg-slate-50 rounded-lg text-base font-semibold"
+                      disabled={isLoading || isPasskeyLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Wird gesendet...
+                        </>
+                      ) : (
+                        <>
+                          Magic Link anfordern
+                          <Mail className="ml-2 h-4 w-4" />
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </form>
 
                 {message && (

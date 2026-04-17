@@ -7,15 +7,17 @@ import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { IconUser, IconMail, IconShield, IconClock } from "@tabler/icons-react"
+import { Fingerprint, Loader2, CheckCircle2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
+import { startRegistration } from '@simplewebauthn/browser';
 
 export default function AccountPage() {
   const { isAdmin, isLoading, isAuthenticated, user } = useUserCheck();
@@ -23,6 +25,16 @@ export default function AccountPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [saving, setSaving] = useState(false);
+  const [hasPasskey, setHasPasskey] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/user/profile').then(r => r.json()).then(data => {
+      if(data.success && data.user) {
+         setHasPasskey(data.user.hasPasskey || data.user.webAuthnCredentials?.length > 0);
+      }
+    });
+  }, []);
+  const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false);
   
   const [adminSecret, setAdminSecret] = useState('');
   const [promoting, setPromoting] = useState(false);
@@ -75,6 +87,67 @@ export default function AccountPage() {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRegisterPasskey = async () => {
+    setIsRegisteringPasskey(true);
+    try {
+      // 1. Hole Registration Options vom Server
+      const optionsRes = await fetch('/api/webauthn/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!optionsRes.ok) {
+        throw new Error('Fehler beim Abrufen der Passkey-Optionen');
+      }
+
+      const { options } = await optionsRes.json();
+
+      if (!options) {
+        throw new Error('Keine Passkey-Optionen vom Server erhalten');
+      }
+
+      // 2. Rufe WebAuthn Modal im Browser auf
+      let passkeyResp;
+      try {
+         passkeyResp = await startRegistration(options);
+      } catch (error: any) {
+         if (error.name === 'NotAllowedError') {
+             throw new Error('Abgebrochen oder Gerät wird nicht unterstützt');
+         }
+         throw error;
+      }
+
+      // 3. Sende Antwort zur Verifizierung an den Server
+      const verificationRes = await fetch('/api/webauthn/register/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          credential: passkeyResp, 
+          challenge: options.challenge 
+        }),
+      });
+
+      const verificationData = await verificationRes.json();
+
+      if (verificationRes.ok && verificationData.success) {
+        toast({
+          title: "Erfolg!",
+          description: "Dein Passkey wurde erfolgreich eingerichtet.",
+        });
+      } else {
+        throw new Error(verificationData.message || 'Verifizierung fehlgeschlagen');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Passkey Fehler",
+        description: error.message || "Passkey konnte nicht registriert werden.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRegisteringPasskey(false);
     }
   };
 
@@ -287,14 +360,52 @@ export default function AccountPage() {
                   {/* Security Card */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Sicherheit</CardTitle>
+                      <CardTitle>Sicherheit & Login</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <p className="text-sm text-muted-foreground">
-                          Dieser Account verwendet Magic Link-Authentifizierung. 
-                          Sie erhalten einen Login-Link per E-Mail, wenn Sie sich anmelden möchten.
-                        </p>
+                    <CardContent className="space-y-6">
+                      <div className="space-y-4">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <h3 className="font-medium text-base">Passkey (Fingerabdruck / Face ID)</h3>
+                            {hasPasskey && (
+                              <Badge variant="secondary" className="bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-500/20">
+                                <CheckCircle2 className="w-3 h-3 mr-1" />
+                                Aktiviert
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Richten Sie einen Passkey ein, um sich zukünftig sicher und bequem ohne Passwort oder Magic Link per Fingerabdruck, Gesichtserkennung oder Geräte-PIN anzumelden.
+                          </p>
+                          <Button 
+                            variant="secondary"
+                            className="w-full sm:w-auto"
+                            onClick={handleRegisterPasskey}
+                            disabled={isRegisteringPasskey}
+                          >
+                            {isRegisteringPasskey ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Wird eingerichtet...
+                              </>
+                            ) : (
+                              <>
+                                <Fingerprint className="mr-2 h-4 w-4" />
+                                Passkey hinzufügen
+                              </>
+                            )}
+                          </Button>
+                        </div>
+
+                        <Separator />
+
+                        <div>
+                          <h3 className="font-medium text-base mb-1">Magic Link</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Dieser Account unterstützt standardmäßig die sichere Magic Link-Authentifizierung. 
+                            Sie erhalten einen Login-Link per E-Mail, wenn Sie sich anmelden möchten und keinen Passkey hinterlegt haben.
+                          </p>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

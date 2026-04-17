@@ -253,6 +253,11 @@ export async function PUT(request: NextRequest) {
              return NextResponse.json({ error: 'Unauthorized for this tournament' }, { status: 403 });
         }
 
+        // Validate status transition
+        if (existingTournament.status !== 'ACTIVE' && data.status === 'ACTIVE') {
+          return NextResponse.json({ error: "Status-Wechsel nicht erlaubt: Der Status 'Aktiv' wird automatisch vom System gesetzt, nachdem das Shootout beendet wurde (oder manuell über die Bracket-Generierung)." }, { status: 400 });
+        }
+
         // Update existing tournament
         tournament = await prisma.tournament.update({
           where: { id: existingTournament.id },

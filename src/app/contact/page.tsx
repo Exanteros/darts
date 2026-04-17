@@ -170,7 +170,7 @@ export default function ContactPage() {
                     <a href="#contact-form">Nachricht senden</a>
                   </Button>
                   <Button size="lg" variant="outline" className="h-14 px-8 rounded-sm border-slate-300 text-slate-900 text-lg hover:bg-slate-50 font-semibold w-full sm:w-auto" asChild>
-                    <a href="mailto:support@pudo-dartmasters.de">E-Mail oeffnen</a>
+                    <a href="mailto:support@pudo-dartmasters.de">E-Mail öffnen</a>
                   </Button>
                 </div>
               </motion.div>
@@ -278,7 +278,7 @@ export default function ContactPage() {
                   <Button
                     type="submit"
                     size="lg"
-                    disabled={isSubmitting || !isValid}
+                    disabled={isSubmitting}
                     className="h-12 rounded-sm bg-slate-900 text-white hover:bg-slate-800 font-semibold"
                   >
                     {isSubmitting ? 'Senden...' : 'Nachricht absenden'}
@@ -288,9 +288,9 @@ export default function ContactPage() {
               </div>
 
               <aside className="lg:col-span-2 border border-slate-200 bg-white p-6 sm:p-8">
-                <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 mb-4">Wobei koennen wir helfen?</h2>
+                <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 mb-4">Wobei können wir helfen?</h2>
                 <p className="text-slate-600 mb-8">
-                  Unser Team hilft dir bei Fragen zu Turnieranmeldung, Sponsorenmoeglichkeiten und organisatorischen Themen.
+                  Unser Team hilft dir bei Fragen zu Turnieranmeldung, Sponsorenmöglichkeiten und organisatorischen Themen.
                 </p>
 
                 <div className="space-y-4">
@@ -324,7 +324,7 @@ export default function ContactPage() {
             <div className="col-span-1 md:col-span-1">
               <DynamicLogo />
               <p className="mt-6 text-slate-500 text-sm leading-relaxed font-medium">
-                Darts-Sport auf hoechstem Niveau in Puschendorf. Organisiert fuer Spieler von Spielern.
+                Darts-Sport auf höchstem Niveau in Puschendorf. Organisiert fuer Spieler von Spielern.
               </p>
             </div>
             <div>

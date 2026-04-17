@@ -63,6 +63,7 @@ export default function TournamentSettingsPage() {
     location: '',
     street: ''
   });
+  const [initialStatus, setInitialStatus] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -82,6 +83,7 @@ export default function TournamentSettingsPage() {
       const response = await fetch('/api/admin/tournament/settings');
       if (response.ok) {
         const data = await response.json();
+        setInitialStatus(data.status || 'UPCOMING');
         setSettings({
           id: data.id,
           name: data.name || '',
@@ -187,10 +189,10 @@ export default function TournamentSettingsPage() {
   }, [settings.status]);
 
   const handleStatusChange = (value: 'UPCOMING' | 'REGISTRATION_OPEN' | 'REGISTRATION_CLOSED' | 'SHOOTOUT' | 'ACTIVE' | 'FINISHED' | 'CANCELLED' | 'WAITLIST') => {
-    if (value === 'ACTIVE' && shootoutStatus && !shootoutStatus.allCompleted) {
+    if (initialStatus !== 'ACTIVE' && value === 'ACTIVE') {
       toast({
-        title: "Aktion nicht erlaubt",
-        description: `Shootout noch nicht abgeschlossen! (${shootoutStatus.playersWithShootout}/${shootoutStatus.totalPlayers} Spieler)`,
+        title: "Status-Wechsel nicht erlaubt",
+        description: "Der Status 'Aktiv' wird automatisch durch das System gesetzt, sobald das Shootout/die Anmeldung abgeschlossen und das Bracket generiert wurde.",
         variant: "destructive",
       });
       return;
@@ -280,14 +282,7 @@ export default function TournamentSettingsPage() {
                             <SelectItem value="UPCOMING">Bevorstehend</SelectItem>
                             <SelectItem value="REGISTRATION_OPEN">Anmeldung offen</SelectItem>
                             <SelectItem value="REGISTRATION_CLOSED">Anmeldung geschlossen</SelectItem>
-                            <SelectItem value="SHOOTOUT">Shootout</SelectItem>
-                            <SelectItem 
-                              value="ACTIVE" 
-                              disabled={shootoutStatus ? !shootoutStatus.allCompleted : false}
-                              className={shootoutStatus && !shootoutStatus.allCompleted ? "opacity-50 cursor-not-allowed" : ""}
-                            >
-                              Aktiv {shootoutStatus && !shootoutStatus.allCompleted && `(${shootoutStatus.playersWithShootout}/${shootoutStatus.totalPlayers})`}
-                            </SelectItem>
+                            <SelectItem value="ACTIVE" disabled={initialStatus !== 'ACTIVE'}>Aktiv</SelectItem>
                             <SelectItem value="FINISHED">Abgeschlossen</SelectItem>
                             <SelectItem value="WAITLIST">Warteschlange</SelectItem>
                           </SelectContent>

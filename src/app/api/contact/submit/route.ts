@@ -67,6 +67,7 @@ export async function POST(request: Request) {
       subject: `[Kontaktformular] ${subject}`,
       text: plainText,
       html,
+      replyTo: email,
     });
 
     if (!sent) {

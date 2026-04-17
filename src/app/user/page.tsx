@@ -16,6 +16,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { startRegistration } from "@simplewebauthn/browser";
+import { useToast } from "@/hooks/use-toast";
+import { Fingerprint, CheckCircle2, Shield } from "lucide-react";
 
 /* ================= TYPES ================= */
 
@@ -169,7 +172,7 @@ function StatCard({ title, value, subtext, icon: Icon, delay }: any) {
 
 export default function UserDashboard() {
   const [tournaments, setTournaments] = useState<UserTournament[]>([]);
-  const [user, setUser] = useState<{ name: string | null, email: string } | null>(null);
+  const [user, setUser] = useState<{ name: string | null, email: string, hasPasskey?: boolean, webAuthnCredentials?: any[] } | null>(null);
   const [stats, setStats] = useState<UserStats>({
     registeredTournaments: 0,
     activeTournaments: 0,
@@ -177,6 +180,9 @@ export default function UserDashboard() {
     totalPaid: 0
   });
   const [loading, setLoading] = useState(true);
+  const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false);
+  const [hasPasskey, setHasPasskey] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchUserData();
@@ -195,12 +201,56 @@ export default function UserDashboard() {
       if (data.success) {
         setTournaments(data.tournaments || []);
         setUser(data.user || null);
+        setHasPasskey(data.user?.hasPasskey || data.user?.webAuthnCredentials?.length > 0);
         setStats(data.stats || { registeredTournaments: 0, activeTournaments: 0, completedTournaments: 0, totalPaid: 0 });
       }
     } catch (error) {
       console.error('Fetch error:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRegisterPasskey = async () => {
+    setIsRegisteringPasskey(true);
+    try {
+      const optsRes = await fetch('/api/webauthn/register', { method: 'POST' });
+      if (!optsRes.ok) throw new Error('Konnte Registrierungsdaten nicht laden');
+
+      const { success, options, message } = await optsRes.json();
+      if (!success) throw new Error(message || 'Fehler beim Laden der Passkey-Details');
+
+      let passkeyResp;
+      try {
+         passkeyResp = await startRegistration(options);
+      } catch (error: any) {
+         if (error.name === 'NotAllowedError') {
+             throw new Error('Abgebrochen oder Gerät wird nicht unterstützt');
+         }
+         throw error;
+      }
+
+      const verificationRes = await fetch('/api/webauthn/register/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          credential: passkeyResp, 
+          challenge: options.challenge 
+        }),
+      });
+
+      const verificationData = await verificationRes.json();
+
+      if (verificationRes.ok && verificationData.success) {
+        toast({ title: 'Passkey gespeichert', description: 'Du kannst dich nun per Fingerabdruck einloggen.' });
+        setHasPasskey(true);
+      } else {
+        throw new Error(verificationData.message || 'Passkey-Verifizierung fehlgeschlagen');
+      }
+    } catch (err: any) {
+      toast({ title: 'Fehler', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsRegisteringPasskey(false);
     }
   };
 
@@ -435,6 +485,34 @@ export default function UserDashboard() {
                       <Link href="/user/stats">Details ansehen</Link>
                     </Button>
                   </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div variants={itemVariants}>
+                <Card className="border-slate-200 shadow-sm overflow-hidden relative">
+                   <div className="absolute top-0 right-0 w-16 h-16 bg-blue-50 rounded-bl-3xl -z-10" />
+                   <CardHeader className="pb-3 border-b border-slate-100 flex flex-row items-center gap-3">
+                     <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                       <Shield className="h-4 w-4 text-blue-600" />
+                     </div>
+                     <div className="flex-1">
+                       <CardTitle className="text-base font-bold text-slate-900 flex items-center justify-between">
+                         Passkey
+                         {hasPasskey && (
+                            <Badge variant="secondary" className="bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-500/20 h-5 px-1.5 text-[10px]">
+                              <CheckCircle2 className="w-3 h-3 mr-1" /> Aktiviert
+                            </Badge>
+                         )}
+                       </CardTitle>
+                     </div>
+                   </CardHeader>
+                   <CardContent className="pt-4">
+                      <p className="text-sm text-slate-600 mb-4 h-10">Zukünftig passwortlos und sicher per Face ID / Touch ID anmelden.</p>
+                      <Button onClick={handleRegisterPasskey} disabled={isRegisteringPasskey} variant="outline" className="w-full text-slate-700 bg-slate-50 hover:bg-slate-100 border-slate-300">
+                        {isRegisteringPasskey ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Fingerprint className="h-4 w-4 mr-2" />}
+                        {hasPasskey ? "Neuen Passkey hinzufügen" : "Passkey aktivieren"}
+                      </Button>
+                   </CardContent>
                 </Card>
               </motion.div>
 

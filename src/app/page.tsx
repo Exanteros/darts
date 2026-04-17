@@ -551,13 +551,13 @@ function Header() {
         <nav className="hidden md:flex items-center gap-8">
           <a href="#features" className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">Features</a>
           <Link href="/faq" className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">FAQ</Link>
-          <Link href="/login" className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">Login</Link>
         </nav>
 
         <div className="flex items-center gap-4">
           <Button className="rounded-sm bg-slate-900 text-white px-6 hidden sm:flex hover:bg-slate-800 font-semibold" asChild>
-            <Link href="/tournament/register">Anmelden</Link>
+            <Link href="/tournament/register">Registrieren</Link>
           </Button>
+          <Link href="/login" className="hidden md:block text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">Login</Link>
           <Button
             variant="ghost"
             size="icon"
@@ -577,11 +577,11 @@ function Header() {
           <nav className="flex flex-col gap-3">
             <a href="#features" className="text-sm font-semibold text-slate-700 hover:text-slate-900" onClick={closeMobileMenu}>Features</a>
             <Link href="/faq" className="text-sm font-semibold text-slate-700 hover:text-slate-900" onClick={closeMobileMenu}>FAQ</Link>
-            <Button variant="outline" className="w-full rounded-sm border-slate-300 text-slate-900 font-semibold hover:bg-slate-100" asChild>
-              <Link href="/login" onClick={closeMobileMenu}>In Account einloggen</Link>
-            </Button>
             <Button className="mt-2 w-full rounded-sm bg-slate-900 text-white hover:bg-slate-800 font-semibold" asChild>
-              <Link href="/tournament/register" onClick={closeMobileMenu}>Anmelden</Link>
+              <Link href="/tournament/register" onClick={closeMobileMenu}>Registrieren</Link>
+            </Button>
+            <Button variant="outline" className="w-full rounded-sm border-slate-300 text-slate-900 font-semibold hover:bg-slate-100" asChild>
+              <Link href="/login" onClick={closeMobileMenu}>Login</Link>
             </Button>
           </nav>
         </div>

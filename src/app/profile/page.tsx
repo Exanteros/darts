@@ -17,6 +17,8 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { signOut } from "next-auth/react";
+import { startRegistration } from "@simplewebauthn/browser";
+import { CheckCircle2, Fingerprint } from "lucide-react";
 
 /* ================= TYPES ================= */
 
@@ -38,6 +40,8 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false);
+  const [hasPasskey, setHasPasskey] = useState(false);
   const [activeTab, setActiveTab] = useState<'general' | 'security' | 'notifications'>('general');
   const [name, setName] = useState("");
 
@@ -52,6 +56,7 @@ export default function ProfilePage() {
       const data = await res.json();
       if (data.success && data.user) {
         setProfile(data.user);
+          setHasPasskey(data.user.hasPasskey || data.user.webAuthnCredentials?.length > 0);
         setName(data.user.name || "");
       } else {
         setErrorMessage(data.message || "Profil konnte nicht geladen werden");

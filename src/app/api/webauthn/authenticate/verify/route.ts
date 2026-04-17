@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { signIn } from 'next-auth/react';
 import { prisma } from '@/lib/prisma';
+import { signLoginToken } from '@/lib/jwt';
 import { verifyAuthenticationResponse } from '@simplewebauthn/server';
 
 const rpID = process.env.NODE_ENV === 'production' ? 'your-domain.com' : 'localhost';
@@ -8,9 +9,11 @@ const origin = process.env.NODE_ENV === 'production' ? 'https://your-domain.com'
 
 export async function POST(request: NextRequest) {
   try {
-    const { credential, userId, challenge } = await request.json();
+    const body = await request.json();
+    const { credential, challenge } = body;
+    let userId = body.userId;
 
-    if (!credential || !userId) {
+    if (!credential) {
       return NextResponse.json({
         success: false,
         message: 'Anmeldedaten unvollständig'
@@ -18,12 +21,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the user's credential from database
+    const whereClause = userId ? { userId: userId, credentialId: credential.id } : { credentialId: credential.id };
     const userCredential = await prisma.webAuthnCredential.findFirst({
-      where: {
-        userId: userId,
-        credentialId: credential.id
-      }
+      where: whereClause
     });
+    if (userCredential && !userId) {
+      userId = userCredential.userId;
+    }
 
     if (!userCredential) {
       return NextResponse.json({
@@ -70,13 +74,17 @@ export async function POST(request: NextRequest) {
       }, { status: 404 });
     }
 
+    const token = await signLoginToken({ email: user.email, userId: user.id });
+    
     return NextResponse.json({
       success: true,
       message: 'Touch ID-Anmeldung erfolgreich',
+      token,
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
+        role: user.role
       }
     });
   } catch (error) {

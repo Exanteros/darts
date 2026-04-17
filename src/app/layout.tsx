@@ -7,7 +7,7 @@ import Script from "next/script";
 
 
 
-const baseUrl = process.env.NEXTAUTH_URL || "https://dartsturnier-puschendorf.de";
+const baseUrl = process.env.NEXTAUTH_URL || "https://pudo-dartmasters.de";
 
 export const viewport: Viewport = {
   themeColor: "#dc2626",
@@ -72,9 +72,6 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.json",
-  alternates: {
-    canonical: baseUrl,
-  },
 };
 
 export default function RootLayout({

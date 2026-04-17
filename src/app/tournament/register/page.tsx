@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -46,6 +47,7 @@ export default function TournamentRegistrationPage() {
   const router = useRouter();
   const [step, setStep] = useState<'SELECTION' | 'FORM' | 'PAYMENT' | 'PAY_ON_SITE' | 'SUCCESS'>('SELECTION');
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [loadingInitial, setLoadingInitial] = useState(true);
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   
@@ -72,7 +74,8 @@ export default function TournamentRegistrationPage() {
             setExpandedIds([data.tournaments[0].id]);
           }
         }
-      });
+      })
+      .finally(() => setLoadingInitial(false));
 
     fetch('/api/stripe/config')
       .then(res => res.json())
@@ -298,7 +301,7 @@ export default function TournamentRegistrationPage() {
         </div>
 
         {/* Mobile Content */}
-        <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 relative z-10 w-full max-w-lg mx-auto">
+        <div className="flex-1 flex flex-col items-center justify-start px-4 pt-12 pb-8 relative z-10 w-full max-w-lg mx-auto">
            {/* Steps indicator */}
            {step !== 'SUCCESS' && (
              <div className="flex items-center justify-center gap-2 mb-8">
@@ -400,7 +403,13 @@ export default function TournamentRegistrationPage() {
             </div>
 
             <div className="space-y-4">
-              {tournaments.map((t) => {
+              {loadingInitial ? (
+                <>
+                  <Skeleton className="w-full h-24 rounded-xl" />
+                  <Skeleton className="w-full h-24 rounded-xl" />
+                  <Skeleton className="w-full h-24 rounded-xl" />
+                </>
+              ) : tournaments.map((t) => {
                   const isExpanded = expandedIds.includes(t.id);
                   const isFull = t._count.players >= t.maxPlayers || t.status === 'WAITLIST';
                   const isClosed = t.status !== 'REGISTRATION_OPEN' && t.status !== 'WAITLIST';
@@ -438,7 +447,7 @@ export default function TournamentRegistrationPage() {
                                     ? (isFull ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-green-50 text-green-700 border-green-200") 
                                     : "bg-slate-100 text-slate-500 border-slate-200"
                                 )}>
-                                  {t.status === 'REGISTRATION_OPEN' ? (isFull ? 'Warteliste' : 'Offen') : 'Ende'}
+                                    {t.status === 'REGISTRATION_OPEN' ? (isFull ? 'Warteliste' : 'Offen') : t.status === 'UPCOMING' ? 'Bevorstehend' : 'Ende'}
                                </div>
                              </div>
                           </div>

@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     await prisma.webAuthnCredential.create({
       data: {
         userId: session.user.id,
-        credentialId: Buffer.from(registrationInfo.credential.id).toString('base64url'),
+        credentialId: registrationInfo.credential.id,
         publicKey: Buffer.from(registrationInfo.credential.publicKey).toString('base64url'),
         counter: registrationInfo.credential.counter || 0,
         transports: JSON.stringify(credential.response.transports || []),

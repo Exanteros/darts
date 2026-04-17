@@ -33,8 +33,8 @@ if (process.env.SMTP_HOST && process.env.SMTP_USER) {
 /* CORE LOGIC                                                                 */
 /* -------------------------------------------------------------------------- */
 
-export async function sendMail({ to, subject, text, html }: { to: string, subject: string, text: string, html?: string }) {
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
+export async function sendMail({ to, subject, text, html, replyTo }: { to: string, subject: string, text: string, html?: string, replyTo?: string }) {
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || process.env.SMTP_HOST === 'your_smtp_host' || process.env.SMTP_USER === 'your_email') {
     console.log(`\n--- [MAIL SIMULATION] ---\nTo: ${to}\nSubject: ${subject}\nBody: ${text}\n-------------------------\n`);
     return true;
   }
@@ -46,6 +46,7 @@ export async function sendMail({ to, subject, text, html }: { to: string, subjec
       subject,
       text,
       html,
+      replyTo,
     });
     console.log(`✅ Message sent: ${info.messageId}`);
     return true;
