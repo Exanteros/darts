@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { generateAuthenticationOptions } from '@simplewebauthn/server';
 import { WebAuthnCredential } from '@prisma/client';
 
-const rpID = process.env.NODE_ENV === 'production' ? 'your-domain.com' : 'localhost';
+const rpID = process.env.NODE_ENV === 'production' ? 'pudo-dartmasters.de' : 'localhost';
 
 export async function POST(request: NextRequest) {
   try {

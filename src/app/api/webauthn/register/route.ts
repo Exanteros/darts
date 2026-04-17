@@ -12,8 +12,8 @@ import { WebAuthnCredential } from '@prisma/client';
 
 // Configure WebAuthn
 const rpName = 'Dart Masters Puschendorf';
-const rpID = process.env.NODE_ENV === 'production' ? 'your-domain.com' : 'localhost';
-const origin = process.env.NODE_ENV === 'production' ? 'https://your-domain.com' : 'http://localhost:3000';
+const rpID = process.env.NODE_ENV === 'production' ? 'pudo-dartmasters.de' : 'localhost';
+const origin = process.env.NODE_ENV === 'production' ? 'https://pudo-dartmasters.de' : 'http://localhost:3000';
 
 // Generate registration options
 export async function POST(request: NextRequest) {
