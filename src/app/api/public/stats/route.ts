@@ -5,22 +5,22 @@ export async function GET(request: NextRequest) {
   try {
     const now = new Date();
 
-    // Priorisiere Turniere mit offener Registrierung, sonst das nächstkommende
-    let tournament = await prisma.tournament.findFirst({
-      where: { status: 'REGISTRATION_OPEN' },
-      orderBy: { startDate: 'asc' }
-    });
-
-    if (!tournament) {
-      tournament = await prisma.tournament.findFirst({
-        where: { startDate: { gte: now } },
+// Priorisiere in Gange befindliche oder mit offener Registrierung, ansonsten das Nächste
+      let tournament = await prisma.tournament.findFirst({
+        where: { status: { in: ['IN_PROGRESS', 'REGISTRATION_OPEN'] } },
         orderBy: { startDate: 'asc' }
       });
-    }
 
-    // Fallback: irgendein Turnier
-    if (!tournament) {
-      tournament = await prisma.tournament.findFirst({ orderBy: { startDate: 'asc' } });
+      if (!tournament) {
+        tournament = await prisma.tournament.findFirst({
+          where: { startDate: { gte: now } },
+          orderBy: { startDate: 'asc' }
+        });
+      }
+
+      // Fallback: das neueste Turnier
+      if (!tournament) {
+        tournament = await prisma.tournament.findFirst({ orderBy: { startDate: 'desc' } });
     }
 
     const stats: any = {

@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
         location: tournament.location,
         street: tournament.street,
         status: tournament.status,
+          checkoutMode: tournament.checkoutMode,
         _count: {
           players: activeCount
         }

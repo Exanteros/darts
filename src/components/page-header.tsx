@@ -9,7 +9,8 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu, X } from "lucide-react";
+import { Menu, X, User, LogOut } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
 import DynamicLogo from "@/components/DynamicLogo";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,7 @@ interface PageHeaderProps {
 export function PageHeader({ showBackButton = false, title, description }: PageHeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   const navigationLinks = [
     { href: "/", label: "Startseite" },
@@ -77,12 +79,25 @@ export function PageHeader({ showBackButton = false, title, description }: PageH
 
           {/* Desktop Right Actions */}
           <div className="hidden md:flex items-center gap-2">
-            <Button size="sm" asChild>
-              <Link href="/tournament/register">Registrieren</Link>
-            </Button>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/login">Login</Link>
-            </Button>
+            {session ? (
+              <>
+                <Button variant="ghost" size="icon" asChild>
+                  <Link href="/dashboard"><User className="h-5 w-5" /></Link>
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => signOut()}>
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button size="sm" asChild>
+                  <Link href="/tournament/register">Registrieren</Link>
+                </Button>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/login">Login</Link>
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu */}
@@ -111,16 +126,31 @@ export function PageHeader({ showBackButton = false, title, description }: PageH
                     </Link>
                   ))}
                   <div className="border-t border-slate-200 pt-4 mt-2 flex flex-col gap-2">
-                    <Button className="w-full" asChild>
-                      <Link href="/tournament/register" onClick={() => setIsOpen(false)}>
-                        Registrieren
-                      </Link>
-                    </Button>
-                    <Button variant="outline" className="w-full" asChild>
-                      <Link href="/login" onClick={() => setIsOpen(false)}>
-                        Login
-                      </Link>
-                    </Button>
+                    {session ? (
+                      <>
+                        <Button className="w-full justify-start" variant="outline" asChild>
+                          <Link href="/dashboard" onClick={() => setIsOpen(false)}>
+                            <User className="mr-2 h-4 w-4" /> Dashboard
+                          </Link>
+                        </Button>
+                        <Button className="w-full justify-start" variant="outline" onClick={() => { setIsOpen(false); signOut(); }}>
+                          <LogOut className="mr-2 h-4 w-4" /> Logout
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button className="w-full" asChild>
+                          <Link href="/tournament/register" onClick={() => setIsOpen(false)}>
+                            Registrieren
+                          </Link>
+                        </Button>
+                        <Button variant="outline" className="w-full" asChild>
+                          <Link href="/login" onClick={() => setIsOpen(false)}>
+                            Login
+                          </Link>
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </nav>
               </SheetContent>

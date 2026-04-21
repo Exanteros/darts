@@ -11,8 +11,10 @@ import { cn } from "@/lib/utils";
 import { 
   Target, Trophy, Users, Zap, 
   ArrowRight, CheckCircle2, Menu,
-  Award, Shield, Calendar, Terminal
+  Award, Shield, Calendar, Terminal,
+  User, LogOut
 } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
 
 /* ======================== CLEAN HELPER COMPONENTS ======================== */
 
@@ -221,7 +223,10 @@ function StatsSection() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           <StatDisplay value={loading ? '...' : (stats?.participants ?? 0)} label="Teilnehmer" />
           <StatDisplay value={loading ? '...' : (stats?.boards ?? 0)} label="Profi-Boards" />
-          <StatDisplay value={loading ? '...' : (stats?.gameMode ?? '501')} label="Double Out" />
+          <StatDisplay 
+            value={loading ? '...' : (stats?.gameMode ?? '501')} 
+            label={loading ? '...' : (stats?.checkoutMode === 'SINGLE_OUT' ? 'Single Out' : stats?.checkoutMode === 'MASTER_OUT' ? 'Master Out' : 'Double Out')} 
+          />
           <StatDisplay value={loading ? '...' : (stats?.champions ?? 0)} label="Champion" />
         </div>
       </div>
@@ -367,10 +372,10 @@ function RulesDialog() {
       // Wähle das relevanteste Turnier (Anmeldung offen > Warteliste > nächstes kommendes > erstes)
       const tournaments = Array.isArray(data?.tournaments) ? data.tournaments : [];
       const now = new Date();
-      let t = tournaments.find((x: any) => x.status === 'REGISTRATION_OPEN' || x.status === 'WAITLIST');
+      let t = tournaments.find((x: any) => ['IN_PROGRESS', 'REGISTRATION_OPEN', 'WAITLIST'].includes(x.status));
       if (!t) {
         const upcoming = tournaments.filter((x: any) => new Date(x.startDate) > now).sort((a: any, b: any) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
-        t = upcoming[0] || tournaments[0] || null;
+        t = upcoming[0] || tournaments[tournaments.length - 1] || null;
       }
       setTournament(t);
     } catch (e: any) {
@@ -432,7 +437,7 @@ function RulesDialog() {
                   <h4 className="font-semibold text-slate-900 mb-2">Regelwerk</h4>
                   <ol className="list-decimal pl-6 space-y-2 text-slate-700 text-sm mb-4">
                     <li>
-                      Spielmodus: Die genaue Spielordnung steht in der Turnierbeschreibung. Standardmäßig wird 501 gespielt (Double Out), sofern nicht anders angegeben.
+                      Spielmodus: Die genaue Spielordnung steht in der Turnierbeschreibung. Standardmäßig wird 501 gespielt ({tournament?.checkoutMode === 'SINGLE_OUT' ? 'Single Out' : tournament?.checkoutMode === 'MASTER_OUT' ? 'Master Out' : 'Double Out'}), sofern nicht anders angegeben.
                     </li>
                     <li>
                       Spielaufbau: Matches werden im K.O.-System ausgetragen, genaue Satz- und Leg-Regelungen richtet die Turnierleitung ein.
@@ -520,6 +525,7 @@ function ComparisonSection() {
 function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { data: session } = useSession();
 
   useEffect(() => {
     const checkScroll = () => setIsScrolled(window.scrollY > 10);
@@ -554,10 +560,23 @@ function Header() {
         </nav>
 
         <div className="flex items-center gap-4">
-          <Button className="rounded-sm bg-slate-900 text-white px-6 hidden sm:flex hover:bg-slate-800 font-semibold" asChild>
-            <Link href="/tournament/register">Registrieren</Link>
-          </Button>
-          <Link href="/login" className="hidden md:block text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">Login</Link>
+          {session ? (
+            <div className="hidden md:flex items-center gap-2">
+              <Button asChild variant="ghost" size="icon" className="text-slate-600 hover:text-slate-900">
+                <Link href="/dashboard"><User className="h-5 w-5" /></Link>
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => signOut()} className="text-slate-600 hover:text-slate-900">
+                <LogOut className="h-5 w-5" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <Button className="rounded-sm bg-slate-900 text-white px-6 hidden sm:flex hover:bg-slate-800 font-semibold" asChild>
+                <Link href="/tournament/register">Registrieren</Link>
+              </Button>
+              <Link href="/login" className="hidden md:block text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">Login</Link>
+            </>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -577,12 +596,26 @@ function Header() {
           <nav className="flex flex-col gap-3">
             <a href="#features" className="text-sm font-semibold text-slate-700 hover:text-slate-900" onClick={closeMobileMenu}>Features</a>
             <Link href="/faq" className="text-sm font-semibold text-slate-700 hover:text-slate-900" onClick={closeMobileMenu}>FAQ</Link>
-            <Button className="mt-2 w-full rounded-sm bg-slate-900 text-white hover:bg-slate-800 font-semibold" asChild>
-              <Link href="/tournament/register" onClick={closeMobileMenu}>Registrieren</Link>
-            </Button>
-            <Button variant="outline" className="w-full rounded-sm border-slate-300 text-slate-900 font-semibold hover:bg-slate-100" asChild>
-              <Link href="/login" onClick={closeMobileMenu}>Login</Link>
-            </Button>
+            
+            {session ? (
+              <div className="border-t border-slate-200 mt-2 pt-4 flex flex-col gap-2">
+                <Button variant="outline" className="w-full rounded-sm border-slate-300 text-slate-900 font-semibold hover:bg-slate-100 justify-start" asChild>
+                  <Link href="/dashboard" onClick={closeMobileMenu}><User className="mr-2 h-4 w-4" /> Dashboard</Link>
+                </Button>
+                <Button className="w-full rounded-sm bg-slate-900 text-white hover:bg-slate-800 font-semibold justify-start" onClick={() => { closeMobileMenu(); signOut(); }}>
+                  <LogOut className="mr-2 h-4 w-4" /> Logout
+                </Button>
+              </div>
+            ) : (
+              <div className="border-t border-slate-200 mt-2 pt-4 flex flex-col gap-2">
+                <Button className="w-full rounded-sm bg-slate-900 text-white hover:bg-slate-800 font-semibold" asChild>
+                  <Link href="/tournament/register" onClick={closeMobileMenu}>Registrieren</Link>
+                </Button>
+                <Button variant="outline" className="w-full rounded-sm border-slate-300 text-slate-900 font-semibold hover:bg-slate-100" asChild>
+                  <Link href="/login" onClick={closeMobileMenu}>Login</Link>
+                </Button>
+              </div>
+            )}
           </nav>
         </div>
       )}

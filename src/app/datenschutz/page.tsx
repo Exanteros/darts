@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import CookiePreferences from "@/components/CookiePreferences";
 
 /* ================= ANIMATION VARIANTS ================= */
 
@@ -255,14 +256,12 @@ export default function DatenschutzPage() {
                   <div className="mt-1 h-10 w-10 rounded-md bg-slate-100 flex items-center justify-center text-slate-900 shrink-0 border border-slate-200">
                     <Lock className="h-5 w-5" />
                   </div>
-                  <div className="space-y-3">
-                    <h3 className="text-2xl font-bold text-slate-900 tracking-tight">5. Cookies & Lokale Speicherung</h3>
-                    <p className="text-base text-slate-600 leading-relaxed">
-                      Unsere Website verwendet teilweise sogenannte Cookies bzw. nutzt den Local Storage Ihres Browsers. 
-                      Diese dienen in erster Linie dazu, nach der Anmeldung Ihre Login-Session zu halten ("technisch notwendige Cookies"). 
-                      Dafür wird keine Einwilligung des Nutzers benötigt (Speicherung erfolgt gem. § 25 Abs. 2 TTDSG i.V.m. Art. 6 Abs. 1 lit. f DSGVO).
-                      Wir nutzen keine Tracking- oder Marketing-Cookies (wie z.B. Google Analytics oder Facebook Pixel).
-                    </p>
+                    <div className="space-y-4 w-full overflow-hidden">
+                      <h3 className="text-2xl font-bold text-slate-900 tracking-tight">5. Cookies & Lokale Speicherung</h3>
+                      <p className="text-base text-slate-600 leading-relaxed">
+                        Wir verwenden Cookies, den Local Storage und ähnliche Technologien, um die Kernfunktionen der Website bereitzustellen sowie optionale Dienste zur Analyse und Optimierung anzubieten. Sie können Ihre aktuellen Einstellungen hier überprüfen und anpassen:
+                      </p>
+                      <CookiePreferences />
                   </div>
                 </div>
               </div>

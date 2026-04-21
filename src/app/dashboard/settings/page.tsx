@@ -1,24 +1,33 @@
 "use client";
 
-import { useTournamentAccess } from '@/hooks/useTournamentAccess';
-import { AppSidebar } from "@/components/app-sidebar"
-import { SiteHeader } from "@/components/site-header"
+import { useTournamentAccess } from "@/hooks/useTournamentAccess";
+import { AppSidebar } from "@/components/app-sidebar";
+import { SiteHeader } from "@/components/site-header";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { useState, useEffect } from "react";
 import {
-  SidebarInset,
-  SidebarProvider,
-} from "@/components/ui/sidebar"
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { DatePicker } from '@/components/ui/date-picker';
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { DatePicker } from "@/components/ui/date-picker";
 import { IconUser } from "@tabler/icons-react";
 
 interface TournamentSettings {
@@ -27,7 +36,7 @@ interface TournamentSettings {
   description: string;
   startDate?: Date;
   endDate?: Date;
-  status: 'UPCOMING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  status: "UPCOMING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
   maxPlayers: number;
   entryFee: number;
 }
@@ -36,7 +45,7 @@ interface BoardSettings {
   id: string;
   name: string;
   location: string;
-  status: 'active' | 'inactive' | 'maintenance';
+  status: "active" | "inactive" | "maintenance";
   priority: number;
   legSettings: {
     legsPerGame: number;
@@ -57,62 +66,115 @@ interface SystemSettings {
 }
 
 export default function SettingsPage() {
-  const { isAdmin, hasTournamentAccess, tournamentAccess, isLoading, isAuthenticated } = useTournamentAccess();
-    const [tournamentSettings, setTournamentSettings] = useState<TournamentSettings>({
-    id: undefined,
-    name: '',
-    description: '',
-    startDate: undefined,
-    endDate: undefined,
-    status: 'UPCOMING',
-    maxPlayers: 64,
-    entryFee: 0
-  });
+  const {
+    isAdmin,
+    hasTournamentAccess,
+    tournamentAccess,
+    isLoading,
+    isAuthenticated,
+  } = useTournamentAccess();
+  const [tournamentSettings, setTournamentSettings] =
+    useState<TournamentSettings>({
+      id: undefined,
+      name: "",
+      description: "",
+      startDate: undefined,
+      endDate: undefined,
+      status: "UPCOMING",
+      maxPlayers: 64,
+      entryFee: 0,
+    });
   const [boards, setBoards] = useState<BoardSettings[]>([]);
   const [systemSettings, setSystemSettings] = useState<SystemSettings>({
-    id: 'default',
+    id: "default",
     maintenanceMode: false,
     allowRegistration: true,
     maxConcurrentGames: 8,
     autoSaveInterval: 30,
-    logLevel: 'info',
+    logLevel: "info",
     websocketTimeout: 30000,
     cacheTimeout: 3600,
     maxConnections: 100,
-    monitoringInterval: 60
+    monitoringInterval: 60,
   });
-  
+
   // Broadcasting Settings
-  const [obsUrl, setObsUrl] = useState('ws://localhost:4455');
-  const [obsPassword, setObsPassword] = useState('');
+  const [obsUrl, setObsUrl] = useState("ws://localhost:4455");
+  const [obsPassword, setObsPassword] = useState("");
   const [displayRefresh, setDisplayRefresh] = useState(1000);
   const [transitionDuration, setTransitionDuration] = useState(500);
   const [overlayWidth, setOverlayWidth] = useState(1920);
   const [overlayHeight, setOverlayHeight] = useState(1080);
   const [fontSize, setFontSize] = useState(48);
-  
+
   // Statistics Settings
   const [dataRetention, setDataRetention] = useState(365);
   const [exportCsv, setExportCsv] = useState(true);
   const [exportJson, setExportJson] = useState(true);
   const [exportPdf, setExportPdf] = useState(false);
   const [backupInterval, setBackupInterval] = useState(24);
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
   // Admin Creation State
-  const [newAdminName, setNewAdminName] = useState('');
-  const [newAdminEmail, setNewAdminEmail] = useState('');
-  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [newAdminName, setNewAdminName] = useState("");
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [newAdminPassword, setNewAdminPassword] = useState("");
   const [creatingAdmin, setCreatingAdmin] = useState(false);
 
+  // Webhook & Logs
+  const [logs, setLogs] = useState<string>("Lade Logs...");
+  const [restartingWebhook, setRestartingWebhook] = useState(false);
+
+  const fetchLogs = async () => {
+    try {
+      const res = await fetch("/api/admin/system/logs");
+      const data = await res.json();
+      if (data.success) {
+        setLogs(data.logs || "Keine Logs vorhanden");
+      } else {
+        setLogs("Fehler beim Laden der Logs: " + data.message);
+      }
+    } catch (e) {
+      setLogs("Konnte Logs nicht abrufen.");
+    }
+  };
+
+  const restartWebhook = async () => {
+    setRestartingWebhook(true);
+    try {
+      const res = await fetch("/api/admin/system/webhook", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Webhook neu gestartet", description: data.message });
+      } else {
+        toast({
+          title: "Fehler beim Neustart",
+          description: data.message,
+          variant: "destructive",
+        });
+      }
+    } catch (e) {
+      toast({
+        title: "Verbindungsfehler",
+        description: "Konnte Webhook nicht neu starten",
+        variant: "destructive",
+      });
+    } finally {
+      setRestartingWebhook(false);
+      setTimeout(fetchLogs, 2000);
+    }
+  };
+
   // Prüfe Berechtigung für Einstellungen
-  const canManageSettings = isAdmin || tournamentAccess.some(access => {
-    const permissions = JSON.parse(access.permissions || '{}');
-    return permissions.settings?.viewGeneral === true;
-  });
+  const canManageSettings =
+    isAdmin ||
+    tournamentAccess.some((access) => {
+      const permissions = JSON.parse(access.permissions || "{}");
+      return permissions.settings?.viewGeneral === true;
+    });
 
   useEffect(() => {
     if (isAuthenticated && canManageSettings) {
@@ -120,16 +182,17 @@ export default function SettingsPage() {
       fetchBoards();
       fetchSystemSettings();
       loadBroadcastingSettings();
+      if (isAdmin) fetchLogs();
     }
-  }, [isAuthenticated, canManageSettings]);
+  }, [isAuthenticated, canManageSettings, isAdmin]);
 
   const loadBroadcastingSettings = async () => {
     try {
-      const response = await fetch('/api/admin/broadcasting');
+      const response = await fetch("/api/admin/broadcasting");
       if (response.ok) {
         const data = await response.json();
-        setObsUrl(data.obsUrl || 'ws://localhost:4455');
-        setObsPassword(data.obsPassword || '');
+        setObsUrl(data.obsUrl || "ws://localhost:4455");
+        setObsPassword(data.obsPassword || "");
         setDisplayRefresh(data.displayRefresh || 1000);
         setTransitionDuration(data.transitionDuration || 500);
         setOverlayWidth(data.overlayWidth || 1920);
@@ -137,16 +200,16 @@ export default function SettingsPage() {
         setFontSize(data.fontSize || 48);
       }
     } catch (error) {
-      console.error('Error loading broadcasting settings:', error);
+      console.error("Error loading broadcasting settings:", error);
     }
   };
 
   const saveBroadcastingSettings = async () => {
     setSaving(true);
     try {
-      const response = await fetch('/api/admin/broadcasting', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/admin/broadcasting", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           obsUrl,
           obsPassword,
@@ -166,7 +229,8 @@ export default function SettingsPage() {
       } else {
         toast({
           title: "Fehler beim Speichern",
-          description: "Die Broadcasting-Einstellungen konnten nicht gespeichert werden.",
+          description:
+            "Die Broadcasting-Einstellungen konnten nicht gespeichert werden.",
           variant: "destructive",
         });
       }
@@ -202,9 +266,9 @@ export default function SettingsPage() {
   const saveSystemSettings = async () => {
     setSaving(true);
     try {
-      const response = await fetch('/api/admin/system', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/admin/system", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(systemSettings),
       });
 
@@ -234,34 +298,34 @@ export default function SettingsPage() {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch('/api/admin/tournament/settings');
+      const response = await fetch("/api/admin/tournament/settings");
       if (response.ok) {
         const data = await response.json();
         setTournamentSettings({
           id: data.id,
-          name: data.name || '',
-          description: data.description || '',
+          name: data.name || "",
+          description: data.description || "",
           startDate: data.startDate ? new Date(data.startDate) : undefined,
           endDate: data.endDate ? new Date(data.endDate) : undefined,
-          status: data.status || 'UPCOMING',
+          status: data.status || "UPCOMING",
           maxPlayers: data.maxPlayers || 64,
-          entryFee: data.entryFee || 0
+          entryFee: data.entryFee || 0,
         });
       }
     } catch (error) {
-      console.error('Error fetching settings:', error);
+      console.error("Error fetching settings:", error);
     }
   };
 
   const fetchBoards = async () => {
     try {
-      const response = await fetch('/api/admin/boards');
+      const response = await fetch("/api/admin/boards");
       if (response.ok) {
         const data = await response.json();
         setBoards(data);
       }
     } catch (error) {
-      console.error('Error fetching boards:', error);
+      console.error("Error fetching boards:", error);
     } finally {
       setLoading(false);
     }
@@ -269,24 +333,24 @@ export default function SettingsPage() {
 
   const fetchSystemSettings = async () => {
     try {
-      const response = await fetch('/api/admin/system/settings');
+      const response = await fetch("/api/admin/system/settings");
       if (response.ok) {
         const data = await response.json();
         setSystemSettings({
-          id: data.id || 'default',
+          id: data.id || "default",
           maintenanceMode: data.maintenanceMode || false,
           allowRegistration: data.allowRegistration || true,
           maxConcurrentGames: data.maxConcurrentGames || 8,
           autoSaveInterval: data.autoSaveInterval || 30,
-          logLevel: data.logLevel || 'info',
+          logLevel: data.logLevel || "info",
           websocketTimeout: data.websocketTimeout || 30000,
           cacheTimeout: data.cacheTimeout || 3600,
           maxConnections: data.maxConnections || 100,
-          monitoringInterval: data.monitoringInterval || 60
+          monitoringInterval: data.monitoringInterval || 60,
         });
       }
     } catch (error) {
-      console.error('Error fetching system settings:', error);
+      console.error("Error fetching system settings:", error);
     }
   };
 
@@ -294,20 +358,21 @@ export default function SettingsPage() {
     try {
       const payload = {
         ...tournamentSettings,
-        startDate: tournamentSettings.startDate?.toISOString().split('T')[0],
-        endDate: tournamentSettings.endDate?.toISOString().split('T')[0],
+        startDate: tournamentSettings.startDate?.toISOString().split("T")[0],
+        endDate: tournamentSettings.endDate?.toISOString().split("T")[0],
       };
 
-      const response = await fetch('/api/admin/tournament/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/admin/tournament/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       if (response.ok) {
         toast({
           title: "Erfolgreich gespeichert",
-          description: "Die Turnier-Einstellungen wurden erfolgreich gespeichert.",
+          description:
+            "Die Turnier-Einstellungen wurden erfolgreich gespeichert.",
         });
         fetchSettings();
       } else {
@@ -326,20 +391,21 @@ export default function SettingsPage() {
     }
   };
 
-
-
-  const updateBoardSettings = async (boardId: string, updatedBoard: BoardSettings) => {
+  const updateBoardSettings = async (
+    boardId: string,
+    updatedBoard: BoardSettings,
+  ) => {
     try {
       const response = await fetch(`/api/admin/boards/${boardId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedBoard),
       });
 
       if (response.ok) {
-        setBoards(prev => prev.map(board =>
-          board.id === boardId ? updatedBoard : board
-        ));
+        setBoards((prev) =>
+          prev.map((board) => (board.id === boardId ? updatedBoard : board)),
+        );
         toast({
           title: "Erfolgreich",
           description: "Scheiben-Einstellungen wurden aktualisiert.",
@@ -362,16 +428,24 @@ export default function SettingsPage() {
 
   const handleCreateAdmin = async () => {
     if (!newAdminEmail || !newAdminPassword) {
-        toast({ title: "Fehler", description: "Email und Passwort sind erforderlich", variant: "destructive" });
-        return;
+      toast({
+        title: "Fehler",
+        description: "Email und Passwort sind erforderlich",
+        variant: "destructive",
+      });
+      return;
     }
 
     setCreatingAdmin(true);
     try {
-      const response = await fetch('/api/admin/create-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newAdminName, email: newAdminEmail, password: newAdminPassword })
+      const response = await fetch("/api/admin/create-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newAdminName,
+          email: newAdminEmail,
+          password: newAdminPassword,
+        }),
       });
 
       const data = await response.json();
@@ -381,21 +455,21 @@ export default function SettingsPage() {
           title: "Erfolg",
           description: "Neuer Administrator wurde erstellt.",
         });
-        setNewAdminName('');
-        setNewAdminEmail('');
-        setNewAdminPassword('');
+        setNewAdminName("");
+        setNewAdminEmail("");
+        setNewAdminPassword("");
       } else {
         toast({
           title: "Fehler",
           description: data.error || "Fehler beim Erstellen",
-          variant: "destructive"
+          variant: "destructive",
         });
       }
     } catch (error) {
       toast({
         title: "Fehler",
         description: "Netzwerkfehler",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setCreatingAdmin(false);
@@ -404,13 +478,13 @@ export default function SettingsPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'UPCOMING':
+      case "UPCOMING":
         return <Badge variant="secondary">Bevorstehend</Badge>;
-      case 'ACTIVE':
+      case "ACTIVE":
         return <Badge variant="default">Aktiv</Badge>;
-      case 'COMPLETED':
+      case "COMPLETED":
         return <Badge variant="outline">Abgeschlossen</Badge>;
-      case 'CANCELLED':
+      case "CANCELLED":
         return <Badge variant="destructive">Abgebrochen</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
@@ -419,11 +493,11 @@ export default function SettingsPage() {
 
   const getBoardStatusBadge = (status: string) => {
     switch (status) {
-      case 'active':
+      case "active":
         return <Badge variant="default">Aktiv</Badge>;
-      case 'inactive':
+      case "inactive":
         return <Badge variant="secondary">Inaktiv</Badge>;
-      case 'maintenance':
+      case "maintenance":
         return <Badge variant="destructive">Wartung</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
@@ -451,7 +525,9 @@ export default function SettingsPage() {
           <div className="flex items-center justify-center min-h-screen">
             <div className="text-center">
               <h1 className="text-2xl font-bold mb-4">Zugriff verweigert</h1>
-              <p className="text-muted-foreground">Sie haben keine Berechtigung für diese Seite.</p>
+              <p className="text-muted-foreground">
+                Sie haben keine Berechtigung für diese Seite.
+              </p>
             </div>
           </div>
         </SidebarInset>
@@ -478,7 +554,9 @@ export default function SettingsPage() {
                 {/* Header */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Einstellungen</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">
+                      Einstellungen
+                    </h1>
                     <p className="text-muted-foreground">
                       Verwalten Sie alle Turnier- und System-Einstellungen
                     </p>
@@ -493,38 +571,63 @@ export default function SettingsPage() {
                     </CardHeader>
                     <CardContent className="space-y-6">
                       <div className="space-y-4">
-                        <h3 className="text-lg font-medium">Performance & Zuverlässigkeit</h3>
+                        <h3 className="text-lg font-medium">
+                          Performance & Zuverlässigkeit
+                        </h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="websocketTimeout">WebSocket Timeout (ms)</Label>
+                            <Label htmlFor="websocketTimeout">
+                              WebSocket Timeout (ms)
+                            </Label>
                             <Input
                               id="websocketTimeout"
                               type="number"
                               value={systemSettings.websocketTimeout}
-                              onChange={(e) => setSystemSettings(prev => ({ ...prev, websocketTimeout: parseInt(e.target.value) || 30000 }))}
+                              onChange={(e) =>
+                                setSystemSettings((prev) => ({
+                                  ...prev,
+                                  websocketTimeout:
+                                    parseInt(e.target.value) || 30000,
+                                }))
+                              }
                               placeholder="30000"
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="cacheTimeout">Cache Timeout (sek)</Label>
+                            <Label htmlFor="cacheTimeout">
+                              Cache Timeout (sek)
+                            </Label>
                             <Input
                               id="cacheTimeout"
                               type="number"
                               value={systemSettings.cacheTimeout}
-                              onChange={(e) => setSystemSettings(prev => ({ ...prev, cacheTimeout: parseInt(e.target.value) || 3600 }))}
+                              onChange={(e) =>
+                                setSystemSettings((prev) => ({
+                                  ...prev,
+                                  cacheTimeout:
+                                    parseInt(e.target.value) || 3600,
+                                }))
+                              }
                               placeholder="3600"
                             />
                           </div>
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="maxConnections">Maximale Verbindungen</Label>
+                          <Label htmlFor="maxConnections">
+                            Maximale Verbindungen
+                          </Label>
                           <Input
                             id="maxConnections"
                             type="number"
                             value={systemSettings.maxConnections}
-                            onChange={(e) => setSystemSettings(prev => ({ ...prev, maxConnections: parseInt(e.target.value) || 100 }))}
+                            onChange={(e) =>
+                              setSystemSettings((prev) => ({
+                                ...prev,
+                                maxConnections: parseInt(e.target.value) || 100,
+                              }))
+                            }
                             placeholder="100"
                           />
                         </div>
@@ -533,13 +636,20 @@ export default function SettingsPage() {
                       <Separator />
 
                       <div className="space-y-4">
-                        <h3 className="text-lg font-medium">Logging & Monitoring</h3>
+                        <h3 className="text-lg font-medium">
+                          Logging & Monitoring
+                        </h3>
 
                         <div className="space-y-2">
                           <Label htmlFor="logLevel">Log-Level</Label>
-                          <Select 
-                            value={systemSettings.logLevel} 
-                            onValueChange={(value) => setSystemSettings(prev => ({ ...prev, logLevel: value }))}
+                          <Select
+                            value={systemSettings.logLevel}
+                            onValueChange={(value) =>
+                              setSystemSettings((prev) => ({
+                                ...prev,
+                                logLevel: value,
+                              }))
+                            }
                           >
                             <SelectTrigger>
                               <SelectValue />
@@ -554,12 +664,20 @@ export default function SettingsPage() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="monitoringInterval">Monitoring-Intervall (sek)</Label>
+                          <Label htmlFor="monitoringInterval">
+                            Monitoring-Intervall (sek)
+                          </Label>
                           <Input
                             id="monitoringInterval"
                             type="number"
                             value={systemSettings.monitoringInterval}
-                            onChange={(e) => setSystemSettings(prev => ({ ...prev, monitoringInterval: parseInt(e.target.value) || 60 }))}
+                            onChange={(e) =>
+                              setSystemSettings((prev) => ({
+                                ...prev,
+                                monitoringInterval:
+                                  parseInt(e.target.value) || 60,
+                              }))
+                            }
                             placeholder="60"
                           />
                         </div>
@@ -567,7 +685,9 @@ export default function SettingsPage() {
 
                       <div className="flex justify-end">
                         <Button onClick={saveSystemSettings} disabled={saving}>
-                          {saving ? 'Wird gespeichert...' : 'System-Einstellungen speichern'}
+                          {saving
+                            ? "Wird gespeichert..."
+                            : "System-Einstellungen speichern"}
                         </Button>
                       </div>
                     </CardContent>
@@ -581,7 +701,9 @@ export default function SettingsPage() {
                     <CardContent className="space-y-6">
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="dataRetention">Datenaufbewahrung (Tage)</Label>
+                          <Label htmlFor="dataRetention">
+                            Datenaufbewahrung (Tage)
+                          </Label>
                           <Input
                             id="dataRetention"
                             type="number"
@@ -594,11 +716,19 @@ export default function SettingsPage() {
                           <Label>Export-Formate</Label>
                           <div className="flex gap-4">
                             <div className="flex items-center space-x-2">
-                              <input type="checkbox" id="exportCsv" defaultChecked />
+                              <input
+                                type="checkbox"
+                                id="exportCsv"
+                                defaultChecked
+                              />
                               <Label htmlFor="exportCsv">CSV</Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <input type="checkbox" id="exportJson" defaultChecked />
+                              <input
+                                type="checkbox"
+                                id="exportJson"
+                                defaultChecked
+                              />
                               <Label htmlFor="exportJson">JSON</Label>
                             </div>
                             <div className="flex items-center space-x-2">
@@ -609,7 +739,9 @@ export default function SettingsPage() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="backupInterval">Automatisches Backup (Stunden)</Label>
+                          <Label htmlFor="backupInterval">
+                            Automatisches Backup (Stunden)
+                          </Label>
                           <Input
                             id="backupInterval"
                             type="number"
@@ -620,8 +752,13 @@ export default function SettingsPage() {
                       </div>
 
                       <div className="flex justify-end">
-                        <Button onClick={saveStatisticsSettings} disabled={saving}>
-                          {saving ? 'Wird gespeichert...' : 'Statistik-Einstellungen speichern'}
+                        <Button
+                          onClick={saveStatisticsSettings}
+                          disabled={saving}
+                        >
+                          {saving
+                            ? "Wird gespeichert..."
+                            : "Statistik-Einstellungen speichern"}
                         </Button>
                       </div>
                     </CardContent>
@@ -644,7 +781,9 @@ export default function SettingsPage() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="obsPassword">OBS WebSocket Passwort</Label>
+                          <Label htmlFor="obsPassword">
+                            OBS WebSocket Passwort
+                          </Label>
                           <Input
                             id="obsPassword"
                             type="password"
@@ -653,7 +792,9 @@ export default function SettingsPage() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="displayRefresh">Anzeige-Aktualisierung (ms)</Label>
+                          <Label htmlFor="displayRefresh">
+                            Anzeige-Aktualisierung (ms)
+                          </Label>
                           <Input
                             id="displayRefresh"
                             type="number"
@@ -663,7 +804,9 @@ export default function SettingsPage() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="transitionDuration">Übergangsdauer (ms)</Label>
+                          <Label htmlFor="transitionDuration">
+                            Übergangsdauer (ms)
+                          </Label>
                           <Input
                             id="transitionDuration"
                             type="number"
@@ -676,11 +819,15 @@ export default function SettingsPage() {
                       <Separator />
 
                       <div className="space-y-4">
-                        <h3 className="text-lg font-medium">Overlay-Konfiguration</h3>
+                        <h3 className="text-lg font-medium">
+                          Overlay-Konfiguration
+                        </h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="overlayWidth">Overlay Breite (px)</Label>
+                            <Label htmlFor="overlayWidth">
+                              Overlay Breite (px)
+                            </Label>
                             <Input
                               id="overlayWidth"
                               type="number"
@@ -689,7 +836,9 @@ export default function SettingsPage() {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="overlayHeight">Overlay Höhe (px)</Label>
+                            <Label htmlFor="overlayHeight">
+                              Overlay Höhe (px)
+                            </Label>
                             <Input
                               id="overlayHeight"
                               type="number"
@@ -711,12 +860,48 @@ export default function SettingsPage() {
                       </div>
 
                       <div className="flex justify-end">
-                        <Button onClick={saveBroadcastingSettings} disabled={saving}>
-                          {saving ? 'Wird gespeichert...' : 'Broadcasting-Einstellungen speichern'}
+                        <Button
+                          onClick={saveBroadcastingSettings}
+                          disabled={saving}
+                        >
+                          {saving
+                            ? "Wird gespeichert..."
+                            : "Broadcasting-Einstellungen speichern"}
                         </Button>
                       </div>
                     </CardContent>
                   </Card>
+
+                  {isAdmin && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>System & Logs (Webhooks)</CardTitle>
+                        <CardDescription>
+                          Hintergrunddienste prüfen und neu starten
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className="bg-slate-900 text-slate-300 p-4 rounded-md h-64 overflow-y-auto font-mono text-xs whitespace-pre-wrap">
+                          {logs}
+                        </div>
+                        <div className="flex justify-between">
+                          <Button
+                            variant="outline"
+                            onClick={fetchLogs}
+                            disabled={restartingWebhook}
+                          >
+                            Logs neu laden
+                          </Button>
+                          <Button
+                            onClick={restartWebhook}
+                            disabled={restartingWebhook}
+                          >
+                            {restartingWebhook ? "Neustart ..." : "Neu starten"}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
               </div>
             </div>

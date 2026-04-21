@@ -181,7 +181,7 @@ export default function RulesPage() {
                   <h3 className="text-base font-semibold mb-2">1.2 Spielvarianten</h3>
                   <ul className="list-disc pl-5 text-muted-foreground">
                     <li><strong>Gruppenphase / Vorrunde:</strong> 501 Single Out. Das bedeutet, das Leg kann mit jedem beliebigen Feld beendet werden.</li>
-                    <li><strong>K.O.-Runde (ab Halbfinale):</strong> 501 Double Out. Das Leg muss mit einem Doppelfeld oder dem Bullseye beendet werden.</li>
+                    <li><strong>K.O.-Runde (ab Halbfinale):</strong> 501 (Checkout-Modus gemäß Turnierregeln). Das Leg muss entsprechend beendet werden.</li>
                   </ul>
                 </div>
                 <Separator />

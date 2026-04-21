@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 // Google Fonts werden lokal eingebunden, daher keine next/font/google-Imports mehr
 import "./globals.css";
 import AuthProvider from "@/components/AuthProvider";
+import CookieBanner from "@/components/CookieBanner";
+import { Analytics } from "@/components/Analytics";
 import { Toaster } from "@/components/toaster";
 import Script from "next/script";
 
@@ -126,7 +128,9 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         <AuthProvider>
+          <Analytics />
           {children}
+          <CookieBanner />
           <Toaster />
         </AuthProvider>
       </body>
