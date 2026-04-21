@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
 
 // Priorisiere in Gange befindliche oder mit offener Registrierung, ansonsten das Nächste
       let tournament = await prisma.tournament.findFirst({
-        where: { status: { in: ['IN_PROGRESS', 'REGISTRATION_OPEN'] } },
+        where: { status: { in: ['ACTIVE', 'REGISTRATION_OPEN'] } },
         orderBy: { startDate: 'asc' }
       });
 

@@ -372,7 +372,7 @@ function RulesDialog() {
       // Wähle das relevanteste Turnier (Anmeldung offen > Warteliste > nächstes kommendes > erstes)
       const tournaments = Array.isArray(data?.tournaments) ? data.tournaments : [];
       const now = new Date();
-      let t = tournaments.find((x: any) => ['IN_PROGRESS', 'REGISTRATION_OPEN', 'WAITLIST'].includes(x.status));
+      let t = tournaments.find((x: any) => ['ACTIVE', 'REGISTRATION_OPEN', 'WAITLIST'].includes(x.status));
       if (!t) {
         const upcoming = tournaments.filter((x: any) => new Date(x.startDate) > now).sort((a: any, b: any) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
         t = upcoming[0] || tournaments[tournaments.length - 1] || null;
